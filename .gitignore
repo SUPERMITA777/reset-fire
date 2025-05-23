@@ -77,3 +77,6 @@ desktop.ini
 # Archivos de desarrollo local
 *.local
 local.*
+
+# Git Backup
+.git.backup/
