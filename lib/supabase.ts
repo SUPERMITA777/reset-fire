@@ -64,6 +64,12 @@ export type FotoCliente = {
   updated_at: string
 }
 
+// Definir el tipo para el box
+type Box = {
+  id: number
+  nombre: string
+}
+
 // Función para verificar la conexión y las tablas
 export async function verificarBaseDatos() {
   try {
@@ -223,9 +229,9 @@ export async function verificarDisponibilidadBox(
     tratamientoId
   })
 
-  // Primero verificar si el tratamiento está disponible en esa fecha/hora/box
-  if (tratamientoId) {
-    try {
+  try {
+    // Primero verificar si el tratamiento está disponible en esa fecha/hora/box
+    if (tratamientoId) {
       // Verificar que el ID sea un UUID válido
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tratamientoId)) {
         console.error('ID de tratamiento inválido:', tratamientoId)
@@ -263,34 +269,48 @@ export async function verificarDisponibilidadBox(
         console.log('El tratamiento no está disponible en este horario/box')
         return false
       }
-    } catch (error) {
-      console.error('Error al verificar disponibilidad del tratamiento:', {
-        error,
-        params: { tratamientoId, fecha, horaInicio, horaFin, box }
-      })
+    }
+
+    // Luego verificar si hay citas existentes que se superponen
+    console.log('Verificando citas existentes...')
+    
+    // Convertir las horas a minutos para una comparación más precisa
+    const [horaInicioHora, horaInicioMinuto] = horaInicio.split(':').map(Number)
+    const [horaFinHora, horaFinMinuto] = horaFin.split(':').map(Number)
+    const minutosInicio = horaInicioHora * 60 + horaInicioMinuto
+    const minutosFin = horaFinHora * 60 + horaFinMinuto
+
+    // Buscar citas que se superpongan con el horario solicitado
+    const { data: citasExistentes, error } = await supabase
+      .from('citas')
+      .select('id, hora_inicio, hora_fin')
+      .eq('fecha', fecha)
+      .eq('box_id', box)
+      .or(`and(hora_inicio.lte.${horaFin},hora_fin.gt.${horaInicio}),and(hora_inicio.lt.${horaFin},hora_fin.gte.${horaInicio})`)
+
+    if (error) {
+      console.error('Error verificando disponibilidad:', error)
       return false
     }
-  }
 
-  // Luego verificar si hay citas existentes que se superponen
-  console.log('Verificando citas existentes...')
-  const { data: citasExistentes, error } = await supabase
-    .from('citas')
-    .select('id')
-    .eq('fecha', fecha)
-    .eq('box_id', box)
-    .or(`hora_inicio.lte.${horaFin},hora_fin.gte.${horaInicio}`)
+    console.log('Citas existentes encontradas:', {
+      total: citasExistentes?.length || 0,
+      citas: citasExistentes?.map(c => ({
+        id: c.id,
+        horaInicio: c.hora_inicio,
+        horaFin: c.hora_fin
+      }))
+    })
 
-  if (error) {
-    console.error('Error verificando disponibilidad:', error)
+    // Si no hay citas existentes, el box está disponible
+    const hayDisponibilidad = !citasExistentes || citasExistentes.length === 0
+    console.log('¿Hay disponibilidad?:', hayDisponibilidad)
+
+    return hayDisponibilidad
+  } catch (error) {
+    console.error('Error al verificar disponibilidad:', error)
     return false
   }
-
-  console.log('Citas existentes encontradas:', citasExistentes)
-  const hayDisponibilidad = citasExistentes.length === 0
-  console.log('¿Hay disponibilidad?:', hayDisponibilidad)
-
-  return hayDisponibilidad
 }
 
 // Función para crear un tratamiento
@@ -431,7 +451,13 @@ export async function getCitasPorFecha(fecha: Date, obtenerMesCompleto: boolean 
     const fechaArgentina = toZonedTime(fecha, "America/Argentina/Buenos_Aires")
     const fechaFormateada = format(fechaArgentina, "yyyy-MM-dd")
     
-    console.log('Consultando citas para fecha (Argentina):', fechaFormateada)
+    console.log('Consultando citas para fecha (Argentina):', {
+      fechaOriginal: format(fecha, 'yyyy-MM-dd HH:mm:ss'),
+      fechaArgentina: format(fechaArgentina, 'yyyy-MM-dd HH:mm:ss'),
+      fechaFormateada,
+      obtenerMesCompleto,
+      zonaHoraria: 'America/Argentina/Buenos_Aires'
+    })
     
     let query = supabase
       .from("citas")
@@ -453,13 +479,19 @@ export async function getCitasPorFecha(fecha: Date, obtenerMesCompleto: boolean 
       .order("hora_inicio", { ascending: true })
 
     if (obtenerMesCompleto) {
-      // Obtener el primer y último día del mes
+      // Obtener el primer y último día del mes en zona horaria de Argentina
       const primerDia = startOfMonth(fechaArgentina)
       const ultimoDia = endOfMonth(fechaArgentina)
       const primerDiaStr = format(primerDia, "yyyy-MM-dd")
       const ultimoDiaStr = format(ultimoDia, "yyyy-MM-dd")
       
-      console.log('Consultando citas para el mes:', { primerDia: primerDiaStr, ultimoDia: ultimoDiaStr })
+      console.log('Consultando citas para el mes (Argentina):', {
+        primerDia: format(primerDia, 'yyyy-MM-dd HH:mm:ss'),
+        ultimoDia: format(ultimoDia, 'yyyy-MM-dd HH:mm:ss'),
+        primerDiaStr,
+        ultimoDiaStr,
+        zonaHoraria: "America/Argentina/Buenos_Aires"
+      })
       
       query = query
         .gte("fecha", primerDiaStr)
@@ -480,19 +512,38 @@ export async function getCitasPorFecha(fecha: Date, obtenerMesCompleto: boolean 
       return []
     }
 
-    console.log('Datos crudos de citas:', citasRaw)
+    console.log('Datos crudos de citas:', {
+      total: citasRaw.length,
+      citas: citasRaw.map(c => ({
+        id: c.id,
+        fecha: c.fecha,
+        hora_inicio: c.hora_inicio,
+        hora_fin: c.hora_fin,
+        box_id: c.box_id
+      }))
+    })
 
     // Transformar los datos y asegurar que las fechas estén en zona horaria de Argentina
     const citasTransformadas: Cita[] = citasRaw.map((cita) => {
       try {
-        const fechaCita = cita.fecha ? toZonedTime(new Date(cita.fecha), "America/Argentina/Buenos_Aires") : new Date()
+        // Crear una fecha completa con la fecha y hora en zona horaria de Argentina
+        const fechaCitaStr = `${cita.fecha}T00:00:00-03:00` // Especificar explícitamente la zona horaria de Argentina
+        const fechaCita = new Date(fechaCitaStr)
+        
+        // Validar que la fecha sea válida
+        if (isNaN(fechaCita.getTime())) {
+          throw new Error(`Fecha inválida: ${cita.fecha}`)
+        }
+        
+        // Usar el box_id directamente para el nombre del box
+        const boxNombre = `Box ${cita.box_id}`
         
         const citaTransformada: Cita = {
           id: cita.id,
           fecha: fechaCita,
           horaInicio: cita.hora_inicio,
           horaFin: cita.hora_fin,
-          box: cita.box_id.toString(),
+          box: boxNombre,
           box_id: cita.box_id,
           nombreCompleto: cita.nombre_completo || "Sin nombre",
           dni: undefined,
@@ -505,18 +556,45 @@ export async function getCitasPorFecha(fecha: Date, obtenerMesCompleto: boolean 
           senia: 0,
           notas: cita.observaciones || undefined,
           estado: "reservado",
-          created_at: cita.created_at ? format(toZonedTime(new Date(cita.created_at), "America/Argentina/Buenos_Aires"), "yyyy-MM-dd'T'HH:mm:ssXXX") : undefined,
-          updated_at: cita.updated_at ? format(toZonedTime(new Date(cita.updated_at), "America/Argentina/Buenos_Aires"), "yyyy-MM-dd'T'HH:mm:ssXXX") : undefined
+          created_at: cita.created_at ? format(new Date(cita.created_at), "yyyy-MM-dd'T'HH:mm:ssXXX") : undefined,
+          updated_at: cita.updated_at ? format(new Date(cita.updated_at), "yyyy-MM-dd'T'HH:mm:ssXXX") : undefined
         }
+
+        console.log('Cita transformada (Argentina):', {
+          id: citaTransformada.id,
+          fecha: format(fechaCita, 'yyyy-MM-dd HH:mm:ss'),
+          fechaISO: fechaCita.toISOString(),
+          fechaLocal: fechaCita.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' }),
+          horaInicio: citaTransformada.horaInicio,
+          horaFin: citaTransformada.horaFin,
+          box: citaTransformada.box,
+          box_id: citaTransformada.box_id,
+          zonaHoraria: 'America/Argentina/Buenos_Aires'
+        })
         
         return citaTransformada
       } catch (error) {
-        console.error('Error al transformar cita:', cita, error)
+        console.error('Error al transformar cita:', {
+          cita,
+          error: error instanceof Error ? error.message : 'Error desconocido'
+        })
         return null
       }
     }).filter((cita): cita is Cita => cita !== null)
 
-    console.log('Citas transformadas:', citasTransformadas)
+    console.log('Citas transformadas (Argentina):', {
+      total: citasTransformadas.length,
+      citas: citasTransformadas.map(c => ({
+        id: c.id,
+        fecha: format(c.fecha, 'yyyy-MM-dd HH:mm:ss'),
+        horaInicio: c.horaInicio,
+        horaFin: c.horaFin,
+        box: c.box,
+        box_id: c.box_id,
+        zonaHoraria: 'America/Argentina/Buenos_Aires'
+      }))
+    })
+
     return citasTransformadas
   } catch (error) {
     console.error("Error en getCitasPorFecha:", error)

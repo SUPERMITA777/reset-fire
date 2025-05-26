@@ -119,15 +119,17 @@ export default function TratamientosPage() {
     }
 
     try {
-      console.log('Buscando horarios para:', {
+      console.log('Iniciando búsqueda de horarios con:', {
         fecha: format(fecha, 'yyyy-MM-dd'),
         tratamientoId: tratamientoSeleccionado.id,
         subTratamientoId: subTratamiento.id,
+        duracion: subTratamiento.duracion,
         offset
       })
 
       // Obtener las fechas disponibles del tratamiento
       const fechasDisponibles = await getFechasDisponibles(tratamientoSeleccionado.id)
+      console.log('Fechas disponibles encontradas:', fechasDisponibles)
       
       // Encontrar la configuración de disponibilidad para la fecha seleccionada
       const fechaConfig = fechasDisponibles.find(f => {
@@ -139,7 +141,14 @@ export default function TratamientosPage() {
         const finComparar = startOfDay(fin)
         const fechaSeleccionadaComparar = startOfDay(fechaSeleccionada)
         
-        return fechaSeleccionadaComparar >= inicioComparar && fechaSeleccionadaComparar <= finComparar
+        const coincide = fechaSeleccionadaComparar >= inicioComparar && fechaSeleccionadaComparar <= finComparar
+        console.log('Comparando fechas:', {
+          fechaSeleccionada: format(fechaSeleccionadaComparar, 'yyyy-MM-dd'),
+          inicio: format(inicioComparar, 'yyyy-MM-dd'),
+          fin: format(finComparar, 'yyyy-MM-dd'),
+          coincide
+        })
+        return coincide
       })
 
       if (!fechaConfig) {
@@ -151,6 +160,14 @@ export default function TratamientosPage() {
         })
         return []
       }
+
+      console.log('Configuración encontrada:', {
+        fechaInicio: fechaConfig.fecha_inicio,
+        fechaFin: fechaConfig.fecha_fin,
+        horaInicio: fechaConfig.hora_inicio,
+        horaFin: fechaConfig.hora_fin,
+        boxesDisponibles: fechaConfig.boxes_disponibles
+      })
 
       // Obtener todas las citas existentes para la fecha seleccionada
       const { data: citasExistentes, error: errorCitas } = await supabase
@@ -168,6 +185,8 @@ export default function TratamientosPage() {
         return []
       }
 
+      console.log('Citas existentes encontradas:', citasExistentes)
+
       const horarios: { hora: string; box: number; disponible: boolean }[] = []
       const [horaInicioConfig] = fechaConfig.hora_inicio.split(':').map(Number)
       const [horaFinConfig] = fechaConfig.hora_fin.split(':').map(Number)
@@ -178,6 +197,8 @@ export default function TratamientosPage() {
       for (const box of fechaConfig.boxes_disponibles) {
         if (turnosEncontrados >= TURNOS_A_BUSCAR) break
         
+        console.log(`Buscando horarios para box ${box}`)
+        
         for (let hora = horaInicioConfig; hora < horaFinConfig && turnosEncontrados < TURNOS_A_BUSCAR; hora++) {
           for (let minuto = 0; minuto < 60 && turnosEncontrados < TURNOS_A_BUSCAR; minuto += 15) {
             const horaInicio = `${hora.toString().padStart(2, "0")}:${minuto.toString().padStart(2, "0")}`
@@ -186,19 +207,40 @@ export default function TratamientosPage() {
               "HH:mm"
             )
 
+            console.log(`Verificando horario ${horaInicio}-${horaFin} en box ${box}`)
+
             // Verificar si este horario se superpone con alguna cita existente
-            const haySuperposicion = citasExistentes.some(cita => {
+            const citasSuperpuestas = citasExistentes.filter(cita => {
+              if (cita.box_id !== box) return false
+
               const citaInicio = new Date(`2000-01-01T${cita.hora_inicio}`)
               const citaFin = new Date(`2000-01-01T${cita.hora_fin}`)
               const horarioInicio = new Date(`2000-01-01T${horaInicio}`)
               const horarioFin = new Date(`2000-01-01T${horaFin}`)
 
-              return cita.box_id === box && (
+              const superpone = (
                 (horarioInicio >= citaInicio && horarioInicio < citaFin) ||
                 (horarioFin > citaInicio && horarioFin <= citaFin) ||
                 (horarioInicio <= citaInicio && horarioFin >= citaFin)
               )
+
+              if (superpone) {
+                console.log(`Superposición encontrada con cita:`, {
+                  citaId: cita.id,
+                  citaInicio: cita.hora_inicio,
+                  citaFin: cita.hora_fin,
+                  horarioInicio,
+                  horarioFin
+                })
+              }
+
+              return superpone
             })
+
+            if (citasSuperpuestas.length > 0) {
+              console.log(`Horario ${horaInicio}-${horaFin} en box ${box} tiene ${citasSuperpuestas.length} citas superpuestas`)
+              continue
+            }
 
             // Verificar si el tratamiento está disponible en este horario/box
             const disponibleTratamiento = await verificarDisponibilidadBox(
@@ -209,15 +251,17 @@ export default function TratamientosPage() {
               tratamientoSeleccionado.id
             )
 
-            const disponible = !haySuperposicion && disponibleTratamiento
+            console.log(`Disponibilidad del tratamiento para ${horaInicio}-${horaFin} en box ${box}:`, disponibleTratamiento)
 
-            if (disponible) {
-              horarios.push({ 
+            if (disponibleTratamiento) {
+              const horarioDisponible = { 
                 hora: horaInicio, 
                 box, 
-                disponible 
-              })
+                disponible: true 
+              }
+              horarios.push(horarioDisponible)
               turnosEncontrados++
+              console.log(`Turno disponible encontrado: ${horaInicio} en box ${box}`)
               if (turnosEncontrados >= TURNOS_A_BUSCAR) break
             }
           }

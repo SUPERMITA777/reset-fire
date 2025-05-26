@@ -3,7 +3,8 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { format, addMinutes, parse } from "date-fns"
+import { format, toZonedTime } from "date-fns-tz"
+import { addMinutes, parse } from "date-fns"
 import { es } from "date-fns/locale"
 import { CalendarIcon, DollarSign, Search, UserPlus, ShoppingCart } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -311,7 +312,16 @@ export function FormularioCita({
         throw new Error(`Error en operación de cliente: ${error instanceof Error ? error.message : 'Error desconocido'}`)
       }
 
-      const fechaStr = format(fecha, 'yyyy-MM-dd')
+      // Convertir la fecha a la zona horaria de Argentina antes de formatearla
+      const fechaArgentina = toZonedTime(fecha, 'America/Argentina/Buenos_Aires')
+      const fechaStr = format(fechaArgentina, 'yyyy-MM-dd')
+      
+      console.log('Guardando cita con fecha:', {
+        fechaOriginal: format(fecha, 'yyyy-MM-dd HH:mm:ss'),
+        fechaArgentina: format(fechaArgentina, 'yyyy-MM-dd HH:mm:ss'),
+        fechaStr,
+        zonaHoraria: 'America/Argentina/Buenos_Aires'
+      })
       
       // Verificar disponibilidad del box
       try {

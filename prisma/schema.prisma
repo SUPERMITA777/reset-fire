@@ -1,0 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tratamiento {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre    String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  subTratamientos    SubTratamiento[]
+  citas             Cita[]
+  fechasDisponibles FechaDisponible[]
+
+  @@map("tratamientos")
+}
+
+model SubTratamiento {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tratamientoId  String   @map("tratamiento_id") @db.Uuid
+  nombre         String
+  duracion       Int
+  precio         Decimal  @db.Decimal(10, 2)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tratamiento    Tratamiento @relation(fields: [tratamientoId], references: [id], onDelete: Cascade)
+  citas          Cita[]
+
+  @@unique([tratamientoId, nombre])
+  @@map("sub_tratamientos")
+}
+
+model Cita {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombreCompleto    String   @map("nombre_completo")
+  dni               String?
+  whatsapp          String?
+  fecha             DateTime @db.Date
+  horaInicio        DateTime @map("hora_inicio") @db.Time(6)
+  horaFin           DateTime @map("hora_fin") @db.Time(6)
+  boxId             Int      @map("box_id")
+  tratamientoId     String   @map("tratamiento_id") @db.Uuid
+  subTratamientoId  String   @map("sub_tratamiento_id") @db.Uuid
+  color             String   @default("#4f46e5")
+  duracion          Int?
+  precio            Decimal? @db.Decimal(10, 2)
+  senia             Decimal  @default(0) @db.Decimal(10, 2)
+  observaciones     String?
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tratamiento       Tratamiento    @relation(fields: [tratamientoId], references: [id])
+  subTratamiento    SubTratamiento @relation(fields: [subTratamientoId], references: [id])
+
+  @@index([fecha])
+  @@index([boxId])
+  @@index([tratamientoId])
+  @@index([subTratamientoId])
+  @@index([createdAt])
+  @@index([fecha, boxId, horaInicio, horaFin])
+  @@map("citas")
+}
+
+model FechaDisponible {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tratamientoId     String   @map("tratamiento_id") @db.Uuid
+  fechaInicio       DateTime @map("fecha_inicio") @db.Date
+  fechaFin          DateTime @map("fecha_fin") @db.Date
+  boxesDisponibles  Int[]    @map("boxes_disponibles") @default([1, 2, 3, 4, 5, 6, 7, 8])
+  horaInicio        DateTime @map("hora_inicio") @db.Time(6) @default(dbgenerated("'08:00'::time"))
+  horaFin           DateTime @map("hora_fin") @db.Time(6) @default(dbgenerated("'20:00'::time"))
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tratamiento       Tratamiento @relation(fields: [tratamientoId], references: [id], onDelete: Cascade)
+
+  @@index([tratamientoId])
+  @@index([fechaInicio, fechaFin])
+  @@map("fechas_disponibles")
+}

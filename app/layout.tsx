@@ -13,8 +13,11 @@ const fontSans = FontSans({
 })
 
 export const metadata: Metadata = {
-  title: "Reset Pro",
-  description: "Sistema de gestión de citas y tratamientos",
+  title: "Sistema de Gestión",
+  description: "Sistema de gestión de citas y clientes",
+  icons: {
+    icon: '/favicon.ico',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

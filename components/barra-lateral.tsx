@@ -12,7 +12,6 @@ import { MiniCalendario } from "@/components/mini-calendario"
 import { useMobile } from "@/hooks/use-mobile"
 import { getCitasPorFecha } from "@/lib/supabase"
 import type { Cita } from "@/types/cita"
-
 export function BarraLateral() {
   const [fechaSeleccionada, setFechaSeleccionada] = useState<Date | undefined>(new Date())
   const isMobile = useMobile()
