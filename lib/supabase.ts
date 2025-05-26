@@ -445,21 +445,36 @@ export async function eliminarSubTratamientoDB(id: string) {
 }
 
 // Funciones de ayuda para las operaciones CRUD
-export async function getCitasPorFecha(fecha: Date, obtenerMesCompleto: boolean = false): Promise<Cita[]> {
+export async function getCitasPorFecha(fecha: Date, obtenerMesCompleto: boolean = false): Promise<{ [key: string]: Cita[] }> {
   try {
     // Convertir la fecha a zona horaria de Argentina
     const fechaArgentina = toZonedTime(fecha, "America/Argentina/Buenos_Aires")
-    const fechaFormateada = format(fechaArgentina, "yyyy-MM-dd")
     
-    console.log('Consultando citas para fecha (Argentina):', {
-      fechaOriginal: format(fecha, 'yyyy-MM-dd HH:mm:ss'),
-      fechaArgentina: format(fechaArgentina, 'yyyy-MM-dd HH:mm:ss'),
-      fechaFormateada,
-      obtenerMesCompleto,
-      zonaHoraria: 'America/Argentina/Buenos_Aires'
+    // Determinar el rango de fechas basado en obtenerMesCompleto
+    let fechaInicio: Date
+    let fechaFin: Date
+    
+    if (obtenerMesCompleto) {
+      // Si es mes completo, obtener del primer al último día del mes
+      fechaInicio = startOfMonth(fechaArgentina)
+      fechaFin = endOfMonth(fechaArgentina)
+    } else {
+      // Si es un día específico, usar ese día
+      fechaInicio = fechaArgentina
+      fechaFin = fechaArgentina
+    }
+
+    // Formatear las fechas para la consulta
+    const fechaInicioStr = format(fechaInicio, "yyyy-MM-dd")
+    const fechaFinStr = format(fechaFin, "yyyy-MM-dd")
+    
+    console.log('Consultando citas en rango:', {
+      fechaInicio: fechaInicioStr,
+      fechaFin: fechaFinStr,
+      obtenerMesCompleto
     })
-    
-    let query = supabase
+
+    const { data: citasRaw, error } = await supabase
       .from("citas")
       .select(`
         id,
@@ -473,132 +488,113 @@ export async function getCitasPorFecha(fecha: Date, obtenerMesCompleto: boolean 
         color,
         observaciones,
         created_at,
-        updated_at
+        updated_at,
+        tratamiento:tratamiento_id (
+          id,
+          nombre
+        ),
+        sub_tratamiento:sub_tratamiento_id (
+          id,
+          nombre,
+          duracion,
+          precio
+        )
       `)
+      .gte("fecha", fechaInicioStr)
+      .lte("fecha", fechaFinStr)
       .order("fecha", { ascending: true })
       .order("hora_inicio", { ascending: true })
 
-    if (obtenerMesCompleto) {
-      // Obtener el primer y último día del mes en zona horaria de Argentina
-      const primerDia = startOfMonth(fechaArgentina)
-      const ultimoDia = endOfMonth(fechaArgentina)
-      const primerDiaStr = format(primerDia, "yyyy-MM-dd")
-      const ultimoDiaStr = format(ultimoDia, "yyyy-MM-dd")
-      
-      console.log('Consultando citas para el mes (Argentina):', {
-        primerDia: format(primerDia, 'yyyy-MM-dd HH:mm:ss'),
-        ultimoDia: format(ultimoDia, 'yyyy-MM-dd HH:mm:ss'),
-        primerDiaStr,
-        ultimoDiaStr,
-        zonaHoraria: "America/Argentina/Buenos_Aires"
-      })
-      
-      query = query
-        .gte("fecha", primerDiaStr)
-        .lte("fecha", ultimoDiaStr)
-    } else {
-      query = query.eq("fecha", fechaFormateada)
-    }
-
-    const { data: citasRaw, error } = await query
-
     if (error) {
-      console.error("Error al obtener citas:", error)
+      console.error('Error en consulta a Supabase:', error)
       throw new Error(`Error al obtener citas: ${error.message}`)
     }
 
     if (!citasRaw) {
-      console.log('No se encontraron citas para la fecha:', fechaFormateada)
-      return []
+      console.log('No se encontraron citas en el rango')
+      return {}
     }
 
-    console.log('Datos crudos de citas:', {
-      total: citasRaw.length,
-      citas: citasRaw.map(c => ({
-        id: c.id,
-        fecha: c.fecha,
-        hora_inicio: c.hora_inicio,
-        hora_fin: c.hora_fin,
-        box_id: c.box_id
-      }))
-    })
+    console.log(`Se encontraron ${citasRaw.length} citas en el rango`)
 
     // Transformar los datos y asegurar que las fechas estén en zona horaria de Argentina
-    const citasTransformadas: Cita[] = citasRaw.map((cita) => {
-      try {
-        // Crear una fecha completa con la fecha y hora en zona horaria de Argentina
-        const fechaCitaStr = `${cita.fecha}T00:00:00-03:00` // Especificar explícitamente la zona horaria de Argentina
-        const fechaCita = new Date(fechaCitaStr)
-        
-        // Validar que la fecha sea válida
-        if (isNaN(fechaCita.getTime())) {
-          throw new Error(`Fecha inválida: ${cita.fecha}`)
-        }
-        
-        // Usar el box_id directamente para el nombre del box
-        const boxNombre = `Box ${cita.box_id}`
-        
-        const citaTransformada: Cita = {
-          id: cita.id,
-          fecha: fechaCita,
-          horaInicio: cita.hora_inicio,
-          horaFin: cita.hora_fin,
-          box: boxNombre,
-          box_id: cita.box_id,
-          nombreCompleto: cita.nombre_completo || "Sin nombre",
-          dni: undefined,
-          whatsapp: undefined,
-          tratamiento: cita.tratamiento_id || undefined,
-          subTratamiento: cita.sub_tratamiento_id || undefined,
-          color: cita.color || "#808080",
-          duracion: null,
-          precio: null,
-          senia: 0,
-          notas: cita.observaciones || undefined,
-          estado: "reservado",
-          created_at: cita.created_at ? format(new Date(cita.created_at), "yyyy-MM-dd'T'HH:mm:ssXXX") : undefined,
-          updated_at: cita.updated_at ? format(new Date(cita.updated_at), "yyyy-MM-dd'T'HH:mm:ssXXX") : undefined
-        }
-
-        console.log('Cita transformada (Argentina):', {
-          id: citaTransformada.id,
-          fecha: format(fechaCita, 'yyyy-MM-dd HH:mm:ss'),
-          fechaISO: fechaCita.toISOString(),
-          fechaLocal: fechaCita.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' }),
-          horaInicio: citaTransformada.horaInicio,
-          horaFin: citaTransformada.horaFin,
-          box: citaTransformada.box,
-          box_id: citaTransformada.box_id,
-          zonaHoraria: 'America/Argentina/Buenos_Aires'
-        })
-        
-        return citaTransformada
-      } catch (error) {
-        console.error('Error al transformar cita:', {
-          cita,
-          error: error instanceof Error ? error.message : 'Error desconocido'
-        })
-        return null
+    interface CitaRaw {
+      id: string
+      nombre_completo: string
+      fecha: string
+      hora_inicio: string
+      hora_fin: string
+      box_id: number
+      tratamiento_id: string
+      sub_tratamiento_id: string
+      color: string
+      observaciones: string | null
+      created_at: string | null
+      updated_at: string | null
+      tratamiento?: {
+        id: string
+        nombre: string
       }
-    }).filter((cita): cita is Cita => cita !== null)
+      sub_tratamiento?: {
+        id: string
+        nombre: string
+        duracion: number
+        precio: number
+      }
+    }
 
-    console.log('Citas transformadas (Argentina):', {
-      total: citasTransformadas.length,
-      citas: citasTransformadas.map(c => ({
-        id: c.id,
-        fecha: format(c.fecha, 'yyyy-MM-dd HH:mm:ss'),
-        horaInicio: c.horaInicio,
-        horaFin: c.horaFin,
-        box: c.box,
-        box_id: c.box_id,
-        zonaHoraria: 'America/Argentina/Buenos_Aires'
-      }))
+    const citasTransformadas: Cita[] = citasRaw.map((cita: CitaRaw) => {
+      // Crear una fecha completa con la fecha y hora en zona horaria de Argentina
+      const fechaCitaStr = `${cita.fecha}T00:00:00-03:00` // Especificar explícitamente la zona horaria de Argentina
+      const fechaCita = new Date(fechaCitaStr)
+      
+      // Validar que la fecha sea válida
+      if (isNaN(fechaCita.getTime())) {
+        throw new Error(`Fecha inválida: ${cita.fecha}`)
+      }
+      
+      // Usar el box_id directamente para el nombre del box
+      const boxNombre = `Box ${cita.box_id}`
+      
+      return {
+        id: cita.id,
+        fecha: fechaCita,
+        horaInicio: cita.hora_inicio,
+        horaFin: cita.hora_fin,
+        box: boxNombre,
+        box_id: cita.box_id,
+        nombreCompleto: cita.nombre_completo || "Sin nombre",
+        tratamiento: cita.tratamiento_id || undefined,
+        subTratamiento: cita.sub_tratamiento_id || undefined,
+        nombreTratamiento: cita.tratamiento?.nombre,
+        nombreSubTratamiento: cita.sub_tratamiento?.nombre,
+        color: cita.color || "#808080",
+        duracion: cita.sub_tratamiento?.duracion || null,
+        precio: cita.sub_tratamiento?.precio || null,
+        senia: 0,
+        notas: cita.observaciones || undefined,
+        estado: "reservado",
+        created_at: cita.created_at ? format(new Date(cita.created_at), "yyyy-MM-dd'T'HH:mm:ssXXX") : undefined,
+        updated_at: cita.updated_at ? format(new Date(cita.updated_at), "yyyy-MM-dd'T'HH:mm:ssXXX") : undefined
+      }
     })
 
-    return citasTransformadas
+    // Agrupar las citas por fecha
+    const citasAgrupadas = citasTransformadas.reduce<{ [key: string]: Cita[] }>((acc, cita) => {
+      const fechaStr = format(new Date(cita.fecha), "yyyy-MM-dd")
+      if (!acc[fechaStr]) {
+        acc[fechaStr] = []
+      }
+      acc[fechaStr].push(cita)
+      return acc
+    }, {})
+
+    console.log('Citas agrupadas por fecha:', Object.keys(citasAgrupadas).length, 'días')
+
+    return citasAgrupadas
   } catch (error) {
     console.error("Error en getCitasPorFecha:", error)
-    throw error instanceof Error ? error : new Error('Error desconocido al obtener citas')
+    return {}
   }
 }
 
@@ -921,7 +917,7 @@ export async function crearFechaDisponible(
 
     console.log('Fechas procesadas:', {
       fechaInicioOriginal: fechaInicio,
-      fechaFinOriginal: fechaFin,
+      fechaFinOriginal: fin,
       fechaInicioAjustada: fechaInicioFormateada,
       fechaFinAjustada: fechaFinFormateada,
       zonaHoraria: 'America/Argentina/Buenos_Aires'

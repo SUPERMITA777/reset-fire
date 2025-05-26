@@ -20,11 +20,13 @@ interface CitaSupabase {
   box_id: number
   color: string
   nombre_completo: string
+  dni: string | null
+  whatsapp: string | null
   tratamiento_id: string
   sub_tratamiento_id: string
   observaciones: string | null
-  created_at: string
-  updated_at: string
+  created_at: string | null
+  updated_at: string | null
   tratamiento: Tratamiento
   sub_tratamiento: SubTratamiento
 }
@@ -64,12 +66,6 @@ export async function GET(request: Request) {
         break
     }
 
-    console.log('Consultando citas con fechas:', {
-      vista,
-      fechaInicio: format(fechaInicio, 'yyyy-MM-dd'),
-      fechaFin: format(fechaFin, 'yyyy-MM-dd')
-    })
-
     // Consultar las citas
     const { data: citas, error: citasError } = await supabase
       .from('citas')
@@ -86,31 +82,34 @@ export async function GET(request: Request) {
         observaciones,
         created_at,
         updated_at,
-        tratamiento:tratamientos!inner (
+        tratamiento:tratamiento_id (
+          id,
           nombre
         ),
-        sub_tratamiento:sub_tratamientos!inner (
-          nombre
+        sub_tratamiento:sub_tratamiento_id (
+          id,
+          nombre,
+          duracion,
+          precio
         )
       `)
       .gte('fecha', format(fechaInicio, 'yyyy-MM-dd'))
       .lte('fecha', format(fechaFin, 'yyyy-MM-dd'))
       .order('fecha', { ascending: true })
-      .order('hora_inicio', { ascending: true }) as { data: CitaSupabase[] | null, error: any }
+      .order('hora_inicio', { ascending: true })
 
     if (citasError) {
-      console.error('Error al obtener citas:', citasError)
       return NextResponse.json({ error: 'Error al obtener citas' }, { status: 500 })
     }
 
     if (!citas) {
-      return NextResponse.json({ citas: [] })
+      return NextResponse.json([])
     }
 
     // Transformar las citas al formato esperado por el frontend
-    const citasFormateadas = citas.map(cita => ({
+    const citasFormateadas = citas.map((cita: CitaSupabase) => ({
       id: cita.id,
-      fecha: cita.fecha, // Mantener la fecha como string en formato YYYY-MM-DD
+      fecha: cita.fecha,
       horaInicio: cita.hora_inicio,
       horaFin: cita.hora_fin,
       box: `Box ${cita.box_id}`,
@@ -129,10 +128,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json(citasFormateadas)
   } catch (error) {
-    console.error('Error en el endpoint:', error)
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }

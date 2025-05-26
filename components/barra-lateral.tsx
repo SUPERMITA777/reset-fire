@@ -19,7 +19,10 @@ export function BarraLateral() {
 
   useEffect(() => {
     if (fechaSeleccionada) {
-      getCitasPorFecha(fechaSeleccionada).then(setCitasProximas)
+      getCitasPorFecha(fechaSeleccionada).then((citasAgrupadas) => {
+        const fechaStr = format(fechaSeleccionada, 'yyyy-MM-dd')
+        setCitasProximas(citasAgrupadas[fechaStr] || [])
+      })
     }
   }, [fechaSeleccionada])
 

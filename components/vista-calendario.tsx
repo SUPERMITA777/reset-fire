@@ -3,11 +3,15 @@
 import { useState, useEffect } from "react"
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, isSameDay, isSameMonth, getDay, getDaysInMonth, startOfDay, endOfDay, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
+import { Calendar, ChevronLeft, ChevronRight } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { FormularioCita } from "@/components/formulario-cita"
 import type { Cita } from "@/types/cita"
+import { getCitasPorFecha } from "@/lib/supabase"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 
 interface VistaCalendarioProps {
   vista: "dia" | "semana" | "mes"
@@ -17,49 +21,32 @@ interface VistaCalendarioProps {
 }
 
 export function VistaCalendario({ vista, fechaActual, onCambiarVista, onCambiarFecha }: VistaCalendarioProps) {
-  const [citas, setCitas] = useState<Cita[]>([])
+  const [citasAgrupadas, setCitasAgrupadas] = useState<{ [key: string]: Cita[] }>({})
   const [citaSeleccionada, setCitaSeleccionada] = useState<Cita | null>(null)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Función para cargar las citas
-  const cargarCitas = async (inicio: Date, fin: Date) => {
-    setLoading(true)
-    setError(null)
-    
+  const cargarCitas = async (fecha: Date) => {
     try {
-      const url = new URL('/api/citas/rango', window.location.origin)
-      url.searchParams.append('vista', vista)
-      // Asegurarnos de que las fechas se envíen en formato YYYY-MM-DD
-      url.searchParams.append('inicio', format(inicio, 'yyyy-MM-dd'))
-      url.searchParams.append('fin', format(fin, 'yyyy-MM-dd'))
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
+      setLoading(true)
+      setError(null)
+      
+      // Determinar si debemos obtener el mes completo basado en la vista
+      const obtenerMesCompleto = vista === 'mes' || vista === 'semana'
+      
+      console.log('Cargando citas:', {
+        fecha: fecha.toISOString(),
+        vista,
+        obtenerMesCompleto
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || `Error ${response.status}`)
-      }
-
-      const data = await response.json()
-      if (!Array.isArray(data)) {
-        throw new Error('Formato de respuesta inválido')
-      }
-
-      // Asegurarnos de que las fechas se parseen correctamente
-      const citasConFechasParseadas = data.map(cita => ({
-        ...cita,
-        fecha: typeof cita.fecha === 'string' ? parseISO(cita.fecha) : cita.fecha
-      }))
-
-      setCitas(citasConFechasParseadas)
-    } catch (err) {
-      console.error('Error al cargar citas:', err)
-      setError(err instanceof Error ? err.message : 'Error al cargar citas')
+      const citas = await getCitasPorFecha(fecha, obtenerMesCompleto)
+      setCitasAgrupadas(citas)
+    } catch (error) {
+      console.error('Error al cargar citas:', error)
+      setError(error instanceof Error ? error.message : 'Error al cargar citas')
     } finally {
       setLoading(false)
     }
@@ -67,33 +54,13 @@ export function VistaCalendario({ vista, fechaActual, onCambiarVista, onCambiarF
 
   // Cargar citas cuando cambia la vista o la fecha
   useEffect(() => {
-    let inicio: Date
-    let fin: Date
-
-    switch (vista) {
-      case "dia":
-        inicio = startOfDay(fechaActual)
-        fin = endOfDay(fechaActual)
-        break
-      case "semana":
-        inicio = startOfWeek(fechaActual, { weekStartsOn: 1 })
-        fin = endOfWeek(fechaActual, { weekStartsOn: 1 })
-        break
-      case "mes":
-        inicio = startOfMonth(fechaActual)
-        fin = endOfMonth(fechaActual)
-        break
-    }
-
-    cargarCitas(inicio, fin)
+    cargarCitas(fechaActual)
   }, [vista, fechaActual])
 
   // Función auxiliar para filtrar citas por fecha
   const filtrarCitasPorFecha = (fecha: Date) => {
-    return citas.filter(cita => {
-      const fechaCita = typeof cita.fecha === 'string' ? parseISO(cita.fecha) : cita.fecha
-      return isSameDay(fechaCita, fecha)
-    })
+    const fechaStr = format(fecha, 'yyyy-MM-dd')
+    return citasAgrupadas[fechaStr] || []
   }
 
   // Función para manejar el clic en una cita
@@ -107,25 +74,7 @@ export function VistaCalendario({ vista, fechaActual, onCambiarVista, onCambiarF
     setMostrarFormulario(false)
     setCitaSeleccionada(null)
     // Recargar las citas después de guardar
-    let inicio: Date
-    let fin: Date
-
-    switch (vista) {
-      case "dia":
-        inicio = startOfDay(fechaActual)
-        fin = endOfDay(fechaActual)
-        break
-      case "semana":
-        inicio = startOfWeek(fechaActual, { weekStartsOn: 1 })
-        fin = endOfWeek(fechaActual, { weekStartsOn: 1 })
-        break
-      case "mes":
-        inicio = startOfMonth(fechaActual)
-        fin = endOfMonth(fechaActual)
-        break
-    }
-
-    await cargarCitas(inicio, fin)
+    await cargarCitas(fechaActual)
   }
 
   // Renderizar vista diaria
@@ -246,7 +195,7 @@ export function VistaCalendario({ vista, fechaActual, onCambiarVista, onCambiarF
                           "hover:bg-opacity-90",
                           "border border-transparent hover:border-gray-200"
                         )}
-                        style={{ backgroundColor: cita.color }}
+                        style={{ backgroundColor: cita.color || '#808080' }}
                       >
                         <div className="text-white">
                           <div className="font-medium truncate">
@@ -275,7 +224,7 @@ export function VistaCalendario({ vista, fechaActual, onCambiarVista, onCambiarF
     const diasEnMes = getDaysInMonth(fechaActual)
     const diaSemanaInicio = getDay(inicioMes) === 0 ? 6 : getDay(inicioMes) - 1
 
-    const dias = []
+    const dias: { fecha: Date; esDelMesActual: boolean }[] = []
     // Días del mes anterior
     for (let i = 0; i < diaSemanaInicio; i++) {
       dias.push({ fecha: addDays(inicioMes, i - diaSemanaInicio), esDelMesActual: false })
@@ -327,7 +276,7 @@ export function VistaCalendario({ vista, fechaActual, onCambiarVista, onCambiarF
                           "hover:bg-opacity-90",
                           "border border-transparent hover:border-gray-200"
                         )}
-                        style={{ backgroundColor: cita.color }}
+                        style={{ backgroundColor: cita.color || '#808080' }}
                       >
                         <div className="text-white truncate">
                           <div className="font-medium">
