@@ -16,9 +16,9 @@ export function ModalEditarCita({ cita, open, onOpenChange, onSuccess }: ModalEd
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" suppressHydrationWarning>
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-center">
+          <DialogTitle className="text-2xl font-bold text-center" suppressHydrationWarning>
             Editar Cita - {format(cita.fecha, "PPP", { locale: es })}
           </DialogTitle>
         </DialogHeader>

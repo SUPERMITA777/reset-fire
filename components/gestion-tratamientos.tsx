@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Pencil, Trash2, Calendar as CalendarIcon } from "lucide-react"
+import { Plus, Pencil, Trash2, Calendar as CalendarIcon, Settings2 } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { format, addDays, parseISO } from "date-fns"
+import { format, addDays, parseISO, parse, isValid } from "date-fns"
 import { es } from "date-fns/locale"
 import { useToast } from "@/hooks/use-toast"
 import { 
@@ -25,42 +25,38 @@ import {
   actualizarSubTratamientoDB,
   getFechasDisponibles,
   crearFechaDisponible,
-  eliminarFechaDisponible
+  eliminarFechaDisponible,
+  actualizarFechaDisponibleDB
 } from "@/lib/supabase"
 import { toZonedTime } from 'date-fns-tz'
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
+import type { Tratamiento, SubTratamiento, FechaDisponible } from "@/types/cita"
+import { getTratamientos as getTratamientosApi } from "@/utils/api"
+import { crearFechaDisponible as crearFechaDisponibleApi } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
 
-interface Tratamiento {
-  id: string
-  nombre: string
-  sub_tratamientos?: SubTratamiento[]
-  fechas_disponibles?: FechaDisponible[]
-}
-
-interface SubTratamiento {
-  id: string
-  nombre: string
-  duracion: number // en minutos
-  precio: number
-}
-
-interface FechaDisponible {
-  id: string
+// Tipos locales
+interface DisponibilidadForm {
+  id?: string
   tratamiento_id: string
   fecha_inicio: string
   fecha_fin: string
-  boxes_disponibles: number[]
   hora_inicio: string
   hora_fin: string
-  created_at: string
-  updated_at: string
+  boxes_disponibles: number[]
+  cantidad_clientes: number
 }
 
 interface DisponibilidadTratamiento {
-  fecha_inicio: string
-  fecha_fin: string
-  boxes_disponibles: number[]
-  hora_inicio: string
-  hora_fin: string
+  id: string
+  tratamiento_id: string
+  fecha_inicio: Date
+  fecha_fin: Date
+  dias_disponibles: string[]
+  horarios: string[]
 }
 
 export function GestionTratamientos() {
@@ -74,13 +70,21 @@ export function GestionTratamientos() {
   const [dialogoDisponibilidad, setDialogoDisponibilidad] = useState(false)
   const [tratamientoSeleccionado, setTratamientoSeleccionado] = useState<Tratamiento | null>(null)
   const [nuevoNombre, setNuevoNombre] = useState("")
-  const [disponibilidad, setDisponibilidad] = useState<DisponibilidadTratamiento>({
+  const [duracion, setDuracion] = useState("")
+  const [precio, setPrecio] = useState("")
+  const [maxClientesPorTurno, setMaxClientesPorTurno] = useState("1")
+  const [esCompartido, setEsCompartido] = useState(false)
+  const [disponibilidad, setDisponibilidad] = useState<DisponibilidadForm>({
+    tratamiento_id: "",
     fecha_inicio: format(new Date(), 'yyyy-MM-dd'),
     fecha_fin: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
-    boxes_disponibles: [1, 2, 3, 4, 5, 6, 7, 8],
-    hora_inicio: "08:00",
-    hora_fin: "20:00"
+    hora_inicio: "09:00",
+    hora_fin: "18:00",
+    boxes_disponibles: [],
+    cantidad_clientes: 1
   })
+  const [mostrarCalendarioInicio, setMostrarCalendarioInicio] = useState(false)
+  const [mostrarCalendarioFin, setMostrarCalendarioFin] = useState(false)
 
   const boxes = [1, 2, 3, 4, 5, 6, 7, 8]
 
@@ -141,12 +145,18 @@ export function GestionTratamientos() {
 
   const abrirDialogoNuevoTratamiento = () => {
     setTratamientoEdicion(null)
+    setNuevoNombre("")
+    setMaxClientesPorTurno("1")
+    setEsCompartido(false)
     setTipoDialogo("tratamiento")
     setDialogoAbierto(true)
   }
 
   const abrirDialogoEditarTratamiento = (tratamiento: Tratamiento) => {
     setTratamientoEdicion(tratamiento)
+    setNuevoNombre(tratamiento.nombre)
+    setMaxClientesPorTurno(tratamiento.max_clientes_por_turno.toString())
+    setEsCompartido(tratamiento.es_compartido)
     setTipoDialogo("tratamiento")
     setDialogoAbierto(true)
   }
@@ -154,6 +164,9 @@ export function GestionTratamientos() {
   const abrirDialogoNuevoSubTratamiento = (tratamiento: Tratamiento) => {
     setTratamientoEdicion(tratamiento)
     setSubTratamientoEdicion(null)
+    setNuevoNombre("")
+    setDuracion("")
+    setPrecio("")
     setTipoDialogo("subTratamiento")
     setDialogoAbierto(true)
   }
@@ -161,6 +174,9 @@ export function GestionTratamientos() {
   const abrirDialogoEditarSubTratamiento = (tratamiento: Tratamiento, subTratamiento: SubTratamiento) => {
     setTratamientoEdicion(tratamiento)
     setSubTratamientoEdicion(subTratamiento)
+    setNuevoNombre(subTratamiento.nombre)
+    setDuracion(subTratamiento.duracion.toString())
+    setPrecio(subTratamiento.precio.toString())
     setTipoDialogo("subTratamiento")
     setDialogoAbierto(true)
   }
@@ -169,14 +185,16 @@ export function GestionTratamientos() {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     const nombre = formData.get("nombre") as string
+    const max_clientes_por_turno = Number(formData.get("max_clientes_por_turno"))
+    const es_compartido = formData.get("es_compartido") === "on"
     const id = formData.get("id") as string
 
     if (tratamientoEdicion) {
       // Editar tratamiento existente
-      await editarTratamiento(tratamientoEdicion.id, nombre)
+      await editarTratamiento(tratamientoEdicion.id, nombre, max_clientes_por_turno, es_compartido)
     } else {
       // Crear nuevo tratamiento
-      await crearTratamiento(nombre)
+      await crearTratamiento(nombre, max_clientes_por_turno, es_compartido)
     }
     setDialogoAbierto(false)
   }
@@ -193,10 +211,21 @@ export function GestionTratamientos() {
 
     if (subTratamientoEdicion) {
       // Editar sub-tratamiento existente
-      await editarSubTratamiento(subTratamientoEdicion.id, nombre, duracion, precio)
+      await editarSubTratamiento({
+        id,
+        tratamiento_id: tratamientoEdicion.id,
+        nombre,
+        duracion,
+        precio
+      })
     } else {
       // Crear nuevo sub-tratamiento
-      await crearSubTratamiento(tratamientoEdicion.id, nombre, duracion, precio)
+      await crearSubTratamiento({
+        tratamiento_id: tratamientoEdicion.id,
+        nombre,
+        duracion,
+        precio
+      })
     }
     setDialogoAbierto(false)
   }
@@ -241,9 +270,9 @@ export function GestionTratamientos() {
     }
   }
 
-  async function crearTratamiento(nombre: string) {
+  async function crearTratamiento(nombre: string, max_clientes_por_turno: number, es_compartido: boolean) {
     try {
-      console.log('Iniciando creación de tratamiento:', { nombre })
+      console.log('Iniciando creación de tratamiento:', { nombre, max_clientes_por_turno, es_compartido })
 
       if (!nombre?.trim()) {
         toast({ 
@@ -254,13 +283,18 @@ export function GestionTratamientos() {
         return
       }
 
-      const tratamiento = await crearTratamientoDB(nombre)
+      const tratamiento = await crearTratamientoDB({
+        nombre,
+        max_clientes_por_turno,
+        es_compartido
+      })
       console.log('Tratamiento creado:', tratamiento)
       
       await cargarTratamientos()
       toast({ 
         title: "Éxito", 
-        description: "Tratamiento creado correctamente." 
+        description: "Tratamiento creado correctamente.",
+        variant: "default"
       })
     } catch (error) {
       console.error('Error al crear tratamiento:', error)
@@ -272,13 +306,20 @@ export function GestionTratamientos() {
     }
   }
 
-  async function editarTratamiento(id: string, nombre: string) {
+  async function editarTratamiento(id: string, nombre: string, max_clientes_por_turno: number, es_compartido: boolean) {
     try {
-      await actualizarTratamientoDB(id, nombre)
+      await actualizarTratamientoDB({
+        id,
+        nombre,
+        max_clientes_por_turno,
+        es_compartido
+      })
+
       await cargarTratamientos()
       toast({ 
         title: "Éxito", 
-        description: "Tratamiento actualizado correctamente." 
+        description: "Tratamiento actualizado correctamente.",
+        variant: "default"
       })
     } catch (error) {
       console.error('Error al editar tratamiento:', error)
@@ -290,12 +331,15 @@ export function GestionTratamientos() {
     }
   }
 
-  async function crearSubTratamiento(tratamiento_id: string, nombre: string, duracion: number, precio: number) {
+  async function crearSubTratamiento(params: {
+    tratamiento_id: string
+    nombre: string
+    duracion: number
+    precio: number
+  }) {
     try {
-      console.log('Iniciando creación de sub-tratamiento:', { tratamiento_id, nombre, duracion, precio })
-
       // Validaciones
-      if (!tratamiento_id?.trim()) {
+      if (!params.tratamiento_id?.trim()) {
         toast({ 
           title: "Error", 
           description: "Debe seleccionar un tratamiento", 
@@ -304,7 +348,7 @@ export function GestionTratamientos() {
         return
       }
 
-      if (!nombre?.trim()) {
+      if (!params.nombre?.trim()) {
         toast({ 
           title: "Error", 
           description: "El nombre del sub-tratamiento es requerido", 
@@ -313,7 +357,7 @@ export function GestionTratamientos() {
         return
       }
 
-      if (!duracion || duracion <= 0) {
+      if (!params.duracion || params.duracion <= 0) {
         toast({ 
           title: "Error", 
           description: "La duración debe ser mayor a 0", 
@@ -322,7 +366,7 @@ export function GestionTratamientos() {
         return
       }
 
-      if (!precio || precio < 0) {
+      if (!params.precio || params.precio < 0) {
         toast({ 
           title: "Error", 
           description: "El precio debe ser mayor o igual a 0", 
@@ -331,9 +375,8 @@ export function GestionTratamientos() {
         return
       }
 
-      const subTratamiento = await crearSubTratamientoDB(tratamiento_id, nombre, duracion, precio)
-      console.log('Sub-tratamiento creado:', subTratamiento)
-      
+      await crearSubTratamientoDB(params)
+
       await cargarTratamientos()
       toast({ 
         title: "Éxito", 
@@ -349,13 +392,21 @@ export function GestionTratamientos() {
     }
   }
 
-  async function editarSubTratamiento(id: string, nombre: string, duracion: number, precio: number) {
+  async function editarSubTratamiento(params: {
+    id: string
+    tratamiento_id: string
+    nombre: string
+    duracion: number
+    precio: number
+  }) {
     try {
-      await actualizarSubTratamientoDB(id, nombre, duracion, precio)
+      await actualizarSubTratamientoDB(params)
+
       await cargarTratamientos()
       toast({ 
         title: "Éxito", 
-        description: "Sub-tratamiento actualizado correctamente." 
+        description: "Sub-tratamiento actualizado correctamente.",
+        variant: "default"
       })
     } catch (error) {
       console.error('Error al editar sub-tratamiento:', error)
@@ -367,8 +418,10 @@ export function GestionTratamientos() {
     }
   }
 
-  const handleAbrirDisponibilidad = async (tratamiento: Tratamiento) => {
+  const handleAbrirEditarTratamiento = async (tratamiento: Tratamiento) => {
     setTratamientoSeleccionado(tratamiento)
+    setNuevoNombre(tratamiento.nombre)
+    setTipoDialogo("tratamiento")
     try {
       const fechas = await getFechasDisponibles(tratamiento.id)
       setTratamientoSeleccionado(prev => prev ? { ...prev, fechas_disponibles: fechas } : null)
@@ -380,39 +433,116 @@ export function GestionTratamientos() {
         variant: "destructive"
       })
     }
+    setDialogoAbierto(true)
+  }
+
+  const abrirDialogoDisponibilidad = (tratamiento: Tratamiento) => {
+    setTratamientoSeleccionado(tratamiento)
+    setDisponibilidad({
+      tratamiento_id: tratamiento.id,
+      fecha_inicio: format(new Date(), 'yyyy-MM-dd'),
+      fecha_fin: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
+      hora_inicio: "09:00",
+      hora_fin: "18:00",
+      boxes_disponibles: [],
+      cantidad_clientes: 1
+    })
     setDialogoDisponibilidad(true)
   }
 
   const handleGuardarDisponibilidad = async () => {
-    if (!tratamientoSeleccionado) return
-
     try {
-      await crearFechaDisponible(
-        tratamientoSeleccionado.id,
-        disponibilidad.fecha_inicio,
-        disponibilidad.fecha_fin,
-        disponibilidad.boxes_disponibles,
-        disponibilidad.hora_inicio,
-        disponibilidad.hora_fin
-      )
+      // Validaciones básicas de formato
+      if (!disponibilidad.tratamiento_id) {
+        toast({
+          title: "Error",
+          description: "Debe seleccionar un tratamiento",
+          variant: "destructive"
+        })
+        return
+      }
 
+      if (!disponibilidad.fecha_inicio || !disponibilidad.fecha_fin) {
+        toast({
+          title: "Error",
+          description: "Debe seleccionar un rango de fechas",
+          variant: "destructive"
+        })
+        return
+      }
+
+      if (!disponibilidad.hora_inicio || !disponibilidad.hora_fin) {
+        toast({
+          title: "Error",
+          description: "Debe seleccionar un rango de horarios",
+          variant: "destructive"
+        })
+        return
+      }
+
+      if (!disponibilidad.boxes_disponibles?.length) {
+        toast({
+          title: "Error",
+          description: "Debe seleccionar al menos un box disponible",
+          variant: "destructive"
+        })
+        return
+      }
+
+      if (!disponibilidad.cantidad_clientes || disponibilidad.cantidad_clientes <= 0) {
+        toast({
+          title: "Error",
+          description: "La cantidad de clientes debe ser mayor a 0",
+          variant: "destructive"
+        })
+        return
+      }
+
+      // Si estamos editando una disponibilidad existente
+      if (disponibilidad.id) {
+        // Eliminar el registro actual
+        const { error: errorEliminar } = await supabase
+          .from("rf_disponibilidad")
+          .delete()
+          .eq("id", disponibilidad.id);
+
+        if (errorEliminar) {
+          throw errorEliminar;
+        }
+      }
+
+      // Crear nuevo registro (tanto para edición como para creación)
+      const { error: errorCrear } = await supabase
+        .from("rf_disponibilidad")
+        .insert({
+          tratamiento_id: disponibilidad.tratamiento_id,
+          fecha_inicio: disponibilidad.fecha_inicio,
+          fecha_fin: disponibilidad.fecha_fin,
+          hora_inicio: disponibilidad.hora_inicio,
+          hora_fin: disponibilidad.hora_fin,
+          boxes_disponibles: disponibilidad.boxes_disponibles,
+          cantidad_clientes: disponibilidad.cantidad_clientes
+        });
+
+      if (errorCrear) {
+        throw errorCrear;
+      }
+
+      await cargarTratamientos();
+      setDialogoDisponibilidad(false);
       toast({
-        title: "Disponibilidad actualizada",
-        description: "La disponibilidad del tratamiento se ha actualizado correctamente"
-      })
-
-      // Recargar fechas disponibles
-      const fechas = await getFechasDisponibles(tratamientoSeleccionado.id)
-      setTratamientoSeleccionado(prev => prev ? { ...prev, fechas_disponibles: fechas } : null)
+        title: "Éxito",
+        description: disponibilidad.id ? "Disponibilidad actualizada correctamente" : "Disponibilidad guardada correctamente"
+      });
     } catch (error) {
-      console.error('Error al actualizar disponibilidad:', error)
+      console.error('Error al guardar disponibilidad:', error);
       toast({
         title: "Error",
-        description: "No se pudo actualizar la disponibilidad del tratamiento",
+        description: error instanceof Error ? error.message : "Error al guardar la disponibilidad",
         variant: "destructive"
-      })
+      });
     }
-  }
+  };
 
   const handleEliminarFechaDisponible = async (fechaId: string) => {
     if (!window.confirm("¿Estás seguro de que deseas eliminar este rango de fechas?")) return
@@ -439,379 +569,389 @@ export function GestionTratamientos() {
     }
   }
 
-  const handleAbrirEditarTratamiento = (tratamiento: Tratamiento) => {
-    setTratamientoSeleccionado(tratamiento)
-    setNuevoNombre(tratamiento.nombre)
-    setTipoDialogo("tratamiento")
-    setDialogoAbierto(true)
-  }
-
   const handleEditarTratamiento = async () => {
-    if (!tratamientoSeleccionado || !nuevoNombre.trim()) return
+    if (!tratamientoEdicion) return
 
-    try {
-      await actualizarTratamientoDB(tratamientoSeleccionado.id, {
-        nombre: nuevoNombre.trim()
-      })
-
-      toast({
-        title: "Tratamiento actualizado",
-        description: "El tratamiento se ha actualizado correctamente"
-      })
-
-      // Recargar tratamientos
-      const tratamientosActualizados = await getTratamientos()
-      setTratamientos(tratamientosActualizados)
-      setDialogoAbierto(false)
-    } catch (error) {
-      console.error('Error al actualizar tratamiento:', error)
+    if (!nuevoNombre?.trim()) {
       toast({
         title: "Error",
-        description: "No se pudo actualizar el tratamiento",
+        description: "El nombre del tratamiento es requerido",
+        variant: "destructive"
+      })
+      return
+    }
+
+    try {
+      await editarTratamiento(
+        tratamientoEdicion.id,
+        nuevoNombre,
+        Number(maxClientesPorTurno),
+        esCompartido
+      )
+      setDialogoAbierto(false)
+    } catch (error) {
+      console.error('Error al editar tratamiento:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error al editar el tratamiento",
         variant: "destructive"
       })
     }
   }
 
   const handleCrearTratamiento = async () => {
-    if (!nuevoNombre.trim()) return
+    if (!nuevoNombre?.trim()) {
+      toast({
+        title: "Error",
+        description: "El nombre del tratamiento es requerido",
+        variant: "destructive"
+      })
+      return
+    }
 
     try {
-      const tratamiento = await crearTratamientoDB(nuevoNombre.trim())
-      setNuevoNombre("")
+      await crearTratamiento(
+        nuevoNombre,
+        Number(maxClientesPorTurno),
+        esCompartido
+      )
       setDialogoAbierto(false)
-
-      // Recargar tratamientos
-      const tratamientosActualizados = await getTratamientos()
-      setTratamientos(tratamientosActualizados)
-
-      toast({
-        title: "Tratamiento creado",
-        description: "El tratamiento se ha creado correctamente"
-      })
     } catch (error) {
       console.error('Error al crear tratamiento:', error)
       toast({
         title: "Error",
-        description: "No se pudo crear el tratamiento",
+        description: error instanceof Error ? error.message : "Error al crear el tratamiento",
         variant: "destructive"
       })
     }
   }
 
-  // Función para convertir una fecha a la zona horaria de Argentina
-  const convertirFechaArgentina = (fechaStr: string) => {
-    const fecha = parseISO(fechaStr)
-    return toZonedTime(fecha, 'America/Argentina/Buenos_Aires')
+  const convertirFechaArgentina = (fecha: string) => {
+    try {
+      // Intentar parsear como dd/mm/yyyy
+      const fechaParseada = parse(fecha, 'dd/MM/yyyy', new Date())
+      if (isValid(fechaParseada)) {
+        return format(fechaParseada, 'yyyy-MM-dd')
+      }
+      // Si no es válida, intentar como ISO
+      return fecha
+    } catch {
+      return fecha
+    }
+  }
+
+  const handleActualizarFechaDisponible = async (fechaId: string, fechaActualizada: FechaDisponible) => {
+    try {
+      await actualizarFechaDisponibleDB({
+        id: fechaId,
+        tratamiento_id: fechaActualizada.tratamiento_id,
+        fecha_inicio: fechaActualizada.fecha_inicio,
+        fecha_fin: fechaActualizada.fecha_fin,
+        hora_inicio: fechaActualizada.hora_inicio,
+        hora_fin: fechaActualizada.hora_fin,
+        boxes_disponibles: fechaActualizada.boxes_disponibles,
+        cantidad_clientes: fechaActualizada.cantidad_clientes
+      })
+
+      await cargarTratamientos()
+      toast({
+        title: "Éxito",
+        description: "Fecha disponible actualizada correctamente"
+      })
+    } catch (error) {
+      console.error('Error al actualizar fecha disponible:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error al actualizar la fecha disponible",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleCrearSubTratamiento = () => {
+    if (!tratamientoSeleccionado) return
+    crearSubTratamiento({
+      tratamiento_id: tratamientoSeleccionado.id,
+      nombre: nuevoNombre,
+      duracion: Number(duracion),
+      precio: Number(precio)
+    })
+  }
+
+  const handleEditarSubTratamiento = () => {
+    if (!subTratamientoEdicion) return
+    editarSubTratamiento({
+      id: subTratamientoEdicion.id,
+      tratamiento_id: subTratamientoEdicion.tratamiento_id,
+      nombre: nuevoNombre,
+      duracion: Number(duracion),
+      precio: Number(precio)
+    })
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Gestión de Tratamientos</h2>
+    <div className="container mx-auto p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Gestión de Tratamientos</h1>
         <Button onClick={abrirDialogoNuevoTratamiento}>
-          <Plus className="w-4 h-4 mr-2" />
+          <Plus className="mr-2 h-4 w-4" />
           Nuevo Tratamiento
         </Button>
       </div>
 
-      <ScrollArea className="h-[600px] pr-4">
-        <div className="space-y-6">
-          {tratamientos.map((tratamiento) => (
-            <Card key={tratamiento.id}>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>{tratamiento.nombre}</CardTitle>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleAbrirDisponibilidad(tratamiento)}
-                    className="gap-2"
-                  >
-                    <CalendarIcon className="h-4 w-4" />
-                    Disponibilidad
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleAbrirEditarTratamiento(tratamiento)}
-                  >
-                    <Pencil className="w-4 h-4 mr-2" />
-                    Editar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => abrirDialogoNuevoSubTratamiento(tratamiento)}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Agregar Sub-tratamiento
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => eliminarTratamiento(tratamiento)}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Eliminar
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {(tratamiento.sub_tratamientos || []).map((subTratamiento) => (
-                    <div
-                      key={subTratamiento.id}
-                      className="flex justify-between items-center p-2 bg-muted rounded-md"
-                    >
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Lista de tratamientos */}
+        <div className="md:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Tratamientos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {tratamientos.map((tratamiento) => (
+                  <div key={tratamiento.id} className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <div className="font-medium">{subTratamiento.nombre}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {Math.floor(subTratamiento.duracion / 60) > 0
-                            ? `${Math.floor(subTratamiento.duracion / 60)}h ${
-                                subTratamiento.duracion % 60 > 0 ? `${subTratamiento.duracion % 60}m` : ""
-                              }`
-                            : `${subTratamiento.duracion}m`}{" "}
-                          - ${subTratamiento.precio.toLocaleString()}
-                        </div>
+                        <h3 className="font-medium">{tratamiento.nombre}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {tratamiento.sub_tratamientos.length} sub-tratamientos
+                        </p>
                       </div>
-                      <div className="space-x-2">
+                      <div className="flex gap-2">
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          onClick={() => abrirDialogoEditarSubTratamiento(tratamiento, subTratamiento)}
+                          onClick={() => abrirDialogoDisponibilidad(tratamiento)}
                         >
-                          <Pencil className="w-4 h-4 mr-2" />
-                          Editar
+                          <CalendarIcon className="h-4 w-4" />
                         </Button>
                         <Button
-                          variant="destructive"
+                          variant="ghost"
                           size="sm"
-                          onClick={() => eliminarSubTratamiento(tratamiento, subTratamiento)}
+                          onClick={() => handleAbrirEditarTratamiento(tratamiento)}
                         >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Eliminar
+                          <Settings2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </ScrollArea>
-
-      <Dialog open={dialogoAbierto} onOpenChange={setDialogoAbierto}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {tipoDialogo === "tratamiento"
-                ? tratamientoEdicion
-                  ? "Editar Tratamiento"
-                  : "Nuevo Tratamiento"
-                : subTratamientoEdicion
-                ? "Editar Sub-tratamiento"
-                : "Nuevo Sub-tratamiento"}
-            </DialogTitle>
-            <DialogDescription>
-              {tipoDialogo === "tratamiento"
-                ? "Complete los datos del tratamiento"
-                : "Complete los datos del sub-tratamiento"}
-            </DialogDescription>
-          </DialogHeader>
-
-          {tipoDialogo === "tratamiento" ? (
-            <form onSubmit={guardarTratamiento} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="id">ID (opcional)</Label>
-                <Input
-                  id="id"
-                  name="id"
-                  placeholder="Ej: depilacion_laser"
-                  defaultValue={tratamientoEdicion?.id}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="nombre">Nombre</Label>
-                <Input
-                  id="nombre"
-                  name="nombre"
-                  placeholder="Nombre del tratamiento"
-                  defaultValue={tratamientoEdicion?.nombre}
-                  required
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setDialogoAbierto(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit">Guardar</Button>
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={guardarSubTratamiento} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="id">ID (opcional)</Label>
-                <Input
-                  id="id"
-                  name="id"
-                  placeholder="Ej: piernas_completas"
-                  defaultValue={subTratamientoEdicion?.id}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="nombre">Nombre</Label>
-                <Input
-                  id="nombre"
-                  name="nombre"
-                  placeholder="Nombre del sub-tratamiento"
-                  defaultValue={subTratamientoEdicion?.nombre}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="duracion">Duración (minutos)</Label>
-                <Input
-                  id="duracion"
-                  name="duracion"
-                  type="number"
-                  min="15"
-                  step="15"
-                  placeholder="Duración en minutos"
-                  defaultValue={subTratamientoEdicion?.duracion}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="precio">Precio</Label>
-                <Input
-                  id="precio"
-                  name="precio"
-                  type="number"
-                  min="0"
-                  step="100"
-                  placeholder="Precio en pesos"
-                  defaultValue={subTratamientoEdicion?.precio}
-                  required
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setDialogoAbierto(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit">Guardar</Button>
-              </div>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={dialogoDisponibilidad} onOpenChange={setDialogoDisponibilidad}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Configurar Disponibilidad</DialogTitle>
-            <DialogDescription>
-              Configura los rangos de fechas, horarios y boxes disponibles para {tratamientoSeleccionado?.nombre}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-6">
-            {/* Rangos de fechas existentes */}
-            {tratamientoSeleccionado?.fechas_disponibles && tratamientoSeleccionado.fechas_disponibles.length > 0 && (
-              <div className="space-y-4">
-                <Label>Rangos de fechas configurados</Label>
-                <div className="space-y-2">
-                  {tratamientoSeleccionado.fechas_disponibles.map((fecha) => {
-                    const fechaInicio = convertirFechaArgentina(fecha.fecha_inicio)
-                    const fechaFin = convertirFechaArgentina(fecha.fecha_fin)
-                    
-                    return (
-                      <div key={fecha.id} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                        <div>
-                          <div className="font-medium">
-                            {format(fechaInicio, "d 'de' MMMM", { locale: es })} - {format(fechaFin, "d 'de' MMMM", { locale: es })}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {fecha.hora_inicio} - {fecha.hora_fin} | Boxes: {fecha.boxes_disponibles.join(", ")}
-                          </div>
-                        </div>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleEliminarFechaDisponible(fecha.id)}
+                    <div className="flex flex-wrap gap-2">
+                      {tratamiento.sub_tratamientos.map((subTrat) => (
+                        <Badge
+                          key={subTrat.id}
+                          variant="secondary"
+                          className="cursor-pointer"
+                          onClick={() => abrirDialogoEditarSubTratamiento(tratamiento, subTrat)}
                         >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Eliminar
-                        </Button>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Nuevo rango de fechas */}
-            <div className="space-y-4">
-              <Label>Agregar nuevo rango de fechas</Label>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fecha-inicio">Fecha de inicio</Label>
-                  <Input
-                    id="fecha-inicio"
-                    type="date"
-                    value={disponibilidad.fecha_inicio}
-                    onChange={(e) => setDisponibilidad(prev => ({
-                      ...prev,
-                      fecha_inicio: e.target.value
-                    }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="fecha-fin">Fecha de fin</Label>
-                  <Input
-                    id="fecha-fin"
-                    type="date"
-                    value={disponibilidad.fecha_fin}
-                    onChange={(e) => setDisponibilidad(prev => ({
-                      ...prev,
-                      fecha_fin: e.target.value
-                    }))}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Boxes disponibles */}
-            <div className="space-y-4">
-              <Label>Boxes disponibles</Label>
-              <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
-                {boxes.map((box) => (
-                  <div key={box} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`box-${box}`}
-                      checked={disponibilidad.boxes_disponibles.includes(box)}
-                      onCheckedChange={(checked) => {
-                        setDisponibilidad(prev => ({
-                          ...prev,
-                          boxes_disponibles: checked
-                            ? [...prev.boxes_disponibles, box]
-                            : prev.boxes_disponibles.filter(b => b !== box)
-                        }))
-                      }}
-                    />
-                    <Label htmlFor={`box-${box}`}>Box {box}</Label>
+                          {subTrat.nombre}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Formulario de edición y disponibilidad */}
+        <div className="md:col-span-2">
+          {dialogoAbierto && (
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {tipoDialogo === "tratamiento" 
+                    ? (tratamientoEdicion ? "Editar Tratamiento" : "Nuevo Tratamiento")
+                    : (subTratamientoEdicion ? "Editar Sub-tratamiento" : "Nuevo Sub-tratamiento")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={tipoDialogo === "tratamiento" ? guardarTratamiento : guardarSubTratamiento}>
+                  {/* ... existing form content ... */}
+                </form>
+
+                {/* Sección de disponibilidad */}
+                {tipoDialogo === "tratamiento" && tratamientoSeleccionado && (
+                  <div className="mt-8 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium">Disponibilidad</h3>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => abrirDialogoDisponibilidad(tratamientoSeleccionado)}
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Agregar Disponibilidad
+                      </Button>
+                    </div>
+
+                    {/* Mostrar disponibilidad actual */}
+                    {tratamientoSeleccionado.fechas_disponibles && tratamientoSeleccionado.fechas_disponibles.length > 0 && (
+                      <div className="space-y-4">
+                        {tratamientoSeleccionado.fechas_disponibles.map((fecha) => (
+                          <div key={fecha.id} className="space-y-4 border rounded-lg p-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label>Fecha Inicio</Label>
+                                <p className="text-sm text-muted-foreground">
+                                  {format(new Date(fecha.fecha_inicio), 'dd/MM/yyyy')}
+                                </p>
+                              </div>
+                              <div>
+                                <Label>Fecha Fin</Label>
+                                <p className="text-sm text-muted-foreground">
+                                  {format(new Date(fecha.fecha_fin), 'dd/MM/yyyy')}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div>
+                              <Label>Horarios</Label>
+                              <div className="space-y-2 mt-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm">
+                                    {fecha.hora_inicio} - {fecha.hora_fin}
+                                  </span>
+                                  <Badge variant="outline">
+                                    {fecha.cantidad_clientes} {fecha.cantidad_clientes === 1 ? 'cliente' : 'clientes'}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <Label>Boxes Disponibles</Label>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {fecha.boxes_disponibles.map((box: number) => (
+                                  <Badge key={box} variant="secondary">
+                                    Box {box}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEliminarFechaDisponible(fecha.id)}
+                              >
+                                Eliminar
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setDisponibilidad({
+                                    tratamiento_id: fecha.tratamiento_id,
+                                    fecha_inicio: fecha.fecha_inicio,
+                                    fecha_fin: fecha.fecha_fin,
+                                    hora_inicio: fecha.hora_inicio,
+                                    hora_fin: fecha.hora_fin,
+                                    boxes_disponibles: fecha.boxes_disponibles,
+                                    cantidad_clientes: fecha.cantidad_clientes
+                                  })
+                                  setDialogoDisponibilidad(true)
+                                }}
+                              >
+                                Editar
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      {/* Diálogo de disponibilidad */}
+      <Dialog open={dialogoDisponibilidad} onOpenChange={setDialogoDisponibilidad}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {disponibilidad.id ? "Editar Disponibilidad" : "Agregar Disponibilidad"}
+            </DialogTitle>
+            <DialogDescription>
+              {disponibilidad.id 
+                ? "Modifique los datos de la disponibilidad según sea necesario"
+                : "Complete los datos para crear una nueva disponibilidad"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Fecha Inicio</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !disponibilidad.fecha_inicio && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {disponibilidad.fecha_inicio ? (
+                        format(new Date(disponibilidad.fecha_inicio), 'dd/MM/yyyy')
+                      ) : (
+                        <span>Seleccionar fecha</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={new Date(disponibilidad.fecha_inicio)}
+                      onSelect={(date) => date && setDisponibilidad(prev => ({
+                        ...prev,
+                        fecha_inicio: format(date, 'yyyy-MM-dd')
+                      }))}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <Label>Fecha Fin</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !disponibilidad.fecha_fin && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {disponibilidad.fecha_fin ? (
+                        format(new Date(disponibilidad.fecha_fin), 'dd/MM/yyyy')
+                      ) : (
+                        <span>Seleccionar fecha</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={new Date(disponibilidad.fecha_fin)}
+                      onSelect={(date) => date && setDisponibilidad(prev => ({
+                        ...prev,
+                        fecha_fin: format(date, 'yyyy-MM-dd')
+                      }))}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
 
-            {/* Horario */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="hora-inicio">Hora de inicio</Label>
+            <div>
+              <Label>Horario</Label>
+              <div className="flex items-center gap-2 mt-2">
                 <Input
-                  id="hora-inicio"
                   type="time"
                   value={disponibilidad.hora_inicio}
                   onChange={(e) => setDisponibilidad(prev => ({
@@ -819,11 +959,7 @@ export function GestionTratamientos() {
                     hora_inicio: e.target.value
                   }))}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="hora-fin">Hora de fin</Label>
                 <Input
-                  id="hora-fin"
                   type="time"
                   value={disponibilidad.hora_fin}
                   onChange={(e) => setDisponibilidad(prev => ({
@@ -831,6 +967,43 @@ export function GestionTratamientos() {
                     hora_fin: e.target.value
                   }))}
                 />
+              </div>
+            </div>
+
+            <div>
+              <Label>Cantidad de Clientes</Label>
+              <Input
+                type="number"
+                min="1"
+                value={disponibilidad.cantidad_clientes}
+                onChange={(e) => setDisponibilidad(prev => ({
+                  ...prev,
+                  cantidad_clientes: parseInt(e.target.value)
+                }))}
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <Label>Boxes Disponibles</Label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((box) => (
+                  <Badge
+                    key={box}
+                    variant={disponibilidad.boxes_disponibles.includes(box) ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => {
+                      setDisponibilidad(prev => ({
+                        ...prev,
+                        boxes_disponibles: prev.boxes_disponibles.includes(box)
+                          ? prev.boxes_disponibles.filter(b => b !== box)
+                          : [...prev.boxes_disponibles, box]
+                      }))
+                    }}
+                  >
+                    Box {box}
+                  </Badge>
+                ))}
               </div>
             </div>
 
@@ -842,7 +1015,7 @@ export function GestionTratamientos() {
                 Cancelar
               </Button>
               <Button onClick={handleGuardarDisponibilidad}>
-                Agregar rango de fechas
+                {disponibilidad.id ? "Actualizar" : "Guardar"}
               </Button>
             </div>
           </div>

@@ -11,6 +11,12 @@ const nextConfig = {
     domains: [],
   },
   reactStrictMode: true,
+  experimental: {
+    appDir: true,
+  },
+  // Configuración para usar src/app como directorio de rutas
+  distDir: '.next',
+  pageExtensions: ['js', 'jsx', 'mdx', 'ts', 'tsx'],
 }
 
 export default nextConfig

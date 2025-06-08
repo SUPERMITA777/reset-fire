@@ -6,7 +6,7 @@ import { es } from "date-fns/locale"
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { FormularioCita } from "@/components/formulario-cita"
 import type { Cita } from "@/types/cita"
 import { getCitasPorFecha } from "@/lib/supabase"
@@ -26,6 +26,11 @@ export function VistaCalendario({ vista, fechaActual, onCambiarVista, onCambiarF
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Función para cargar las citas
   const cargarCitas = async (fecha: Date) => {
@@ -79,6 +84,8 @@ export function VistaCalendario({ vista, fechaActual, onCambiarVista, onCambiarF
 
   // Renderizar vista diaria
   const renderVistaDia = () => {
+    if (!mounted) return null
+
     const citasDelDia = filtrarCitasPorFecha(fechaActual)
     const boxes = Array.from({ length: 8 }, (_, i) => i + 1)
 
@@ -158,6 +165,8 @@ export function VistaCalendario({ vista, fechaActual, onCambiarVista, onCambiarF
 
   // Renderizar vista semanal
   const renderVistaSemana = () => {
+    if (!mounted) return null
+
     const inicioSemana = startOfWeek(fechaActual, { weekStartsOn: 1 })
     const diasSemana = Array.from({ length: 7 }, (_, i) => addDays(inicioSemana, i))
 
@@ -219,6 +228,8 @@ export function VistaCalendario({ vista, fechaActual, onCambiarVista, onCambiarF
 
   // Renderizar vista mensual
   const renderVistaMes = () => {
+    if (!mounted) return null
+
     const inicioMes = startOfMonth(fechaActual)
     const finMes = endOfMonth(fechaActual)
     const diasEnMes = getDaysInMonth(fechaActual)
@@ -298,6 +309,10 @@ export function VistaCalendario({ vista, fechaActual, onCambiarVista, onCambiarF
     )
   }
 
+  if (!mounted) {
+    return null
+  }
+
   return (
     <>
       <div className="h-full border rounded-lg overflow-hidden">
@@ -324,6 +339,11 @@ export function VistaCalendario({ vista, fechaActual, onCambiarVista, onCambiarF
             <DialogTitle>
               {citaSeleccionada ? "Editar Cita" : "Nueva Cita"}
             </DialogTitle>
+            <DialogDescription>
+              {citaSeleccionada 
+                ? "Modifica los detalles de la cita existente"
+                : "Completa el formulario para crear una nueva cita"}
+            </DialogDescription>
           </DialogHeader>
           <FormularioCita
             citaExistente={citaSeleccionada || undefined}

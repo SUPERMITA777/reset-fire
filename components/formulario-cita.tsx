@@ -34,19 +34,19 @@ interface FormularioCitaProps {
   citaExistente?: Cita
 }
 
-// Tipo para los sub-tratamientos con duración y precio
-interface SubTratamiento {
-  id: string
+// Actualizar los tipos para manejar correctamente los IDs
+type Tratamiento = {
+  id: string  // Cambiado a string para coincidir con la base de datos
+  nombre: string
+  sub_tratamientos: SubTratamiento[]
+  max_clientes_por_turno: number
+}
+
+type SubTratamiento = {
+  id: string  // Cambiado a string para coincidir con la base de datos
   nombre: string
   duracion: number
   precio: number
-}
-
-// Interfaz para los tratamientos
-interface Tratamiento {
-  id: string
-  nombre: string
-  sub_tratamientos: SubTratamiento[]
 }
 
 // Modificar la interfaz de la cita para que coincida con la base de datos
@@ -97,6 +97,7 @@ export function FormularioCita({
   const [tratamientos, setTratamientos] = useState<Tratamiento[]>([])
   const [subTratamientos, setSubTratamientos] = useState<SubTratamiento[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [estado, setEstado] = useState<"reservado" | "seniado" | "confirmado" | "cancelado">(
     citaExistente?.estado || "reservado"
   )
@@ -159,12 +160,13 @@ export function FormularioCita({
 
   // Resetear el sub-tratamiento cuando cambia el tratamiento
   useEffect(() => {
-    if (!subTratamientoInicial || tratamiento !== tratamientoInicial) {
+    // Solo resetear si el cambio viene del usuario (no de las props iniciales)
+    if (tratamiento !== tratamientoInicial && !citaExistente) {
       setSubTratamiento("")
       setDuracionSeleccionada(null)
       setPrecioSeleccionado(null)
     }
-  }, [tratamiento, subTratamientoInicial, tratamientoInicial])
+  }, [tratamiento, tratamientoInicial, citaExistente])
 
   // Actualizar la duración, precio y la hora de fin cuando se selecciona un sub-tratamiento
   useEffect(() => {
@@ -187,12 +189,18 @@ export function FormularioCita({
     }
   }, [horaInicio, duracionSeleccionada])
 
-  // Establecer el sub-tratamiento inicial si se proporciona
+  // Establecer el sub-tratamiento inicial cuando se monta el componente
   useEffect(() => {
     if (subTratamientoInicial && tratamientoInicial && tratamiento === tratamientoInicial) {
-      setSubTratamiento(subTratamientoInicial)
+      const subTrat = subTratamientos.find(st => st.id === subTratamientoInicial)
+      if (subTrat) {
+        setSubTratamiento(subTratamientoInicial)
+        setSubTratamientoSeleccionado(subTrat)
+        setDuracionSeleccionada(subTrat.duracion)
+        setPrecioSeleccionado(subTrat.precio)
+      }
     }
-  }, [subTratamientoInicial, tratamientoInicial, tratamiento])
+  }, [subTratamientoInicial, tratamientoInicial, tratamiento, subTratamientos])
 
   // Validar que la seña no sea mayor que el precio
   const validarSenia = (valor: string) => {
@@ -202,31 +210,105 @@ export function FormularioCita({
     return valor
   }
 
-  // Función para buscar cliente por DNI
+  // Cargar tratamientos al montar el componente
+  useEffect(() => {
+    const cargarTratamientos = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('tratamientos')
+          .select(`
+            id,
+            nombre,
+            max_clientes_por_turno,
+            sub_tratamientos (
+              id,
+              nombre,
+              duracion,
+              precio
+            )
+          `)
+          .order('nombre')
+
+        if (error) throw error
+
+        if (data) {
+          // Asegurarnos de que sub_tratamientos nunca sea undefined y convertir IDs a string
+          const tratamientosFormateados = data.map(t => {
+            const tratamientoBase = {
+              ...t,
+              id: String(t.id)
+            }
+            return {
+              ...tratamientoBase,
+              sub_tratamientos: (t.sub_tratamientos || []).map(st => ({
+                ...st,
+                id: String(st.id)
+              }))
+            }
+          }) as Tratamiento[]
+          
+          setTratamientos(tratamientosFormateados)
+
+          // Si hay una cita existente, cargar sus datos
+          if (citaExistente) {
+            if (citaExistente.tratamiento) {
+              const tratamientoId = String(citaExistente.tratamiento)
+              setTratamiento(tratamientoId)
+              
+              // Buscar el sub-tratamiento seleccionado
+              const tratamientoEncontrado = tratamientosFormateados.find(t => t.id === tratamientoId)
+              if (tratamientoEncontrado) {
+                setSubTratamientos(tratamientoEncontrado.sub_tratamientos)
+                
+                if (citaExistente.subTratamiento) {
+                  const subTratamientoId = String(citaExistente.subTratamiento)
+                  const subTrat = tratamientoEncontrado.sub_tratamientos.find(
+                    st => st.id === subTratamientoId
+                  )
+                  
+                  if (subTrat) {
+                    setSubTratamiento(subTratamientoId)
+                    setSubTratamientoSeleccionado(subTrat)
+                    setDuracionSeleccionada(subTrat.duracion)
+                    setPrecioSeleccionado(subTrat.precio)
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error al cargar tratamientos:', error)
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los tratamientos",
+          variant: "destructive"
+        })
+      }
+    }
+
+    cargarTratamientos()
+  }, [citaExistente])
+
+  // Función mejorada para buscar cliente por DNI
   const buscarClientePorDNI = async (dni: string) => {
-    if (!dni || dni.length < 7) return // No buscar si el DNI es muy corto
-    
+    if (!dni || dni.length < 7) return
+
     setBuscandoCliente(true)
     try {
-      // Primero intentamos buscar por DNI en la tabla clientes
-      const { data: cliente, error: errorCliente } = await supabase
+      const { data: cliente, error } = await supabase
         .from('clientes')
-        .select('*')
+        .select('nombre_completo, telefono')
         .eq('dni', dni)
         .single()
 
-      if (errorCliente) {
-        // Si el error es que no se encontró el cliente, no es un error real
-        if (errorCliente.code === 'PGRST116') {
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No se encontró el cliente
           setClienteEncontrado(null)
-          toast({
-            title: "Cliente no encontrado",
-            description: "Se creará un nuevo cliente al guardar la cita",
-          })
           return
         }
-        // Si es otro error, lo lanzamos con más detalles
-        throw new Error(`Error al buscar cliente: ${errorCliente.message || errorCliente.details || 'Error desconocido'}`)
+        throw error
       }
 
       if (cliente) {
@@ -236,16 +318,12 @@ export function FormularioCita({
         })
         setNombreCompleto(cliente.nombre_completo)
         setWhatsapp(cliente.telefono || '')
-        toast({
-          title: "Cliente encontrado",
-          description: "Se han cargado los datos del cliente",
-        })
       }
     } catch (error) {
-      console.error('Error al buscar cliente:', error instanceof Error ? error.message : 'Error desconocido')
+      console.error('Error al buscar cliente:', error)
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "No se pudo buscar el cliente. Por favor, intente nuevamente.",
+        description: "Error al buscar el cliente",
         variant: "destructive"
       })
     } finally {
@@ -253,156 +331,125 @@ export function FormularioCita({
     }
   }
 
-  // Modificar el handleSubmit para guardar/actualizar cliente
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Función para obtener o crear un turno compartido
+  async function obtenerTurnoCompartido(
+    tratamientoId: string,
+    fecha: Date,
+    horaInicio: string,
+    boxId: number,
+    maxClientes: number
+  ) {
+    const { data, error } = await supabase
+      .rpc('obtener_o_crear_turno_compartido', {
+        p_tratamiento_id: tratamientoId,
+        p_fecha: format(fecha, 'yyyy-MM-dd'),
+        p_hora_inicio: horaInicio,
+        p_box_id: boxId,
+        p_max_clientes: maxClientes
+      })
+
+    if (error) throw error
+    return data
+  }
+
+  // Función para guardar la cita
+  const guardarCita = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
-
-    if (!nombreCompleto || !fecha || !horaInicio || !horaFin || !tratamiento || !subTratamiento) {
-      toast({
-        title: "Error",
-        description: "Por favor completa todos los campos obligatorios.",
-        variant: "destructive",
-      })
-      setLoading(false)
-      return
-    }
+    setError(null)
 
     try {
-      // Primero, guardar/actualizar el cliente
-      const datosCliente = {
+      // Validaciones básicas
+      if (!nombreCompleto?.trim()) {
+        throw new Error('El nombre completo es requerido')
+      }
+
+      if (!fecha) {
+        throw new Error('La fecha es requerida')
+      }
+
+      if (!horaInicio) {
+        throw new Error('La hora de inicio es requerida')
+      }
+
+      if (!tratamiento) {
+        throw new Error('El tratamiento es requerido')
+      }
+
+      if (!subTratamiento) {
+        throw new Error('El sub-tratamiento es requerido')
+      }
+
+      // En este punto, fecha no puede ser undefined
+      const fechaFormateada = format(fecha, 'yyyy-MM-dd')
+      console.log('Iniciando guardado de cita con datos:', {
+        nombreCompleto,
         dni,
-        nombre_completo: nombreCompleto,
-        telefono: whatsapp,
-        updated_at: new Date().toISOString()
-      }
-
-      let clienteId
-      try {
-        if (clienteEncontrado) {
-          // Actualizar cliente existente
-          const { data: clienteActualizado, error: errorCliente } = await supabase
-            .from('clientes')
-            .update(datosCliente)
-            .eq('dni', dni)
-            .select()
-            .single()
-
-          if (errorCliente) {
-            throw new Error(`Error al actualizar cliente: ${errorCliente.message || errorCliente.details || 'Error desconocido'}`)
-          }
-          clienteId = clienteActualizado.id
-        } else {
-          // Crear nuevo cliente
-          const { data: nuevoCliente, error: errorCliente } = await supabase
-            .from('clientes')
-            .insert({
-              ...datosCliente,
-              created_at: new Date().toISOString()
-            })
-            .select()
-            .single()
-
-          if (errorCliente) {
-            throw new Error(`Error al crear cliente: ${errorCliente.message || errorCliente.details || 'Error desconocido'}`)
-          }
-          clienteId = nuevoCliente.id
-        }
-      } catch (error) {
-        throw new Error(`Error en operación de cliente: ${error instanceof Error ? error.message : 'Error desconocido'}`)
-      }
-
-      // Convertir la fecha a la zona horaria de Argentina antes de formatearla
-      const fechaArgentina = toZonedTime(fecha, 'America/Argentina/Buenos_Aires')
-      const fechaStr = format(fechaArgentina, 'yyyy-MM-dd')
-      
-      console.log('Guardando cita con fecha:', {
-        fechaOriginal: format(fecha, 'yyyy-MM-dd HH:mm:ss'),
-        fechaArgentina: format(fechaArgentina, 'yyyy-MM-dd HH:mm:ss'),
-        fechaStr,
-        zonaHoraria: 'America/Argentina/Buenos_Aires'
+        whatsapp,
+        fecha: fechaFormateada,
+        horaInicio,
+        horaFin,
+        box: boxInicial,
+        tratamiento,
+        subTratamiento,
+        duracion: duracionSeleccionada,
+        precio: precioSeleccionado,
+        senia,
+        notas,
+        estado
       })
-      
-      // Verificar disponibilidad del box
-      try {
-        if (!citaExistente || 
-            citaExistente.fecha?.toISOString().split('T')[0] !== fechaStr ||
-            citaExistente.horaInicio !== horaInicio ||
-            citaExistente.horaFin !== horaFin ||
-            citaExistente.box_id !== boxId) {
-          
-          const boxDisponible = await verificarDisponibilidadBox(fechaStr, horaInicio, horaFin, boxId)
-          if (!boxDisponible) {
-            throw new Error("El box seleccionado no está disponible en ese horario.")
-          }
-        }
-      } catch (error) {
-        throw new Error(`Error al verificar disponibilidad: ${error instanceof Error ? error.message : 'Error desconocido'}`)
+
+      // Crear la cita usando la API
+      const response = await fetch('/api/citas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nombreCompleto: nombreCompleto.trim(),
+          dni: dni?.trim() || null,
+          whatsapp: whatsapp?.trim() || null,
+          fecha: fecha.toISOString(), // Ahora fecha no puede ser undefined
+          horaInicio: horaInicio,
+          horaFin: horaFin,
+          box_id: boxInicial || 1,
+          tratamiento: tratamiento,
+          subTratamiento: subTratamiento,
+          color: color,
+          duracion: duracionSeleccionada,
+          precio: precioSeleccionado,
+          senia: Number(senia) || 0,
+          notas: notas?.trim() || null,
+          estado: estado
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error al crear la cita')
       }
 
-      // Preparar datos para la base de datos
-      const datosCita = {
-        cliente_id: clienteId,
-        nombre_completo: nombreCompleto,
-        fecha: fechaStr,
-        hora_inicio: horaInicio,
-        hora_fin: horaFin,
-        box_id: boxId,
-        tratamiento_id: tratamiento,
-        sub_tratamiento_id: subTratamiento,
-        color: color,
-        observaciones: notas,
-        updated_at: new Date().toISOString()
+      const nuevaCita = await response.json()
+
+      if (!nuevaCita?.id) {
+        throw new Error("No se pudo crear la cita: No se recibió ID de la cita")
       }
 
-      let citaDB
-      try {
-        if (citaExistente) {
-          // Actualizar cita existente
-          const { data, error } = await supabase
-            .from('citas')
-            .update(datosCita)
-            .eq('id', citaExistente.id)
-            .select()
-            .single()
+      toast({
+        title: "Cita guardada",
+        description: "La cita se ha guardado correctamente"
+      })
 
-          if (error) {
-            throw new Error(`Error al actualizar cita: ${error.message || error.details || 'Error desconocido'}`)
-          }
-          citaDB = data
-        } else {
-          // Crear nueva cita
-          const { data, error } = await supabase
-            .from('citas')
-            .insert({
-              ...datosCita,
-              created_at: new Date().toISOString()
-            })
-            .select()
-            .single()
-
-          if (error) {
-            throw new Error(`Error al crear cita: ${error.message || error.details || 'Error desconocido'}`)
-          }
-          citaDB = data
-        }
-
-        toast({
-          title: "Éxito",
-          description: `Cita ${citaExistente ? 'actualizada' : 'agendada'} para ${nombreCompleto} el ${format(fecha, "PPP", { locale: es })} a las ${horaInicio} en Box ${boxId}.`
-        })
-
-        if (onSuccess) onSuccess()
-        router.refresh()
-
-      } catch (error) {
-        throw new Error(`Error en operación de cita: ${error instanceof Error ? error.message : 'Error desconocido'}`)
-      }
+      if (onSuccess) onSuccess()
+      router.refresh()
 
     } catch (error) {
+      console.error('Error detallado al guardar la cita:', error)
+      const mensajeError = error instanceof Error ? error.message : "No se pudo guardar la cita"
+      setError(mensajeError)
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Error al guardar la cita",
+        description: mensajeError,
         variant: "destructive"
       })
     } finally {
@@ -427,14 +474,6 @@ export function FormularioCita({
       }
     }
   }, [fechaInicial, horaInicialInicio, duracionSeleccionada])
-
-  useEffect(() => {
-    async function cargarTratamientos() {
-      const data = await getTratamientos()
-      setTratamientos(data)
-    }
-    cargarTratamientos()
-  }, [])
 
   useEffect(() => {
     if (tratamiento) {
@@ -483,8 +522,8 @@ export function FormularioCita({
   }, [estado])
 
   return (
-    <ScrollArea className="h-[600px] pr-4 bg-background">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <ScrollArea className="h-[600px] pr-4 bg-background" suppressHydrationWarning>
+      <form onSubmit={guardarCita} className="space-y-4">
         <div className="space-y-4 border p-4 rounded-md">
           <h3 className="font-medium">Datos del Cliente</h3>
 
@@ -627,6 +666,7 @@ export function FormularioCita({
                   <Button
                     variant="outline"
                     className={cn("w-full justify-start text-left font-normal", !fecha && "text-muted-foreground")}
+                    suppressHydrationWarning
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {fecha ? format(fecha, "PPP", { locale: es }) : "Seleccionar fecha"}
@@ -744,7 +784,7 @@ export function FormularioCita({
               Cancelar
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Guardando..." : citaExistente ? "Actualizar cita" : "Guardar cita"}
+              {loading ? "Guardando..." : "Guardar cita"}
             </Button>
           </div>
         </div>

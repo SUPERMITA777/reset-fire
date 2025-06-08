@@ -35,9 +35,9 @@ export function Calendario() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center gap-2">
+    <div className="h-full flex flex-col" suppressHydrationWarning>
+      <div className="flex items-center justify-between p-4 border-b" suppressHydrationWarning>
+        <div className="flex items-center gap-2" suppressHydrationWarning>
           <Button variant="outline" size="icon" onClick={handleDiaAnterior}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -48,7 +48,7 @@ export function Calendario() {
             Hoy
           </Button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" suppressHydrationWarning>
           <Button
             variant={vista === "dia" ? "default" : "outline"}
             onClick={() => handleCambiarVista("dia")}
@@ -69,7 +69,7 @@ export function Calendario() {
           </Button>
         </div>
       </div>
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden" suppressHydrationWarning>
         <VistaCalendario
           vista={vista}
           fechaActual={fechaActual}

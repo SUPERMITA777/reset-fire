@@ -1,0 +1,73 @@
+{
+  "tratamientos": [
+    {
+      "id": "fc9f33d6-1238-45fc-955b-e2a8a6c4b29c",
+      "nombre": "Masaje Compartido",
+      "descripcion": "Masaje terapéutico compartido para múltiples clientes",
+      "imagen": "/images/masaje-compartido.jpg",
+      "max_clientes_por_turno": 2,
+      "boxes_disponibles": [1, 2],
+      "es_compartido": true,
+      "sub_tratamientos": [
+        {
+          "id": "e39be1ba-ba0a-411b-b9f1-f46ad9b1b8f7",
+          "nombre": "Masaje Compartido Básico",
+          "duracion": 60,
+          "precio": 4000
+        },
+        {
+          "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+          "nombre": "Masaje Compartido Premium",
+          "duracion": 90,
+          "precio": 6000
+        }
+      ]
+    },
+    {
+      "id": "f31e432c-bde2-40fa-a2b4-7911e1e3389e",
+      "nombre": "Masaje Descontracturante",
+      "descripcion": "Masaje terapéutico para aliviar tensiones musculares",
+      "imagen": "/images/masaje-descontracturante.jpg",
+      "max_clientes_por_turno": 1,
+      "boxes_disponibles": [1, 2, 3],
+      "es_compartido": false,
+      "sub_tratamientos": [
+        {
+          "id": "44722398-63c9-4c3d-93fe-a677114c0cd4",
+          "nombre": "Masaje Espalda",
+          "duracion": 60,
+          "precio": 5000
+        },
+        {
+          "id": "a1b2c3d4-e5f6-4a5b-8c7d-9e0f1a2b3c4d",
+          "nombre": "Masaje Completo",
+          "duracion": 90,
+          "precio": 7500
+        }
+      ]
+    },
+    {
+      "id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+      "nombre": "Depilación",
+      "descripcion": "Servicios de depilación definitiva y tradicional",
+      "imagen": "/images/depilacion.jpg",
+      "max_clientes_por_turno": 1,
+      "boxes_disponibles": [4, 5],
+      "es_compartido": false,
+      "sub_tratamientos": [
+        {
+          "id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+          "nombre": "Depilación Axilas",
+          "duracion": 30,
+          "precio": 2000
+        },
+        {
+          "id": "d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a",
+          "nombre": "Depilación Piernas Completas",
+          "duracion": 60,
+          "precio": 4000
+        }
+      ]
+    }
+  ]
+} 

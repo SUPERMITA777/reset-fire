@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
+import type { NextRequest } from 'next/server'
 
 type Cita = {
   id: string
@@ -42,8 +43,8 @@ type CitaRaw = {
 }
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: { params: { id: string } }
 ) {
   try {
     const { data: citas, error: citasError } = await supabase
@@ -68,7 +69,7 @@ export async function GET(
         ),
         senia
       `)
-      .eq('cliente_id', params.id)
+      .eq('cliente_id', context.params.id)
       .order('fecha', { ascending: false })
       .order('hora_inicio', { ascending: false })
 

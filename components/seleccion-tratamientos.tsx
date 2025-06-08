@@ -4,14 +4,21 @@ import { useState, useEffect } from "react"
 import { format, addDays, setHours, setMinutes, isBefore, isAfter } from "date-fns"
 import { es } from "date-fns/locale"
 import { ChevronRight, Clock, Calendar, ArrowLeft, DollarSign } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
+import { useToast } from "@/components/ui/use-toast"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { FormularioCita } from "@/components/formulario-cita"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { getTratamientos } from "@/lib/supabase"
+import { getTratamientos } from "@/lib/tratamientos"
+import { supabase } from "@/lib/supabase"
+import { Tratamiento as TratamientoDB } from "@/types/cita"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 
 // Tipo para los sub-tratamientos con duración y precio
 interface SubTratamiento {
@@ -19,113 +26,32 @@ interface SubTratamiento {
   nombre: string
   duracion: number // duración en minutos
   precio: number // precio en pesos
+  box: number
+}
+
+// Tipos para los horarios
+interface HorarioDB {
+  hora_inicio: string
+  hora_fin: string
+  vacantes_disponibles: number
+}
+
+interface HorarioDisponible {
+  hora: string
+  box: number
+  disponible: boolean
+}
+
+interface DiaHorarios {
+  fecha: Date
+  horarios: HorarioDisponible[]
 }
 
 // Tipo para los tratamientos
-interface Tratamiento {
-  id: string
-  nombre: string
-  sub_tratamientos?: SubTratamiento[] // Cambiado de subTratamientos a sub_tratamientos para coincidir con la DB
+interface TratamientoLocal extends Omit<TratamientoDB, 'sub_tratamientos'> {
+  max_clientes_por_turno: number
+  sub_tratamientos: SubTratamiento[]
 }
-
-// Datos de ejemplo
-const tratamientosIniciales: Tratamiento[] = [
-  {
-    id: "depilacion",
-    nombre: "Depilación láser",
-    sub_tratamientos: [
-      { id: "piernas", nombre: "Piernas", duracion: 60, precio: 8000 },
-      { id: "brazos", nombre: "Brazos", duracion: 45, precio: 6000 },
-      { id: "axilas", nombre: "Axilas", duracion: 30, precio: 4000 },
-      { id: "rostro", nombre: "Rostro", duracion: 30, precio: 5000 },
-      { id: "espalda", nombre: "Espalda", duracion: 60, precio: 9000 },
-      { id: "completo", nombre: "Cuerpo completo", duracion: 120, precio: 20000 },
-    ],
-  },
-  {
-    id: "facial",
-    nombre: "Tratamiento facial",
-    sub_tratamientos: [
-      { id: "limpieza", nombre: "Limpieza profunda", duracion: 45, precio: 5500 },
-      { id: "hidratacion", nombre: "Hidratación", duracion: 30, precio: 4500 },
-      { id: "antiedad", nombre: "Anti-edad", duracion: 60, precio: 7500 },
-      { id: "acne", nombre: "Tratamiento para acné", duracion: 45, precio: 6000 },
-    ],
-  },
-  {
-    id: "masaje",
-    nombre: "Masaje",
-    sub_tratamientos: [
-      { id: "relajante", nombre: "Relajante", duracion: 60, precio: 7000 },
-      { id: "deportivo", nombre: "Deportivo", duracion: 45, precio: 6500 },
-      { id: "descontracturante", nombre: "Descontracturante", duracion: 60, precio: 7500 },
-      { id: "piedras", nombre: "Piedras calientes", duracion: 90, precio: 9500 },
-    ],
-  },
-  {
-    id: "corte",
-    nombre: "Corte de cabello",
-    sub_tratamientos: [
-      { id: "corte_basico", nombre: "Corte básico", duracion: 30, precio: 2500 },
-      { id: "corte_lavado", nombre: "Corte con lavado", duracion: 45, precio: 3500 },
-      { id: "corte_peinado", nombre: "Corte con peinado", duracion: 60, precio: 4500 },
-    ],
-  },
-  {
-    id: "tinte",
-    nombre: "Tinte",
-    sub_tratamientos: [
-      { id: "tinte_raiz", nombre: "Retoque de raíz", duracion: 60, precio: 5000 },
-      { id: "tinte_completo", nombre: "Tinte completo", duracion: 90, precio: 8000 },
-      { id: "mechas", nombre: "Mechas/Highlights", duracion: 120, precio: 10000 },
-      { id: "balayage", nombre: "Balayage", duracion: 150, precio: 13000 },
-    ],
-  },
-  {
-    id: "manicura",
-    nombre: "Manicura",
-    sub_tratamientos: [
-      { id: "manicura_basica", nombre: "Manicura básica", duracion: 30, precio: 2000 },
-      { id: "manicura_semipermanente", nombre: "Semipermanente", duracion: 45, precio: 3500 },
-      { id: "manicura_acrilicas", nombre: "Uñas acrílicas", duracion: 90, precio: 6000 },
-    ],
-  },
-  {
-    id: "pedicura",
-    nombre: "Pedicura",
-    sub_tratamientos: [
-      { id: "pedicura_basica", nombre: "Pedicura básica", duracion: 45, precio: 3000 },
-      { id: "pedicura_spa", nombre: "Pedicura spa", duracion: 60, precio: 4500 },
-      { id: "pedicura_semipermanente", nombre: "Semipermanente", duracion: 60, precio: 4000 },
-    ],
-  },
-  {
-    id: "maquillaje",
-    nombre: "Maquillaje",
-    sub_tratamientos: [
-      { id: "social", nombre: "Social", duracion: 45, precio: 5000 },
-      { id: "novia", nombre: "Novia", duracion: 90, precio: 12000 },
-      { id: "quinceañera", nombre: "Quinceañera", duracion: 60, precio: 8000 },
-      { id: "artistico", nombre: "Artístico", duracion: 75, precio: 9000 },
-    ],
-  },
-]
-
-// Datos de ejemplo para citas existentes (para simular disponibilidad)
-const citasExistentes = [
-  {
-    fecha: new Date(2025, 4, 20, 10, 0),
-    duracion: 60,
-  },
-  {
-    fecha: new Date(2025, 4, 20, 14, 0),
-    duracion: 45,
-  },
-  {
-    fecha: new Date(2025, 4, 21, 11, 0),
-    duracion: 90,
-  },
-]
 
 // Función para formatear la duración
 const formatearDuracion = (minutos: number) => {
@@ -135,76 +61,40 @@ const formatearDuracion = (minutos: number) => {
   return minutosRestantes > 0 ? `${horas}h ${minutosRestantes}m` : `${horas}h`
 }
 
-// Función para verificar si un horario está disponible
-const estaDisponible = (fecha: Date, duracion: number) => {
-  const fechaFin = new Date(fecha.getTime() + duracion * 60000)
+// Función para verificar disponibilidad de cupos
+async function verificarDisponibilidadCupos(
+  tratamientoId: string,
+  fecha: Date,
+  horaInicio: string,
+  boxId: number
+) {
+  const { data, error } = await supabase
+    .rpc('obtener_disponibilidad_turno', {
+      p_tratamiento_id: tratamientoId,
+      p_fecha: format(fecha, 'yyyy-MM-dd'),
+      p_hora_inicio: horaInicio,
+      p_box_id: boxId
+    })
 
-  // Verificar si está dentro del horario de atención (8am a 8pm)
-  if (fecha.getHours() < 8 || fechaFin.getHours() >= 20 || (fechaFin.getHours() === 20 && fechaFin.getMinutes() > 0)) {
-    return false
-  }
-
-  // Verificar si se solapa con alguna cita existente
-  for (const cita of citasExistentes) {
-    const citaFin = new Date(cita.fecha.getTime() + cita.duracion * 60000)
-
-    // Si la nueva cita comienza durante una cita existente
-    if (isAfter(fecha, cita.fecha) && isBefore(fecha, citaFin)) {
-      return false
-    }
-
-    // Si la nueva cita termina durante una cita existente
-    if (isAfter(fechaFin, cita.fecha) && isBefore(fechaFin, citaFin)) {
-      return false
-    }
-
-    // Si la nueva cita engloba completamente una cita existente
-    if (isBefore(fecha, cita.fecha) && isAfter(fechaFin, citaFin)) {
-      return false
-    }
-  }
-
-  return true
-}
-
-// Función para generar horarios disponibles
-const generarHorariosDisponibles = (fechaInicio: Date, duracion: number, dias = 7) => {
-  const horarios = []
-
-  for (let dia = 0; dia < dias; dia++) {
-    const fecha = addDays(fechaInicio, dia)
-    const horariosDelDia = []
-
-    // Generar horarios cada 30 minutos desde las 8am hasta las 8pm
-    for (let hora = 8; hora < 20; hora++) {
-      for (const minuto of [0, 30]) {
-        const horaPropuesta = setHours(setMinutes(fecha, minuto), hora)
-
-        // Verificar si el horario está disponible
-        if (estaDisponible(horaPropuesta, duracion)) {
-          horariosDelDia.push(horaPropuesta)
-        }
-      }
-    }
-
-    if (horariosDelDia.length > 0) {
-      horarios.push({
-        fecha,
-        horarios: horariosDelDia,
-      })
-    }
-  }
-
-  return horarios
+  if (error) throw error
+  return data[0] || { cupos_disponibles: 0, total_cupos: 0 }
 }
 
 export function SeleccionTratamientos() {
-  const [tratamientos, setTratamientos] = useState<Tratamiento[]>([])
+  const { toast } = useToast()
+  const router = useRouter()
+  const [tratamientos, setTratamientos] = useState<TratamientoLocal[]>([])
   const [loading, setLoading] = useState(true)
-  const [tratamientoSeleccionado, setTratamientoSeleccionado] = useState<Tratamiento | null>(null)
+  const [tratamientoSeleccionado, setTratamientoSeleccionado] = useState<TratamientoLocal | null>(null)
   const [subTratamientoSeleccionado, setSubTratamientoSeleccionado] = useState<SubTratamiento | null>(null)
-  const [horariosDisponibles, setHorariosDisponibles] = useState<any[]>([])
+  const [horariosDisponibles, setHorariosDisponibles] = useState<DiaHorarios[]>([])
   const [citaDialogAbierto, setCitaDialogAbierto] = useState(false)
+  const [crearTurnoDialogAbierto, setCrearTurnoDialogAbierto] = useState(false)
+  const [turnoSeleccionado, setTurnoSeleccionado] = useState<{
+    fecha: Date
+    hora: string
+    box: number
+  } | null>(null)
   const [datosCita, setDatosCita] = useState<{
     tratamiento: string
     subTratamiento: string
@@ -216,52 +106,122 @@ export function SeleccionTratamientos() {
     fecha: null,
     horaInicio: null,
   })
+  const [disponibilidadCupos, setDisponibilidadCupos] = useState<Record<string, { cupos_disponibles: number, total_cupos: number }>>({})
 
   useEffect(() => {
-    cargarTratamientos()
-  }, [])
-
-  async function cargarTratamientos() {
-    setLoading(true)
-    try {
-      const data = await getTratamientos()
-      setTratamientos(data)
-    } catch (e) {
-      // Manejo de error
-    } finally {
-      setLoading(false)
+    async function cargarTratamientos() {
+      setLoading(true)
+      try {
+        const data = await getTratamientos()
+        // Convertir los tratamientos al tipo correcto
+        const tratamientosFormateados: TratamientoLocal[] = data.map((t: TratamientoDB) => ({
+          ...t,
+          max_clientes_por_turno: t.max_clientes_por_turno || 1,
+          sub_tratamientos: t.sub_tratamientos.map((st: SubTratamiento) => ({
+            ...st,
+            box: st.box || 1
+          }))
+        }))
+        setTratamientos(tratamientosFormateados)
+      } catch (e) {
+        console.error('Error al cargar tratamientos:', e)
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los tratamientos",
+          variant: "destructive"
+        })
+      } finally {
+        setLoading(false)
+      }
     }
-  }
+
+    cargarTratamientos()
+  }, [toast])
 
   // Función para seleccionar un tratamiento
-  const seleccionarTratamiento = (tratamiento: Tratamiento) => {
+  const seleccionarTratamiento = (tratamiento: TratamientoLocal) => {
     setTratamientoSeleccionado(tratamiento)
     setSubTratamientoSeleccionado(null)
     setHorariosDisponibles([])
+    setDatosCita({
+      tratamiento: tratamiento.id,
+      subTratamiento: "",
+      fecha: null,
+      horaInicio: null
+    })
   }
 
-  // Función para seleccionar un sub-tratamiento
+  // Función para seleccionar un subtratamiento
   const seleccionarSubTratamiento = (subTratamiento: SubTratamiento) => {
+    if (!tratamientoSeleccionado) return
     setSubTratamientoSeleccionado(subTratamiento)
-
-    // Generar horarios disponibles para los próximos 7 días
-    const horarios = generarHorariosDisponibles(new Date(), subTratamiento.duracion, 7)
-    setHorariosDisponibles(horarios)
+    setDatosCita(prev => ({
+      ...prev,
+      subTratamiento: subTratamiento.id
+    }))
   }
 
   // Función para seleccionar un horario y abrir el formulario de cita
-  const seleccionarHorario = (fecha: Date) => {
+  const seleccionarHorario = async (fecha: Date, hora: string, box: number) => {
     if (!tratamientoSeleccionado || !subTratamientoSeleccionado) return
 
-    setDatosCita({
-      tratamiento: tratamientoSeleccionado.id,
-      subTratamiento: subTratamientoSeleccionado.id,
+    // Verificar disponibilidad de cupos
+    const disponibilidad = await verificarDisponibilidadCupos(
+      tratamientoSeleccionado.id,
+      fecha,
+      hora,
+      box
+    )
+
+    // Si no hay cupos disponibles, abrir el diálogo de crear turno
+    if (disponibilidad.cupos_disponibles <= 0) {
+      setTurnoSeleccionado({
+        fecha,
+        hora,
+        box
+      })
+      setCrearTurnoDialogAbierto(true)
+      return
+    }
+
+    // Si hay cupos disponibles, abrir el diálogo de crear cita
+    setDatosCita(prev => ({
+      ...prev,
       fecha: fecha,
-      horaInicio: `${fecha.getHours()}:${fecha.getMinutes() === 0 ? "00" : fecha.getMinutes()}`,
-    })
+      horaInicio: hora
+    }))
 
     setCitaDialogAbierto(true)
   }
+
+  // Función para cargar la disponibilidad de cupos
+  const cargarDisponibilidadCupos = async (horarios: HorarioDisponible[]) => {
+    if (!tratamientoSeleccionado) return
+
+    const disponibilidad: Record<string, { cupos_disponibles: number, total_cupos: number }> = {}
+    
+    for (const horario of horarios) {
+      const fecha = new Date(horario.hora)
+      const key = format(fecha, 'yyyy-MM-dd HH:mm')
+      const data = await verificarDisponibilidadCupos(
+        tratamientoSeleccionado.id,
+        fecha,
+        format(fecha, 'HH:mm'),
+        horario.box
+      )
+      disponibilidad[key] = data
+    }
+
+    setDisponibilidadCupos(disponibilidad)
+  }
+
+  // Actualizar la disponibilidad cuando cambian los horarios
+  useEffect(() => {
+    if (horariosDisponibles.length > 0 && tratamientoSeleccionado) {
+      const todosLosHorarios = horariosDisponibles.flatMap(dia => dia.horarios)
+      cargarDisponibilidadCupos(todosLosHorarios)
+    }
+  }, [horariosDisponibles, tratamientoSeleccionado])
 
   // Función para volver a la vista anterior
   const volverAtras = () => {
@@ -273,10 +233,76 @@ export function SeleccionTratamientos() {
     }
   }
 
-  // Función para manejar el éxito al guardar una cita
-  const handleCitaGuardada = () => {
-    setCitaDialogAbierto(false)
-    // Aquí podrías actualizar la lista de citas o hacer otras acciones necesarias
+  // Función para obtener horarios disponibles
+  const obtenerHorariosDisponibles = async (fecha: Date, boxId: number) => {
+    if (!tratamientoSeleccionado) return []
+
+    try {
+      const { data, error } = await supabase
+        .rpc('obtener_horarios_disponibles_fecha', {
+          p_tratamiento_id: tratamientoSeleccionado.id,
+          p_fecha: format(fecha, 'yyyy-MM-dd'),
+          p_box_id: boxId
+        })
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error al obtener horarios disponibles:', error)
+      toast({
+        title: "Error",
+        description: "No se pudieron obtener los horarios disponibles",
+        variant: "destructive"
+      })
+      return []
+    }
+  }
+
+  // Actualizar la función que carga los horarios disponibles
+  const cargarHorariosDisponibles = async (fecha: Date) => {
+    if (!tratamientoSeleccionado) return
+
+    try {
+      const horariosPorBox: Record<number, { hora_inicio: string, hora_fin: string }[]> = {}
+      
+      // Obtener horarios para cada box disponible
+      for (const boxId of tratamientoSeleccionado.boxes_disponibles) {
+        const horarios = await obtenerHorariosDisponibles(fecha, boxId)
+        if (horarios.length > 0) {
+          horariosPorBox[boxId] = horarios
+        }
+      }
+
+      // Convertir a formato de horarios disponibles
+      const horariosDisponibles: HorarioDisponible[] = []
+      for (const [boxId, horarios] of Object.entries(horariosPorBox)) {
+        for (const horario of horarios) {
+          const fechaHora = new Date(`${format(fecha, 'yyyy-MM-dd')}T${horario.hora_inicio}`)
+          horariosDisponibles.push({
+            hora: fechaHora.toISOString(),
+            box: Number(boxId)
+          })
+        }
+      }
+
+      // Ordenar por hora
+      horariosDisponibles.sort((a, b) => new Date(a.hora).getTime() - new Date(b.hora).getTime())
+
+      // Agrupar por día
+      const horariosPorDia: DiaHorarios[] = [{
+        fecha: fecha,
+        horarios: horariosDisponibles
+      }]
+
+      setHorariosDisponibles(horariosPorDia)
+    } catch (error) {
+      console.error('Error al cargar horarios disponibles:', error)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los horarios disponibles",
+        variant: "destructive"
+      })
+    }
   }
 
   return (
@@ -358,19 +384,40 @@ export function SeleccionTratamientos() {
             <div className="space-y-8">
               {horariosDisponibles.map((dia, index) => (
                 <div key={index} className="space-y-2">
-                  <h3 className="text-lg font-medium">{format(dia.fecha, "EEEE d 'de' MMMM", { locale: es })}</h3>
+                  <h3 className="font-medium">
+                    {format(dia.fecha, 'EEEE dd/MM/yyyy', { locale: es })}
+                  </h3>
                   <ScrollArea className="whitespace-nowrap pb-2">
                     <div className="flex gap-2">
-                      {dia.horarios.map((horario: Date, i: number) => (
-                        <Button
-                          key={i}
-                          variant="outline"
-                          className="flex-shrink-0"
-                          onClick={() => seleccionarHorario(horario)}
-                        >
-                          {format(horario, "HH:mm")}
-                        </Button>
-                      ))}
+                      {dia.horarios.map((horario: HorarioDisponible, i: number) => {
+                        const key = format(new Date(horario.hora), 'yyyy-MM-dd HH:mm')
+                        const disponibilidad = disponibilidadCupos[key] || { cupos_disponibles: 0, total_cupos: 0 }
+                        const hora = format(new Date(horario.hora), "HH:mm")
+                        
+                        return (
+                          <div key={i} className="flex flex-col gap-1">
+                            <Button
+                              variant={disponibilidad.cupos_disponibles > 0 ? "outline" : "secondary"}
+                              className="flex-shrink-0"
+                              onClick={() => disponibilidad.cupos_disponibles > 0 && 
+                                seleccionarHorario(new Date(horario.hora), hora, horario.box)}
+                              disabled={disponibilidad.cupos_disponibles <= 0}
+                            >
+                              <div className="flex flex-col items-center">
+                                <span>{hora}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  Box {horario.box}
+                                </span>
+                                {tratamientoSeleccionado?.max_clientes_por_turno > 1 && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {disponibilidad.cupos_disponibles} cupos
+                                  </span>
+                                )}
+                              </div>
+                            </Button>
+                          </div>
+                        )
+                      })}
                     </div>
                   </ScrollArea>
                 </div>
@@ -386,22 +433,73 @@ export function SeleccionTratamientos() {
         </div>
       )}
 
-      {/* Diálogo para crear nueva cita */}
+      {/* Diálogo de nueva cita */}
       <Dialog open={citaDialogAbierto} onOpenChange={setCitaDialogAbierto}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Agendar nueva cita</DialogTitle>
+            <DialogTitle>Nueva Cita</DialogTitle>
             <DialogDescription>
-              Complete los datos para agendar una nueva cita con el tratamiento seleccionado
+              Complete los datos del cliente para agendar la cita
             </DialogDescription>
           </DialogHeader>
-          <FormularioCita
-            tratamientoInicial={datosCita.tratamiento}
-            subTratamientoInicial={datosCita.subTratamiento}
-            fechaInicial={datosCita.fecha}
-            horaInicialInicio={datosCita.horaInicio}
-            onSuccess={handleCitaGuardada}
-          />
+          {datosCita.fecha && datosCita.horaInicio && datosCita.tratamiento && datosCita.subTratamiento && (
+            <FormularioCita
+              fechaInicial={datosCita.fecha}
+              horaInicialInicio={datosCita.horaInicio}
+              tratamientoInicial={datosCita.tratamiento}
+              subTratamientoInicial={datosCita.subTratamiento}
+              boxInicial={turnoSeleccionado?.box || 1}
+              onSuccess={() => {
+                setCitaDialogAbierto(false)
+                setDatosCita({
+                  tratamiento: "",
+                  subTratamiento: "",
+                  fecha: null,
+                  horaInicio: null
+                })
+                setTurnoSeleccionado(null)
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Agregar el diálogo de crear turno */}
+      <Dialog open={crearTurnoDialogAbierto} onOpenChange={setCrearTurnoDialogAbierto}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Crear Nuevo Turno</DialogTitle>
+            <DialogDescription>
+              Crear un nuevo turno para {tratamientoSeleccionado?.nombre} en {turnoSeleccionado && format(turnoSeleccionado.fecha, 'dd/MM/yyyy')} a las {turnoSeleccionado?.hora}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Box</Label>
+              <Input value={turnoSeleccionado?.box?.toString() || ''} disabled />
+            </div>
+            <div className="grid gap-2">
+              <Label>Fecha</Label>
+              <Input value={turnoSeleccionado ? format(turnoSeleccionado.fecha, 'dd/MM/yyyy') : ''} disabled />
+            </div>
+            <div className="grid gap-2">
+              <Label>Hora</Label>
+              <Input value={turnoSeleccionado?.hora || ''} disabled />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                if (turnoSeleccionado && tratamientoSeleccionado) {
+                  // Abrir el diálogo de disponibilidad con los datos prellenados
+                  router.push(`/tratamientos/gestion?tratamiento=${tratamientoSeleccionado.id}&fecha=${format(turnoSeleccionado.fecha, 'yyyy-MM-dd')}&hora=${turnoSeleccionado.hora}&box=${turnoSeleccionado.box}`)
+                }
+                setCrearTurnoDialogAbierto(false)
+              }}
+            >
+              Crear Turno
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

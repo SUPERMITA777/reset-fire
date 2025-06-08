@@ -39,43 +39,47 @@ export function NavBar() {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-deep-amethyst/95 backdrop-blur supports-[backdrop-filter]:bg-deep-amethyst/60 dark:text-black">
-      <div className="container flex h-14 items-center">
-        <div className="mr-4 flex">
-          <Link href="/" className="mr-6 flex items-center space-x-2">
-            <span className="font-bold text-isabelline dark:text-black">Reset Pro</span>
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60" suppressHydrationWarning>
+      <div className="container flex h-16 items-center justify-between" suppressHydrationWarning>
+        <div className="flex items-center" suppressHydrationWarning>
+          <Link href="/" className="flex items-center space-x-2" suppressHydrationWarning>
+            <span className="font-bold" suppressHydrationWarning>Sistema de Citas</span>
           </Link>
-          <nav className="flex items-center space-x-6 text-sm font-medium">
-            <Link
-              href="/calendario"
-              className="transition-colors hover:text-languid-lavender text-isabelline dark:text-black dark:hover:text-black/80"
-            >
-              Calendario
-            </Link>
-            <Link
-              href="/clientes"
-              className="transition-colors hover:text-languid-lavender text-isabelline dark:text-black dark:hover:text-black/80"
-            >
-              Clientes
-            </Link>
-            <Link
-              href="/tratamientos"
-              className="transition-colors hover:text-languid-lavender text-isabelline dark:text-black dark:hover:text-black/80"
-            >
-              Tratamientos
-            </Link>
-            <Link
-              href="/carrito"
-              className="transition-colors hover:text-languid-lavender text-isabelline dark:text-black dark:hover:text-black/80"
-            >
-              Carrito
-            </Link>
-          </nav>
         </div>
-        <div className="flex flex-1 items-center justify-end space-x-2">
-          <nav className="flex items-center">
-            <ThemeToggle />
-          </nav>
+        
+        <nav className="flex items-center space-x-8" suppressHydrationWarning>
+          <Link
+            href="/calendario"
+            className="text-base font-medium text-black transition-colors hover:text-gray-600"
+            suppressHydrationWarning
+          >
+            Calendario
+          </Link>
+          <Link
+            href="/clientes"
+            className="text-base font-medium text-black transition-colors hover:text-gray-600"
+            suppressHydrationWarning
+          >
+            Clientes
+          </Link>
+          <Link
+            href="/tratamientos"
+            className="text-base font-medium text-black transition-colors hover:text-gray-600"
+            suppressHydrationWarning
+          >
+            Tratamientos
+          </Link>
+          <Link
+            href="/carrito"
+            className="text-base font-medium text-black transition-colors hover:text-gray-600"
+            suppressHydrationWarning
+          >
+            Carrito
+          </Link>
+        </nav>
+
+        <div className="flex items-center space-x-2" suppressHydrationWarning>
+          <ThemeToggle />
         </div>
       </div>
     </header>
