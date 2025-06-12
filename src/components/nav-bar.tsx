@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useEffect, useState } from "react";
+import { Settings } from "lucide-react";
 
 const navItems = [
   {
@@ -68,6 +69,18 @@ export function NavBar() {
                 {item.title}
               </Link>
             ))}
+            <Link
+              href="/configuracion"
+              className={cn(
+                "flex h-9 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+                pathname === "/configuracion"
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground"
+              )}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Configuración
+            </Link>
           </div>
         </div>
       </div>

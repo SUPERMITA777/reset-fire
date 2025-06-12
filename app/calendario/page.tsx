@@ -416,22 +416,100 @@ export default function CalendarioPage() {
   // Manejador para clic en una celda del calendario
   const handleDateSelect = (selectInfo: any) => {
     const fecha = selectInfo.start;
+    const hora = format(fecha, 'HH:mm');
+    const box = parseInt(selectInfo.resource?.id || '1');
+    
     setCurrentDate(fecha);
-    setSelectedCita(null);
+    setSelectedCita({
+      id: "",
+      cliente_id: "",
+      tratamiento_id: "",
+      subtratamiento_id: "",
+      fecha: format(fecha, 'yyyy-MM-dd'),
+      hora: hora,
+      box: box,
+      estado: "reservado",
+      es_multiple: false,
+      precio: 0,
+      duracion: 30,
+      sena: 0,
+      notas: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      rf_clientes: null,
+      rf_subtratamientos: null
+    });
     setShowModal(true);
   };
 
   const handleSubmitCita = async (formData: any) => {
     try {
+      // Crear o actualizar la cita en la base de datos
+      if (formData.id) {
+        // Actualizar cita existente
+        const { error: updateError } = await supabase
+          .from("rf_citas")
+          .update({
+            tratamiento_id: formData.tratamiento_id,
+            subtratamiento_id: formData.subtratamiento_id,
+            fecha: formData.fecha,
+            hora: formData.hora,
+            box: formData.box,
+            estado: formData.estado,
+            precio: formData.precio,
+            sena: formData.sena,
+            notas: formData.notas,
+            paciente_id: formData.paciente_id
+          })
+          .eq("id", formData.id);
+
+        if (updateError) {
+          throw new Error(`Error al actualizar cita: ${updateError.message}`);
+        }
+      } else {
+        // Crear nueva cita
+        const { error: createError } = await supabase
+          .from("rf_citas")
+          .insert({
+            tratamiento_id: formData.tratamiento_id,
+            subtratamiento_id: formData.subtratamiento_id,
+            fecha: formData.fecha,
+            hora: formData.hora,
+            box: formData.box,
+            estado: formData.estado,
+            precio: formData.precio,
+            sena: formData.sena,
+            notas: formData.notas,
+            paciente_id: formData.paciente_id,
+            es_multiple: false,
+            duracion: formData.duracion
+          });
+
+        if (createError) {
+          throw new Error(`Error al crear cita: ${createError.message}`);
+        }
+      }
+
+      // Recargar las citas y cerrar el modal
       await recargarCitas();
       setShowModal(false);
+      setSelectedCita(null);
+
+      toast({
+        title: "Éxito",
+        description: formData.id ? "Cita actualizada correctamente" : "Cita creada correctamente"
+      });
+
+      return true; // Indicar éxito
     } catch (error) {
-      console.error("Error al actualizar citas:", error);
+      console.error("Error al guardar cita:", error);
+      const errorMessage = error instanceof Error ? error.message : "Error al guardar la cita";
       toast({
         title: "Error",
-        description: "No se pudieron actualizar las citas",
+        description: errorMessage,
         variant: "destructive"
       });
+      throw error; // Re-lanzar el error para que el componente hijo pueda manejarlo
     }
   };
 
@@ -603,17 +681,17 @@ export default function CalendarioPage() {
       )}
 
       {showModal && (
-      <CitaModal
+        <CitaModal
           open={showModal}
           onOpenChange={setShowModal}
-        onSubmit={handleSubmitCita}
-        cita={selectedCita}
-        tratamientos={tratamientos}
-          fechaSeleccionada={selectedCita ? format(selectedCita.fecha, 'yyyy-MM-dd') : undefined}
-          horaSeleccionada={selectedCita ? format(selectedCita.hora, 'HH:mm') : undefined}
-          boxSeleccionado={selectedCita ? selectedCita.box : undefined}
-          title={selectedCita ? "Editar Cita" : "Nueva Cita"}
-          description={selectedCita ? "Modifica los detalles de la cita" : "Complete los datos para crear una nueva cita"}
+          onSubmit={handleSubmitCita}
+          cita={selectedCita}
+          tratamientos={tratamientos}
+          fechaSeleccionada={selectedCita?.fecha}
+          horaSeleccionada={selectedCita?.hora}
+          boxSeleccionado={selectedCita?.box}
+          title={selectedCita?.id ? "Editar Cita" : "Nueva Cita"}
+          description={selectedCita?.id ? "Modifica los detalles de la cita" : "Complete los datos para crear una nueva cita"}
         />
       )}
 

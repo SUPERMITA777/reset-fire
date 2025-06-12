@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useEffect, useCallback } from "react"
-import { format, parse, isWithinInterval, addDays, addMinutes, isBefore, isAfter, startOfDay, endOfDay } from "date-fns"
+import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { debounce } from "lodash"
 import { supabase } from "@/lib/supabase"
@@ -126,12 +126,6 @@ interface ClienteCitaDB {
   } | null;
 }
 
-interface HorarioDisponible {
-  fecha: string;
-  hora: string;
-  box: number;
-}
-
 const getEstadoColor = (estado: FormData['estado']) => {
   switch (estado) {
     case 'reservado':
@@ -189,8 +183,6 @@ export function CitaModal({
   const [clienteEncontrado, setClienteEncontrado] = useState<Cliente | null>(null)
   const [loading, setLoading] = useState(false)
   const supabase = createClientComponentClient<Database>()
-  const [horariosDisponibles, setHorariosDisponibles] = useState<HorarioDisponible[]>([])
-  const [loadingHorarios, setLoadingHorarios] = useState(false)
 
   const form = useForm<FormData>({
     resolver: zodResolver(z.object({
@@ -225,34 +217,35 @@ export function CitaModal({
     }
   })
 
-  // Actualizar el formulario cuando cambia la cita o los props de fecha/hora/box
+  // Actualizar el formulario cuando cambia la cita
   useEffect(() => {
-    // Si hay cita, pero los props tienen valores distintos, los props tienen prioridad
-    const nuevaFecha = fechaSeleccionada ?? cita?.fecha ?? "";
-    const nuevaHora = horaSeleccionada ?? cita?.hora ?? "";
-    const nuevoBox = boxSeleccionado ?? cita?.box ?? 1;
-    form.reset({
-      dni: getDni(cita),
-      nombre_completo: getNombre(cita),
-      whatsapp: getWhatsapp(cita),
-      tratamiento_id: cita?.tratamiento_id || "",
-      subtratamiento_id: getSubtratamientoId(cita),
-      fecha: nuevaFecha,
-      hora: nuevaHora,
-      box: nuevoBox,
-      precio: cita?.precio || 0,
-      sena: cita?.sena || 0,
-      estado: cita?.estado || "reservado",
-      notas: cita?.notas || "",
-      paciente_id: cita?.cliente_id || ""
-    });
-    setFormMultiple(prev => ({
-      ...prev,
-      fecha: nuevaFecha,
-      hora: nuevaHora,
-      box: nuevoBox
-    }));
-  }, [cita, fechaSeleccionada, horaSeleccionada, boxSeleccionado, form, getDni, getNombre, getWhatsapp, getSubtratamientoId]);
+    if (cita) {
+      form.reset({
+        dni: getDni(cita),
+        nombre_completo: getNombre(cita),
+        whatsapp: getWhatsapp(cita),
+        tratamiento_id: cita.tratamiento_id,
+        subtratamiento_id: getSubtratamientoId(cita),
+        fecha: cita.fecha,
+        hora: cita.hora,
+        box: cita.box,
+        precio: cita.precio,
+        sena: cita.sena,
+        estado: cita.estado,
+        notas: cita.notas || "",
+        paciente_id: cita.cliente_id
+      })
+    }
+  }, [cita, form, getDni, getNombre, getWhatsapp, getSubtratamientoId])
+
+  // Actualizar el formulario cuando cambian las fechas/horas seleccionadas
+  useEffect(() => {
+    if (fechaSeleccionada || horaSeleccionada || boxSeleccionado) {
+      form.setValue('fecha', fechaSeleccionada || form.getValues('fecha'))
+      form.setValue('hora', horaSeleccionada || form.getValues('hora'))
+      form.setValue('box', boxSeleccionado || form.getValues('box'))
+    }
+  }, [fechaSeleccionada, horaSeleccionada, boxSeleccionado, form])
 
   const fetchSubtratamientos = async (tratamientoId: string) => {
     try {
@@ -278,7 +271,7 @@ export function CitaModal({
   // Memoizar la función de búsqueda de clientes
   const buscarCliente = useCallback(
     debounce(async (dni: string) => {
-      if (!dni || dni.length !== 8) {
+      if (!dni || dni.length < 3) {
         setClienteEncontrado(null);
         return;
       }
@@ -300,10 +293,12 @@ export function CitaModal({
 
         if (data) {
           setClienteEncontrado(data);
-          // Actualizar los campos del formulario sin usar reset
-          form.setValue("nombre_completo", data.nombre_completo);
-          form.setValue("whatsapp", data.whatsapp || "");
-          form.setValue("paciente_id", data.id);
+          form.reset({
+            ...form.getValues(),
+            nombre_completo: data.nombre_completo,
+            whatsapp: data.whatsapp || "",
+            paciente_id: data.id
+          });
         }
       } catch (error) {
         console.error("Error al buscar cliente:", error);
@@ -314,7 +309,7 @@ export function CitaModal({
         });
       }
     }, 300),
-    [form]
+    []
   );
 
   // Memoizar los manejadores de eventos
@@ -355,10 +350,10 @@ export function CitaModal({
   // Memoizar la función de búsqueda de clientes múltiples
   const buscarClienteMultiple = useCallback(
     debounce(async (dni: string, index: number) => {
-      if (!dni || dni.length !== 8) return;
+      if (!dni || dni.length < 3) return;
 
-      try {
-        const { data, error } = await supabase
+    try {
+      const { data, error } = await supabase
           .from("rf_clientes")
           .select("id, dni, nombre_completo, whatsapp")
           .eq("dni", dni)
@@ -381,14 +376,14 @@ export function CitaModal({
             )
           }));
         }
-      } catch (error) {
+    } catch (error) {
         console.error("Error al buscar cliente:", error);
-        toast({
-          title: "Error",
+      toast({
+        title: "Error",
           description: "No se pudo buscar el cliente. Por favor, intente nuevamente.",
-          variant: "destructive"
-        });
-      }
+        variant: "destructive"
+      });
+    }
     }, 300),
     []
   );
@@ -917,117 +912,6 @@ export function CitaModal({
     }
   };
 
-  // Función para obtener las próximas fechas disponibles
-  const obtenerFechasDisponibles = useCallback(() => {
-    const hoy = new Date();
-    const fechas: string[] = [];
-    let diasAgregados = 0;
-    let diaActual = hoy;
-
-    while (fechas.length < 3) {
-      // Saltar fines de semana (0 = domingo, 6 = sábado)
-      if (diaActual.getDay() !== 0 && diaActual.getDay() !== 6) {
-        fechas.push(format(diaActual, 'yyyy-MM-dd'));
-        diasAgregados++;
-      }
-      diaActual = addDays(diaActual, 1);
-    }
-
-    return fechas;
-  }, []);
-
-  // Función para verificar disponibilidad de horarios
-  const verificarDisponibilidad = useCallback(async (subtratamientoId: string) => {
-    if (!subtratamientoId) return;
-
-    try {
-      setLoadingHorarios(true);
-
-      // Obtener la duración del subtratamiento
-      const { data: subtratamiento, error: errorSubtratamiento } = await supabase
-        .from('rf_subtratamientos')
-        .select('duracion_minutos')
-        .eq('id', subtratamientoId)
-        .single();
-
-      if (errorSubtratamiento) throw errorSubtratamiento;
-      if (!subtratamiento) throw new Error('No se encontró el subtratamiento');
-
-      const duracionMinutos = subtratamiento.duracion_minutos;
-      const fechasDisponibles = obtenerFechasDisponibles();
-      const horariosDisponibles: HorarioDisponible[] = [];
-
-      // Horario de trabajo (ajustar según necesidades)
-      const horaInicio = parse('09:00', 'HH:mm', new Date());
-      const horaFin = parse('18:00', 'HH:mm', new Date());
-      const intervalos = 30; // Intervalos de 30 minutos
-
-      // Para cada fecha disponible
-      for (const fecha of fechasDisponibles) {
-        // Obtener citas existentes para esta fecha
-        const { data: citasExistentes, error: errorCitas } = await supabase
-          .from('rf_citas')
-          .select('hora, box, rf_subtratamientos(duracion_minutos)')
-          .eq('fecha', fecha)
-          .order('hora');
-
-        if (errorCitas) throw errorCitas;
-
-        // Generar todos los posibles horarios para esta fecha
-        let horaActual = horaInicio;
-        while (isBefore(horaActual, horaFin)) {
-          const horaFinCita = addMinutes(horaActual, duracionMinutos);
-          
-          // Verificar si este horario se superpone con alguna cita existente
-          const haySuperposicion = citasExistentes?.some(cita => {
-            const horaCita = parse(cita.hora, 'HH:mm', new Date());
-            const duracionCita = cita.rf_subtratamientos?.duracion_minutos || 30;
-            const horaFinCitaExistente = addMinutes(horaCita, duracionCita);
-
-            return (
-              (isWithinInterval(horaActual, { start: horaCita, end: horaFinCitaExistente }) ||
-               isWithinInterval(horaFinCita, { start: horaCita, end: horaFinCitaExistente }) ||
-               isWithinInterval(horaCita, { start: horaActual, end: horaFinCita }))
-            );
-          });
-
-          if (!haySuperposicion) {
-            // Agregar horario disponible para cada box
-            for (let box = 1; box <= 8; box++) {
-              horariosDisponibles.push({
-                fecha,
-                hora: format(horaActual, 'HH:mm'),
-                box
-              });
-            }
-          }
-
-          horaActual = addMinutes(horaActual, intervalos);
-        }
-      }
-
-      setHorariosDisponibles(horariosDisponibles);
-    } catch (error) {
-      console.error('Error al verificar disponibilidad:', error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los horarios disponibles",
-        variant: "destructive"
-      });
-    } finally {
-      setLoadingHorarios(false);
-    }
-  }, [obtenerFechasDisponibles, supabase]);
-
-  // Actualizar horarios cuando cambia el subtratamiento
-  useEffect(() => {
-    if (activeTab === "individual") {
-      verificarDisponibilidad(form.getValues("subtratamiento_id"));
-    } else {
-      verificarDisponibilidad(formMultiple.subtratamiento_id);
-    }
-  }, [activeTab, form.getValues("subtratamiento_id"), formMultiple.subtratamiento_id, verificarDisponibilidad]);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[750px] max-h-[80vh] overflow-y-scroll scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
@@ -1068,8 +952,8 @@ export function CitaModal({
                     <Input
                       id="fecha"
                       type="date"
-                      value={form.watch('fecha') ?? ""}
-                      onChange={e => form.setValue('fecha', e.target.value)}
+                      value={form.fecha}
+                      onChange={(e) => setForm({ ...form, fecha: e.target.value })}
                       className="h-7 text-xs"
                       disabled={!!fechaSeleccionada}
                     />
@@ -1079,8 +963,8 @@ export function CitaModal({
                     <Input
                       id="hora"
                       type="time"
-                      value={form.watch('hora') ?? ""}
-                      onChange={e => form.setValue('hora', e.target.value)}
+                      value={form.hora}
+                      onChange={(e) => setForm({ ...form, hora: e.target.value })}
                       className="h-7 text-xs"
                       disabled={!!horaSeleccionada}
                     />
@@ -1092,8 +976,8 @@ export function CitaModal({
                       type="number"
                       min="1"
                       max="8"
-                      value={form.watch('box') ?? 1}
-                      onChange={e => form.setValue('box', parseInt(e.target.value) || 1)}
+                      value={form.box}
+                      onChange={(e) => setForm({ ...form, box: parseInt(e.target.value) || 1 })}
                       className="h-7 text-xs"
                       disabled={!!boxSeleccionado}
                     />
@@ -1105,11 +989,11 @@ export function CitaModal({
                     <Label htmlFor="dni" className="mb-1.5 block">DNI</Label>
                     <Input
                       id="dni"
-                      value={form.getValues("dni")}
+                      value={form.dni}
                       onChange={(e) => {
-                        const dni = e.target.value.replace(/\D/g, '').slice(0, 8);
-                        form.setValue("dni", dni);
-                        if (dni.length === 8) {
+                        const dni = e.target.value;
+                        setForm({ ...form, dni });
+                        if (dni.length >= 3) {
                           buscarCliente(dni);
                         }
                       }}
@@ -1122,8 +1006,8 @@ export function CitaModal({
                     <Label htmlFor="whatsapp" className="mb-1.5 block">WHATSAPP</Label>
                     <Input
                       id="whatsapp"
-                      value={form.watch('whatsapp') ?? ""}
-                      onChange={e => form.setValue('whatsapp', e.target.value)}
+                      value={form.whatsapp}
+                      onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
                       placeholder="9 dígitos"
                       className="h-8"
                     />
@@ -1134,8 +1018,8 @@ export function CitaModal({
                   <Label htmlFor="nombre_completo" className="mb-1.5 block">NOMBRE Y APELLIDO</Label>
                   <Input
                     id="nombre_completo"
-                    value={form.watch('nombre_completo')}
-                    onChange={(e) => form.setValue('nombre_completo', e.target.value)}
+                    value={form.nombre_completo}
+                    onChange={(e) => setForm({ ...form, nombre_completo: e.target.value })}
                     placeholder="Ingrese nombre completo"
                     className="h-8"
                     required
@@ -1146,11 +1030,9 @@ export function CitaModal({
                   <div className="flex-1">
                     <Label htmlFor="tratamiento" className="mb-1.5 block">TRATAMIENTO</Label>
                     <Select
-                      value={form.watch('tratamiento_id')}
+                      value={form.tratamiento_id}
                       onValueChange={(value) => {
-                        form.setValue('tratamiento_id', value);
-                        form.setValue('subtratamiento_id', "");
-                        form.setValue('precio', 0);
+                        setForm({ ...form, tratamiento_id: value, subtratamiento_id: "", precio: 0 });
                         fetchSubtratamientos(value);
                       }}
                     >
@@ -1169,15 +1051,15 @@ export function CitaModal({
                   <div className="flex-1">
                     <Label htmlFor="subtratamiento" className="mb-1.5 block">SUBTRATAMIENTO</Label>
                     <Select
-                      value={String(form.watch('subtratamiento_id'))}
+                      value={String(form.subtratamiento_id)}
                       onValueChange={(value) => {
-                        form.setValue('subtratamiento_id', value);
+                        setForm(prev => ({ ...prev, subtratamiento_id: value }));
                         const subtratamiento = subtratamientos.find(st => st.id === value);
                         if (subtratamiento) {
-                          form.setValue('precio', subtratamiento.precio);
+                          setForm(prev => ({ ...prev, precio: subtratamiento.precio }));
                         }
                       }}
-                      disabled={!form.watch('tratamiento_id')}
+                      disabled={!form.tratamiento_id}
                     >
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Seleccione subtratamiento" />
@@ -1199,8 +1081,8 @@ export function CitaModal({
                     <Input
                       id="precio"
                       type="number"
-                      value={form.watch('precio')}
-                      onChange={(e) => form.setValue('precio', parseFloat(e.target.value) || 0)}
+                      value={form.precio}
+                      onChange={(e) => setForm({ ...form, precio: parseFloat(e.target.value) || 0 })}
                       className="h-7 text-xs"
                     />
                   </div>
@@ -1209,16 +1091,16 @@ export function CitaModal({
                     <Input
                       id="sena"
                       type="number"
-                      value={form.watch('sena')}
-                      onChange={e => form.setValue('sena', parseFloat(e.target.value) || 0)}
+                      value={form.sena}
+                      onChange={(e) => setForm({ ...form, sena: parseFloat(e.target.value) || 0 })}
                       className="h-7 text-xs"
                     />
                   </div>
                   <div className="w-1/3">
                     <Label htmlFor="estado" className="mb-1.5 block text-xs">ESTADO</Label>
                     <Select
-                      value={form.watch('estado')}
-                      onValueChange={(value: FormData['estado']) => form.setValue('estado', value)}
+                      value={form.estado}
+                      onValueChange={(value: FormData['estado']) => setForm({ ...form, estado: value })}
                     >
                       <SelectTrigger className="h-7 text-xs">
                         <SelectValue placeholder="Seleccione estado" />
@@ -1238,45 +1120,12 @@ export function CitaModal({
                   <Label htmlFor="notas" className="mb-1.5 block">NOTAS</Label>
                   <Textarea
                     id="notas"
-                    value={form.watch('notas')}
-                    onChange={e => form.setValue('notas', e.target.value)}
+                    value={form.notas}
+                    onChange={(e) => setForm({ ...form, notas: e.target.value })}
                     placeholder="Observaciones adicionales"
                     className="min-h-[80px] text-xs"
                   />
                 </div>
-
-                {loadingHorarios ? (
-                  <div className="text-center py-4">
-                    <p>Cargando horarios disponibles...</p>
-                  </div>
-                ) : horariosDisponibles.length > 0 ? (
-                  <div className="space-y-4">
-                    <Label className="text-sm font-medium">HORARIOS DISPONIBLES</Label>
-                    <div className="grid grid-cols-3 gap-4">
-                      {horariosDisponibles.map((horario, index) => (
-                        <Button
-                          key={index}
-                          type="button"
-                          variant={form.getValues("fecha") === horario.fecha && 
-                                  form.getValues("hora") === horario.hora && 
-                                  form.getValues("box") === horario.box ? "default" : "outline"}
-                          className="h-8 text-xs"
-                          onClick={() => {
-                            form.setValue("fecha", horario.fecha);
-                            form.setValue("hora", horario.hora);
-                            form.setValue("box", horario.box);
-                          }}
-                        >
-                          {format(parse(horario.fecha, 'yyyy-MM-dd', new Date()), 'dd/MM')} - {horario.hora} (Box {horario.box})
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-4 text-muted-foreground">
-                    <p>No hay horarios disponibles para el subtratamiento seleccionado</p>
-                  </div>
-                )}
 
                 <DialogFooter className="pt-2">
                   <Button type="submit" className="w-full h-9">
@@ -1401,13 +1250,11 @@ export function CitaModal({
                             <Input
                               value={cliente.dni}
                               onChange={(e) => {
-                                const newDni = e.target.value.replace(/\D/g, '').slice(0, 8);
+                                const newDni = e.target.value;
                                 handleClienteChange(index, "dni", newDni);
-                                if (newDni.length === 8) {
-                                  buscarClienteMultiple(newDni, index);
-                                }
+                                buscarClienteMultiple(newDni, index);
                               }}
-                              placeholder="8 dígitos"
+                              placeholder="DNI"
                               className="h-7 text-sm"
                             />
                           </div>

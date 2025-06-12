@@ -27,10 +27,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { CitaModal } from "@/components/modals/cita-modal"
 import type { CitaWithRelations } from "@/types/cita"
-import { SubTratamiento, HorarioDisponible } from '@/types/cita'
 
 // Tipo para los sub-tratamientos con duración y precio
-interface SubTratamiento {
+interface SubTratamientoLocal {
   id: string
   nombre: string
   duracion: number
@@ -45,7 +44,7 @@ interface HorarioDB {
   vacantes_disponibles: number
 }
 
-interface HorarioDisponible {
+interface HorarioDisponibleLocal {
   hora_inicio: string
   hora_fin: string
   boxes_disponibles: number[]
@@ -66,7 +65,7 @@ interface FechaDisponible {
 
 interface DiaHorarios {
   fecha: Date
-  horarios: HorarioDisponible[]
+  horarios: HorarioDisponibleLocal[]
 }
 
 // Tipo para los tratamientos
@@ -75,7 +74,20 @@ interface TratamientoLocal {
   nombre: string
   max_clientes_por_turno: number
   boxes_disponibles: number[]
-  sub_tratamientos: SubTratamiento[]
+  sub_tratamientos: SubTratamientoLocal[]
+}
+
+// Actualizar la interfaz de datosCita
+interface DatosCita {
+  tratamiento_id: string
+  subtratamiento_id: string
+  fecha: string
+  hora: string
+  box: number
+  precio: number
+  duracion: number
+  tratamiento_nombre: string
+  subtratamiento_nombre: string
 }
 
 // Función para formatear la duración
@@ -122,19 +134,21 @@ const SeleccionTratamientos = () => {
   const [loading, setLoading] = useState(true)
   const [tratamientoSeleccionado, setTratamientoSeleccionado] = useState<TratamientoLocal | null>(null)
   const [tratamientoSeleccionadoDB, setTratamientoSeleccionadoDB] = useState<TratamientoDB | null>(null)
-  const [subTratamientoSeleccionado, setSubTratamientoSeleccionado] = useState<SubTratamiento | null>(null)
+  const [subTratamientoSeleccionado, setSubTratamientoSeleccionado] = useState<SubTratamientoLocal | null>(null)
   const [fechasDisponibles, setFechasDisponibles] = useState<FechaDisponible[]>([])
-  const [horariosDisponibles, setHorariosDisponibles] = useState<HorarioDisponible[]>([])
+  const [horariosDisponibles, setHorariosDisponibles] = useState<HorarioDisponibleLocal[]>([])
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string | null>(null)
   const [showNuevaCitaModal, setShowNuevaCitaModal] = useState(false)
-  const [datosCita, setDatosCita] = useState({
+  const [datosCita, setDatosCita] = useState<DatosCita>({
     tratamiento_id: "",
     subtratamiento_id: "",
     fecha: "",
     hora: "",
     box: 0,
     precio: 0,
-    duracion: 0
+    duracion: 0,
+    tratamiento_nombre: "",
+    subtratamiento_nombre: ""
   })
   const [datosNuevaCita, setDatosNuevaCita] = useState({
     tratamiento: "",
@@ -147,7 +161,7 @@ const SeleccionTratamientos = () => {
     subtratamiento_id: ""
   })
   const [boxSeleccionado, setBoxSeleccionado] = useState<number | null>(null)
-  const [horarioSeleccionado, setHorarioSeleccionado] = useState<HorarioDisponible | null>(null)
+  const [horarioSeleccionado, setHorarioSeleccionado] = useState<HorarioDisponibleLocal | null>(null)
   const [nombreCliente, setNombreCliente] = useState("")
   const [telefonoCliente, setTelefonoCliente] = useState("")
   const [observaciones, setObservaciones] = useState("")
@@ -214,7 +228,13 @@ const SeleccionTratamientos = () => {
           nombre: t.nombre_tratamiento,
           max_clientes_por_turno: 1,
           boxes_disponibles: [t.box],
-          sub_tratamientos: (t.rf_subtratamientos || []).map((st) => ({
+          sub_tratamientos: (t.rf_subtratamientos || []).map((st: { 
+            id: string
+            nombre_subtratamiento: string
+            duracion: number
+            precio: number
+            tratamiento_id: string 
+          }) => ({
             id: st.id,
             nombre: st.nombre_subtratamiento,
             duracion: st.duracion,
@@ -253,12 +273,14 @@ const SeleccionTratamientos = () => {
       hora: "",
       box: 0,
       precio: 0,
-      duracion: 0
+      duracion: 0,
+      tratamiento_nombre: "",
+      subtratamiento_nombre: ""
     })
   }
 
   // Función para seleccionar un subtratamiento
-  const seleccionarSubTratamiento = async (subTratamiento: SubTratamiento) => {
+  const seleccionarSubTratamiento = async (subTratamiento: SubTratamientoLocal) => {
     if (!tratamientoSeleccionado) {
       toast({
         title: "Error",
@@ -278,7 +300,9 @@ const SeleccionTratamientos = () => {
         tratamiento_id: tratamientoSeleccionado.id,
         subtratamiento_id: subTratamiento.id,
         precio: subTratamiento.precio,
-        duracion: subTratamiento.duracion
+        duracion: subTratamiento.duracion,
+        tratamiento_nombre: tratamientoSeleccionado.nombre,
+        subtratamiento_nombre: subTratamiento.nombre
       }))
 
       console.log('Consultando disponibilidad para tratamiento:', tratamientoSeleccionado.id)
@@ -398,7 +422,7 @@ const SeleccionTratamientos = () => {
       }
 
       // Generar horarios disponibles
-      const horarios: HorarioDisponible[] = []
+      const horarios: HorarioDisponibleLocal[] = []
       const horaInicio = parseISO(`2000-01-01T${disponibilidad.hora_inicio}`)
       const horaFin = parseISO(`2000-01-01T${disponibilidad.hora_fin}`)
       const duracion = subTratamientoSeleccionado.duracion || 60 // duración en minutos
@@ -460,14 +484,16 @@ const SeleccionTratamientos = () => {
     }
 
     // Actualizar los datos de la cita con el horario y box seleccionados
-    const datosCitaActualizados = {
+    const datosCitaActualizados: DatosCita = {
       tratamiento_id: tratamientoSeleccionado.id,
       subtratamiento_id: subTratamientoSeleccionado.id,
       fecha: fechaSeleccionada,
       hora: hora,
       box: box,
       precio: subTratamientoSeleccionado.precio,
-      duracion: subTratamientoSeleccionado.duracion
+      duracion: subTratamientoSeleccionado.duracion,
+      tratamiento_nombre: tratamientoSeleccionado.nombre,
+      subtratamiento_nombre: subTratamientoSeleccionado.nombre
     }
 
     setDatosCita(datosCitaActualizados)
@@ -525,7 +551,7 @@ const SeleccionTratamientos = () => {
       }
 
       // Convertir a formato de horarios disponibles
-      const horariosDisponibles: HorarioDisponible[] = []
+      const horariosDisponibles: HorarioDisponibleLocal[] = []
       for (const [boxId, horarios] of Object.entries(horariosPorBox)) {
         for (const horario of horarios) {
           const fechaHora = new Date(`${format(fecha, 'yyyy-MM-dd')}T${horario.hora_inicio}`)
@@ -792,7 +818,9 @@ const SeleccionTratamientos = () => {
             hora: "",
             box: 0,
             precio: 0,
-            duracion: 0
+            duracion: 0,
+            tratamiento_nombre: "",
+            subtratamiento_nombre: ""
           })
         }}
         tratamientos={tratamientosParaModal}
@@ -813,13 +841,22 @@ const SeleccionTratamientos = () => {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           rf_clientes: null,
-          rf_subtratamientos: null
+          rf_subtratamientos: {
+            id: datosCita.subtratamiento_id,
+            nombre_subtratamiento: datosCita.subtratamiento_nombre,
+            duracion: datosCita.duracion,
+            precio: datosCita.precio,
+            rf_tratamientos: {
+              id: datosCita.tratamiento_id,
+              nombre_tratamiento: datosCita.tratamiento_nombre
+            }
+          }
         }}
         fechaSeleccionada={datosCita.fecha}
         horaSeleccionada={datosCita.hora}
         boxSeleccionado={datosCita.box}
         title="Nueva Cita"
-        description="Complete los datos para crear una nueva cita"
+        description={`Crear cita para ${datosCita.tratamiento_nombre} - ${datosCita.subtratamiento_nombre}`}
       />
     </div>
   )
