@@ -1,14 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { format, addDays, setHours, setMinutes, isBefore, isAfter, parseISO, addMinutes } from "date-fns"
+import { format, addDays, setHours, setMinutes, isBefore, isAfter, parseISO, addMinutes, isWithinInterval } from "date-fns"
 import { es } from "date-fns/locale"
 import { ChevronRight, Clock, Calendar, ArrowLeft, DollarSign } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { toZonedTime, formatInTimeZone } from 'date-fns-tz'
+import { toZonedTime, formatInTimeZone, zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz'
 import { Database } from '@/types/supabase'
 
 import { Button } from "@/components/ui/button"
@@ -362,115 +362,136 @@ const SeleccionTratamientos = () => {
 
   // Función para seleccionar una fecha
   const seleccionarFecha = async (fecha: string) => {
-    if (!tratamientoSeleccionado || !subTratamientoSeleccionado) {
-      toast({
-        title: "Error",
-        description: "Debes seleccionar un tratamiento y subtratamiento primero",
-        variant: "destructive"
-      })
-      return
-    }
-
     try {
-      setLoading(true)
-      // Asegurarnos de que la fecha esté en el formato correcto
-      const fechaLocal = fechaUTCToLocal(fecha)
-      setFechaSeleccionada(fechaLocal)
-      setHorariosDisponibles([])
+      setLoading(true);
+      setFechaSeleccionada(fecha);
+      setHorariosDisponibles([]);
 
-      // Actualizar los datos de la cita con la fecha seleccionada
-      setDatosCita(prev => ({
-        ...prev,
-        fecha: fechaLocal
-      }))
+      if (!tratamientoSeleccionado?.id || !subTratamientoSeleccionado?.id) {
+        console.error('No hay tratamiento o subtratamiento seleccionado');
+        return;
+      }
 
-      // Obtener las citas existentes para esta fecha y box
-      const { data: citasExistentes, error: errorCitas } = await supabaseClient
-        .from("rf_citas")
-        .select("*")
-        .eq("fecha", fechaLocal)
-        .in("box", tratamientoSeleccionado.boxes_disponibles)
+      console.log('Consultando disponibilidad para tratamiento:', tratamientoSeleccionado.id);
+
+      // Convertir la fecha a la zona horaria de Argentina
+      const fechaArgentina = toZonedTime(new Date(fecha), 'America/Argentina/Buenos_Aires');
+      console.log('Fecha en zona horaria Argentina:', fechaArgentina);
+
+      // Obtener citas existentes para la fecha seleccionada
+      const { data: citasExistentes, error: errorCitas } = await supabase
+        .from('rf_citas')
+        .select(`
+          *,
+          rf_subtratamientos (
+            id,
+            duracion
+          )
+        `)
+        .eq('fecha', fecha)
+        .eq('estado', 'reservado');
 
       if (errorCitas) {
-        console.error('Error al cargar citas existentes:', errorCitas)
-        throw errorCitas
+        console.error('Error al obtener citas existentes:', errorCitas);
+        throw errorCitas;
       }
 
-      console.log('Citas existentes:', citasExistentes)
+      console.log('Citas existentes encontradas:', citasExistentes);
 
-      // Obtener la disponibilidad para esta fecha
-      const { data: disponibilidad, error: errorDisponibilidad } = await supabaseClient
-        .from("rf_disponibilidad")
-        .select("*")
-        .eq("tratamiento_id", tratamientoSeleccionado.id)
-        .lte("fecha_inicio", fechaLocal)
-        .gte("fecha_fin", fechaLocal)
-        .single()
+      // Organizar citas por box
+      const citasPorBox = citasExistentes.reduce((acc, cita) => {
+        if (!acc[cita.box]) {
+          acc[cita.box] = [];
+        }
+        // Convertir la hora de la cita a la zona horaria de Argentina
+        const horaCita = toZonedTime(
+          new Date(`${cita.fecha}T${cita.hora}`),
+          'America/Argentina/Buenos_Aires'
+        );
+        const horaLocal = formatInTimeZone(horaCita, 'America/Argentina/Buenos_Aires', 'HH:mm');
+        console.log(`Cita en box ${cita.box} a las ${horaLocal} con duración ${cita.rf_subtratamientos?.duracion || 30} minutos`);
+        
+        acc[cita.box].push({
+          ...cita,
+          horaLocal,
+          horaInicio: horaCita,
+          horaFin: new Date(horaCita.getTime() + (cita.rf_subtratamientos?.duracion || 30) * 60000)
+        });
+        return acc;
+      }, {} as Record<number, Array<any>>);
 
-      if (errorDisponibilidad) {
-        console.error('Error al cargar disponibilidad:', errorDisponibilidad)
-        throw errorDisponibilidad
-      }
-
-      if (!disponibilidad) {
-        toast({
-          title: "Error",
-          description: "No hay disponibilidad para esta fecha",
-          variant: "destructive"
-        })
-        return
-      }
+      console.log('Citas organizadas por box:', citasPorBox);
 
       // Generar horarios disponibles
-      const horarios: HorarioDisponibleLocal[] = []
-      const horaInicio = parseISO(`2000-01-01T${disponibilidad.hora_inicio}`)
-      const horaFin = parseISO(`2000-01-01T${disponibilidad.hora_fin}`)
-      const duracion = subTratamientoSeleccionado.duracion || 60 // duración en minutos
+      const horariosDisponibles: HorarioDisponibleLocal[] = [];
+      const duracion = subTratamientoSeleccionado.duracion || 30; // duración en minutos
 
-      // Generar horarios cada 30 minutos
-      let horaActual = horaInicio
-      while (horaActual < horaFin) {
-        const horaStr = format(horaActual, 'HH:mm')
-        const horaFinStr = format(addMinutes(horaActual, duracion), 'HH:mm')
+      // Horario de trabajo en zona horaria de Argentina
+      const horaInicio = toZonedTime(
+        new Date(`${fecha}T09:00:00`),
+        'America/Argentina/Buenos_Aires'
+      );
+      const horaFin = toZonedTime(
+        new Date(`${fecha}T18:00:00`),
+        'America/Argentina/Buenos_Aires'
+      );
 
-        // Verificar si hay citas existentes en este horario
-        const citasEnHorario = citasExistentes?.filter(cita => {
-          const citaHoraInicio = parseISO(`2000-01-01T${cita.hora}`)
-          const citaHoraFin = addMinutes(citaHoraInicio, cita.duracion || 60)
-          return (
-            (horaActual >= citaHoraInicio && horaActual < citaHoraFin) ||
-            (addMinutes(horaActual, duracion) > citaHoraInicio && addMinutes(horaActual, duracion) <= citaHoraFin)
-          )
-        }) || []
+      // Intervalo de 30 minutos
+      const intervalo = 30;
 
-        // Filtrar boxes disponibles que no estén ocupados
-        const boxesDisponibles = disponibilidad.boxes_disponibles.filter((box: number) => 
-          !citasEnHorario.some(cita => cita.box === box)
-        )
+      // Para cada box
+      for (let box = 1; box <= 3; box++) {
+        const citasBox = citasPorBox[box] || [];
+        console.log(`Verificando disponibilidad para box ${box}:`, citasBox);
 
-        if (boxesDisponibles.length > 0) {
-          horarios.push({
-            hora_inicio: horaStr,
-            hora_fin: horaFinStr,
-            boxes_disponibles: boxesDisponibles
-          })
+        // Generar slots de tiempo
+        for (let tiempo = new Date(horaInicio); tiempo < horaFin; tiempo.setMinutes(tiempo.getMinutes() + intervalo)) {
+          const horaSlot = formatInTimeZone(tiempo, 'America/Argentina/Buenos_Aires', 'HH:mm');
+          const horaFinSlot = new Date(tiempo.getTime() + duracion * 60000);
+          
+          // Verificar si hay solapamiento con citas existentes
+          const haySolapamiento = citasBox.some(cita => {
+            const solapamiento = (
+              (tiempo >= cita.horaInicio && tiempo < cita.horaFin) || // El inicio del nuevo slot está dentro de una cita existente
+              (horaFinSlot > cita.horaInicio && horaFinSlot <= cita.horaFin) || // El fin del nuevo slot está dentro de una cita existente
+              (tiempo <= cita.horaInicio && horaFinSlot >= cita.horaFin) // El nuevo slot engloba una cita existente
+            );
+
+            if (solapamiento) {
+              console.log(`Solapamiento encontrado en box ${box}:`, {
+                horaSlot,
+                horaFinSlot: formatInTimeZone(horaFinSlot, 'America/Argentina/Buenos_Aires', 'HH:mm'),
+                citaHoraInicio: formatInTimeZone(cita.horaInicio, 'America/Argentina/Buenos_Aires', 'HH:mm'),
+                citaHoraFin: formatInTimeZone(cita.horaFin, 'America/Argentina/Buenos_Aires', 'HH:mm')
+              });
+            }
+
+            return solapamiento;
+          });
+
+          if (!haySolapamiento) {
+            horariosDisponibles.push({
+              hora_inicio: horaSlot,
+              hora_fin: horaFinSlot.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+              boxes_disponibles: [box]
+            });
+          }
         }
-
-        horaActual = addMinutes(horaActual, 30)
       }
 
-      setHorariosDisponibles(horarios)
+      console.log('Horarios disponibles finales:', horariosDisponibles);
+      setHorariosDisponibles(horariosDisponibles);
     } catch (error) {
-      console.error('Error al cargar horarios disponibles:', error)
+      console.error('Error al verificar disponibilidad:', error);
       toast({
         title: "Error",
-        description: "No se pudieron cargar los horarios disponibles",
+        description: "Error al verificar disponibilidad de horarios",
         variant: "destructive"
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   // Función para seleccionar un horario
   const seleccionarHorario = (hora: string, box: number) => {
