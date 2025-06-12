@@ -4,9 +4,12 @@ import { es } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import type { Cita, FechaDisponible, SubTratamiento } from '@/types/cita'
+import { DisponibilidadModal } from "@/components/modals/disponibilidad-modal"
 
 interface TimeSlot {
   hora: string
@@ -15,28 +18,39 @@ interface TimeSlot {
 
 interface Tratamiento { id: string; nombre: string; sub_tratamientos: SubTratamiento[]; }
 
+interface FormData {
+  tratamiento_id: string
+  fecha_inicio: string
+  fecha_fin: string
+  hora_inicio: string
+  hora_fin: string
+  boxes_disponibles: number[]
+  cantidad_clientes?: number
+}
+
 interface CalendarGridProps {
   fecha: Date
   citas: Cita[]
   fechasDisponibles: FechaDisponible[]
   tratamientos: Tratamiento[]
   subTratamientos: SubTratamiento[]
-  onCrearDisponibilidad: (params: {
+  onCrearDisponibilidad: (data: {
+    tratamiento_id: string
+    fecha_inicio: string
+    fecha_fin: string
+    hora_inicio: string
+    hora_fin: string
+    boxes_disponibles: number[]
+  }) => Promise<void>
+  onCrearCita: (data: {
     fecha: Date
     horaInicio: string
     horaFin: string
     boxes: number[]
     subTratamientoId: number
   }) => Promise<void>
-  onCrearCita: (params: {
-    fecha: Date
-    horaInicio: string
-    horaFin: string
-    box: number
-    subTratamientoId: number
-  }) => Promise<void>
-  onEditarCita: (cita: Cita) => void
-  onFechaChange?: (fecha: Date) => void
+  onEditarCita: (cita: Cita) => Promise<void>
+  onFechaChange: (fecha: Date) => void
 }
 
 const HORAS_INICIO = 8
@@ -70,6 +84,8 @@ export function CalendarGrid({
   const gridRef = useRef<HTMLDivElement>(null)
   const [fechaCalendario, setFechaCalendario] = useState<Date>(fecha)
   const [fechaActual, setFechaActual] = useState<Date>(fecha)
+  const [horaInicio, setHoraInicio] = useState('')
+  const [horaFin, setHoraFin] = useState('')
 
   // Generar slots de tiempo
   const slots: TimeSlot[] = []
@@ -188,69 +204,55 @@ export function CalendarGrid({
   }
 
   // Manejadores de modales
-  const handleCrearDisponibilidad = async () => {
-    if (!subTratamientoSeleccionado || slotsSeleccionados.size === 0) return
+  const handleCrearDisponibilidad = async (formData: FormData) => {
+    await onCrearDisponibilidad({
+      tratamiento_id: formData.tratamiento_id,
+      fecha_inicio: format(fechaCalendario, 'yyyy-MM-dd'),
+      fecha_fin: format(fechaCalendario, 'yyyy-MM-dd'),
+      hora_inicio: formData.hora_inicio,
+      hora_fin: formData.hora_fin,
+      boxes_disponibles: formData.boxes_disponibles
+    });
+    setShowModalDisponibilidad(false);
+  };
 
-    const slotsArray = Array.from(slotsSeleccionados)
+  const handleCrearCita = async () => {
+    if (!subTratamientoSeleccionado || slotsSeleccionados.size === 0) return;
+
+    const slotsArray = Array.from(slotsSeleccionados);
     const boxes = Array.from(new Set(slotsArray.map(slot => {
-      const boxStr = slot.split('-')[1]
-      const boxNum = boxStr ? parseInt(boxStr, 10) : 0
-      return boxNum > 0 ? boxNum : null
-    }))).filter((box): box is number => box !== null)
-    
+      const boxStr = slot.split('-')[1];
+      const boxNum = boxStr ? parseInt(boxStr, 10) : 0;
+      return boxNum > 0 ? boxNum : null;
+    }))).filter((box): box is number => box !== null);
+
     // Ordenar slots por hora
     slotsArray.sort((a, b) => {
-      const [horaA, minutoA] = a.split(':')[0].split('-')[0].split(':').map(Number)
-      const [horaB, minutoB] = b.split(':')[0].split('-')[0].split(':').map(Number)
-      return (horaA * 60 + minutoA) - (horaB * 60 + minutoB)
-    })
+      const [horaA, minutoA] = a.split(':')[0].split('-')[0].split(':').map(Number);
+      const [horaB, minutoB] = b.split(':')[0].split('-')[0].split(':').map(Number);
+      return (horaA * 60 + minutoA) - (horaB * 60 + minutoB);
+    });
 
-    const primerSlot = slotsArray[0].split('-')[0]
-    const ultimoSlot = slotsArray[slotsArray.length - 1].split('-')[0]
-    const [horaFin, minutoFin] = ultimoSlot.split(':').map(Number)
+    const primerSlot = slotsArray[0].split('-')[0];
+    const ultimoSlot = slotsArray[slotsArray.length - 1].split('-')[0];
+    const [horaFin, minutoFin] = ultimoSlot.split(':').map(Number);
     const horaFinObj = addMinutes(
       parseISO(`${format(fecha, 'yyyy-MM-dd')}T${horaFin}:${minutoFin}`),
       INTERVALO_MINUTOS
-    )
+    );
 
-    await onCrearDisponibilidad({
+    await onCrearCita({
       fecha,
       horaInicio: primerSlot,
       horaFin: format(horaFinObj, 'HH:mm'),
       boxes,
       subTratamientoId: subTratamientoSeleccionado
-    })
+    });
 
-    setShowModalDisponibilidad(false)
-    setSlotsSeleccionados(new Set())
-    setSubTratamientoSeleccionado(null)
-  }
-
-  const handleCrearCita = async () => {
-    if (!subTratamientoSeleccionado || !slotSeleccionado || !boxSeleccionado) return
-
-    const subTratamiento = subTratamientos.find(st => Number(st.id) === subTratamientoSeleccionado)
-    if (!subTratamiento) return
-
-    const horaInicio = `${slotSeleccionado.hora}:${slotSeleccionado.minutos.toString().padStart(2, '0')}`
-    const horaFinObj = addMinutes(
-      parseISO(`${format(fecha, 'yyyy-MM-dd')}T${horaInicio}`),
-      subTratamiento.duracion
-    )
-
-    await onCrearCita({
-      fecha,
-      horaInicio,
-      horaFin: format(horaFinObj, 'HH:mm'),
-      box: boxSeleccionado,
-      subTratamientoId: subTratamientoSeleccionado
-    })
-
-    setShowModalCita(false)
-    setSlotSeleccionado(null)
-    setBoxSeleccionado(null)
-    setSubTratamientoSeleccionado(null)
-  }
+    setShowModalCita(false);
+    setSlotsSeleccionados(new Set());
+    setSubTratamientoSeleccionado(null);
+  };
 
   // Limpiar selección al cambiar de fecha
   useEffect(() => {
@@ -331,33 +333,15 @@ export function CalendarGrid({
            </div>
         </div>
       </ScrollArea>
-      {/* Modal de disponibilidad (sin cambios) */}
-      <Dialog open={showModalDisponibilidad} onOpenChange={setShowModalDisponibilidad}>
-         <DialogContent className="sm:max-w-md">
-           <DialogHeader>
-             <DialogTitle>Crear disponibilidad</DialogTitle>
-           </DialogHeader>
-           <div className="py-4">
-             <Select
-               value={subTratamientoSeleccionado?.toString()}
-               onValueChange={(value) => setSubTratamientoSeleccionado(parseInt(value))}
-             >
-               <SelectTrigger className="w-full">
-                 <SelectValue placeholder="Seleccionar tratamiento" />
-               </SelectTrigger>
-               <SelectContent>
-                 {subTratamientos.map((st) => ( <SelectItem key={st.id} value={st.id.toString()}> {st.nombre} </SelectItem> ))}
-               </SelectContent>
-             </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowModalDisponibilidad(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleCrearDisponibilidad}> Crear disponibilidad </Button>
-          </DialogFooter>
-         </DialogContent>
-      </Dialog>
+      {/* Modal de disponibilidad */}
+      <DisponibilidadModal
+        open={showModalDisponibilidad}
+        onOpenChange={setShowModalDisponibilidad}
+        onSubmit={handleCrearDisponibilidad}
+        tratamientos={tratamientos}
+        title="Crear disponibilidad"
+        description="Seleccione el tratamiento y los horarios disponibles"
+      />
       {/* Modal de cita (sin cambios) */}
       <Dialog open={showModalCita} onOpenChange={setShowModalCita}>
          <DialogContent className="sm:max-w-md">

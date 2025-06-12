@@ -1,59 +1,59 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { Clock, DollarSign, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from "react"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+import { Clock, DollarSign, ChevronRight } from "lucide-react"
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { supabase } from '@/lib/supabase';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { supabase } from "@/lib/supabase"
 
 type Tratamiento = {
-  id: string;
-  nombre: string;
-  sub_tratamientos: SubTratamiento[];
-};
+  id: string
+  nombre: string
+  sub_tratamientos: SubTratamiento[]
+}
 
 type SubTratamiento = {
-  id: string;
-  nombre: string;
-  duracion: number;
-  precio: number;
-  tratamiento_id: string;
-};
+  id: string
+  nombre: string
+  duracion: number
+  precio: number
+  tratamiento_id: string
+}
 
 type Disponibilidad = {
-  id: string;
-  fecha_inicio: string;
-  fecha_fin: string;
-  hora_inicio: string;
-  hora_fin: string;
-  boxes_disponibles: number[];
-  cantidad_clientes: number;
-  tratamiento_id: string;
-};
+  id: string
+  fecha_inicio: string
+  fecha_fin: string
+  hora_inicio: string
+  hora_fin: string
+  boxes_disponibles: number[]
+  cantidad_clientes: number
+  tratamiento_id: string
+}
 
-export default function TratamientosPage() {
-  const [tratamientos, setTratamientos] = useState<Tratamiento[]>([]);
-  const [tratamientoSeleccionado, setTratamientoSeleccionado] = useState<Tratamiento | null>(null);
-  const [subTratamientoSeleccionado, setSubTratamientoSeleccionado] = useState<SubTratamiento | null>(null);
-  const [disponibilidades, setDisponibilidades] = useState<Disponibilidad[]>([]);
-  const [fechasDisponibles, setFechasDisponibles] = useState<{ fecha: string; turnos: string[] }[]>([]);
-  const [mostrarTurnos, setMostrarTurnos] = useState(false);
-  const [fechaSeleccionada, setFechaSeleccionada] = useState<string | null>(null);
+export function TratamientosPage() {
+  const [tratamientos, setTratamientos] = useState<Tratamiento[]>([])
+  const [tratamientoSeleccionado, setTratamientoSeleccionado] = useState<Tratamiento | null>(null)
+  const [subTratamientoSeleccionado, setSubTratamientoSeleccionado] = useState<SubTratamiento | null>(null)
+  const [disponibilidades, setDisponibilidades] = useState<Disponibilidad[]>([])
+  const [fechasDisponibles, setFechasDisponibles] = useState<{fecha: string, turnos: string[]}[]>([])
+  const [mostrarTurnos, setMostrarTurnos] = useState(false)
+  const [fechaSeleccionada, setFechaSeleccionada] = useState<string | null>(null)
 
   useEffect(() => {
-    cargarTratamientos();
-  }, []);
+    cargarTratamientos()
+  }, [])
 
   useEffect(() => {
     if (subTratamientoSeleccionado) {
-      cargarDisponibilidades();
+      cargarDisponibilidades()
     }
-  }, [subTratamientoSeleccionado]);
+  }, [subTratamientoSeleccionado])
 
   const cargarTratamientos = async () => {
     try {
@@ -70,17 +70,17 @@ export default function TratamientosPage() {
             tratamiento_id
           )
         `)
-        .order('nombre');
+        .order('nombre')
 
-      if (error) throw error;
-      setTratamientos(data || []);
+      if (error) throw error
+      setTratamientos(data || [])
     } catch (error) {
-      console.error("Error al cargar tratamientos:", error);
+      console.error("Error al cargar tratamientos:", error)
     }
-  };
+  }
 
   const cargarDisponibilidades = async () => {
-    if (!subTratamientoSeleccionado) return;
+    if (!subTratamientoSeleccionado) return
 
     try {
       const { data, error } = await supabase
@@ -88,47 +88,47 @@ export default function TratamientosPage() {
         .select("*")
         .eq("tratamiento_id", subTratamientoSeleccionado.tratamiento_id)
         .gte("fecha_inicio", new Date().toISOString().split('T')[0])
-        .order("fecha_inicio");
+        .order("fecha_inicio")
 
-      if (error) throw error;
+      if (error) throw error
 
       // Procesar las disponibilidades para obtener las próximas 3 fechas
-      const fechasUnicas = Array.from(new Set(data.map(d => d.fecha_inicio)));
-      const proximasFechas = fechasUnicas.slice(0, 3);
+      const fechasUnicas = Array.from(new Set(data.map(d => d.fecha_inicio)))
+      const proximasFechas = fechasUnicas.slice(0, 3)
 
       const fechasConTurnos = proximasFechas.map(fecha => {
-        const disponibilidadesDelDia = data.filter(d => d.fecha_inicio === fecha);
+        const disponibilidadesDelDia = data.filter(d => d.fecha_inicio === fecha)
         const turnos = disponibilidadesDelDia.flatMap(d => {
-          const turnos: string[] = [];
-          let horaActual = d.hora_inicio;
+          const turnos: string[] = []
+          let horaActual = d.hora_inicio
           while (horaActual < d.hora_fin) {
-            turnos.push(horaActual);
+            turnos.push(horaActual)
             // Sumar la duración del subtratamiento
-            const [horas, minutos] = horaActual.split(':').map(Number);
-            const duracionMinutos = subTratamientoSeleccionado.duracion;
-            const nuevaHora = new Date();
-            nuevaHora.setHours(horas, minutos + duracionMinutos);
-            horaActual = format(nuevaHora, 'HH:mm');
+            const [horas, minutos] = horaActual.split(':').map(Number)
+            const duracionMinutos = subTratamientoSeleccionado.duracion
+            const nuevaHora = new Date()
+            nuevaHora.setHours(horas, minutos + duracionMinutos)
+            horaActual = format(nuevaHora, 'HH:mm')
           }
-          return turnos;
-        });
+          return turnos
+        })
         return {
           fecha,
           turnos: turnos.slice(0, 5) // Tomar solo los primeros 5 turnos
-        };
-      });
+        }
+      })
 
-      setFechasDisponibles(fechasConTurnos);
+      setFechasDisponibles(fechasConTurnos)
     } catch (error) {
-      console.error("Error al cargar disponibilidades:", error);
+      console.error("Error al cargar disponibilidades:", error)
     }
-  };
+  }
 
   const formatearDuracion = (minutos: number) => {
-    const horas = Math.floor(minutos / 60);
-    const mins = minutos % 60;
-    return `${horas}h ${mins}m`;
-  };
+    const horas = Math.floor(minutos / 60)
+    const mins = minutos % 60
+    return `${horas}h ${mins}m`
+  }
 
   return (
     <div className="container mx-auto py-8">
@@ -209,8 +209,8 @@ export default function TratamientosPage() {
                 key={fecha}
                 className="cursor-pointer hover:border-primary transition-colors"
                 onClick={() => {
-                  setFechaSeleccionada(fecha);
-                  setMostrarTurnos(true);
+                  setFechaSeleccionada(fecha)
+                  setMostrarTurnos(true)
                 }}
               >
                 <CardHeader>
@@ -264,7 +264,7 @@ export default function TratamientosPage() {
                       className="justify-start"
                       onClick={() => {
                         // Aquí iría la lógica para seleccionar el turno
-                        setMostrarTurnos(false);
+                        setMostrarTurnos(false)
                       }}
                     >
                       {turno}
@@ -276,5 +276,5 @@ export default function TratamientosPage() {
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 } 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
@@ -229,29 +229,55 @@ export default function GestionTratamientosPage() {
       {isLoading ? (
         <p>Cargando tratamientos...</p>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {tratamientos.map((trat) => (
-            <Card key={trat.id}>
-              <CardHeader>
-                <div className="flex justify-between items-center">
+            <Card key={trat.id} className="w-full">
+              <CardHeader className="p-4">
+                <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle>{trat.nombre_tratamiento}</CardTitle>
-                    <p className="text-sm text-gray-600 mt-1">Box: {trat.box}</p>
+                    <CardTitle className="text-base">{trat.nombre_tratamiento}</CardTitle>
+                    <CardDescription className="text-xs">Box: {trat.box}</CardDescription>
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openEditTratamiento(trat)}><Edit className="w-4 h-4" /></Button>
-                    <Button variant="destructive" size="sm" onClick={() => deleteTratamiento(trat.id)}><Trash2 className="w-4 h-4" /></Button>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 px-2 text-xs"
+                      onClick={() => {
+                        setCurrentTratamientoId(trat.id);
+                        openNewSubTratamiento();
+                      }}
+                    >
+                      + SUB
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 w-8 p-0"
+                      onClick={() => openEditTratamiento(trat)}
+                    >
+                      <Edit className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="h-8 w-8 p-0"
+                      onClick={() => deleteTratamiento(trat.id)}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 pt-0">
                 {trat.rf_subtratamientos && trat.rf_subtratamientos.length > 0 && (
                   <div>
-                    <h4 className="font-semibold mb-2">Subtratamientos:</h4>
-                    <ul className="space-y-1">
+                    <h4 className="font-semibold text-xs mb-1">Subtratamientos:</h4>
+                    <ul className="space-y-0.5">
                       {trat.rf_subtratamientos.map((sub) => (
-                        <li key={sub.id} className="text-sm">
-                          <span className="font-medium">{sub.nombre_subtratamiento}</span> - {sub.duracion} min - €{sub.precio}
+                        <li key={sub.id} className="text-xs flex justify-between items-center">
+                          <span className="font-medium truncate mr-2">{sub.nombre_subtratamiento}</span>
+                          <span className="text-muted-foreground whitespace-nowrap">{sub.duracion}min - €{sub.precio}</span>
                         </li>
                       ))}
                     </ul>

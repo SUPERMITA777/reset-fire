@@ -9,15 +9,22 @@ import esLocale from "@fullcalendar/core/locales/es";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import resourceTimeGridPlugin from "@fullcalendar/resource-timegrid";
-import { EventInput } from '@fullcalendar/core';
+import { EventInput, EventDropArg, EventChangeArg } from '@fullcalendar/core';
 import { toast } from "@/components/ui/use-toast";
+import { CitaModal } from "@/components/modals/cita-modal";
+import { format, parseISO } from "date-fns";
+import resourceTimelinePlugin from "@fullcalendar/resource-timeline";
+import { es } from "date-fns/locale";
+import type { Cita, CitaWithRelations, Tratamiento, SubTratamiento } from "@/types/cita";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CalendarEvent } from "@/components/ui/calendar-event";
 
 const BOXES = Array.from({ length: 8 }, (_, i) => ({ id: (i + 1).toString(), title: `BOX ${i + 1}` }));
 
-type ViewType = "resourceTimeGridDay" | "timeGridWeek" | "dayGridMonth";
+type ViewType = "resourceTimeGridDay" | "resourceTimeGridWeek" | "resourceTimeGridMonth";
 
 interface DisponibilidadFromDB {
   id: string;
@@ -27,6 +34,9 @@ interface DisponibilidadFromDB {
   hora_inicio: string;
   hora_fin: string;
   boxes_disponibles: number[];
+  cantidad_clientes: number;
+  created_at: string;
+  updated_at: string;
   rf_tratamientos: {
     id: string;
     nombre_tratamiento: string;
@@ -36,230 +46,444 @@ interface DisponibilidadFromDB {
 interface Disponibilidad {
   id: string;
   tratamiento_id: string;
-  nombre_tratamiento: string;
   fecha_inicio: string;
   fecha_fin: string;
   hora_inicio: string;
   hora_fin: string;
   boxes_disponibles: number[];
+  cantidad_clientes: number;
+  created_at?: string;
+  updated_at?: string;
+  nombre_tratamiento: string;
+  rf_tratamientos: {
+    id: string;
+    nombre_tratamiento: string;
+  } | null;
+}
+
+interface EventColors {
+  backgroundColor: string;
+  borderColor: string;
+  textColor: string;
+}
+
+interface EventDropInfo {
+  event: {
+    id: string;
+    start: Date;
+    getResources: () => Array<{ id: string }>;
+    extendedProps: {
+      tipo: string;
+      duracion?: number;
+    };
+  };
+  revert: () => void;
+}
+
+interface EventAllowInfo {
+  start: Date;
+  draggedEvent: {
+    extendedProps: {
+      tipo: string;
+    };
+  };
+}
+
+interface EventExtendedProps {
+  tipo?: string;
+  estado?: string;
+  es_multiple?: boolean;
+  subtratamiento?: string;
+  clienteInfo?: string;
+  boxes?: number[];
+}
+
+interface CalendarEvent {
+  title: string;
+  extendedProps: EventExtendedProps;
 }
 
 export default function CalendarioPage() {
-  const calendarRef = useRef<FullCalendar>(null);
-  const [view, setView] = useState<ViewType>("resourceTimeGridDay");
-  const [date, setDate] = useState<Date>(new Date());
+  const [citas, setCitas] = useState<CitaWithRelations[]>([]);
+  const [tratamientos, setTratamientos] = useState<Tratamiento[]>([]);
   const [disponibilidad, setDisponibilidad] = useState<Disponibilidad[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<ViewType>("resourceTimeGridDay");
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [showModal, setShowModal] = useState(false);
+  const [selectedCita, setSelectedCita] = useState<CitaWithRelations | null>(null);
+  const [showModalEditar, setShowModalEditar] = useState(false);
+  const [citaAEditar, setCitaAEditar] = useState<CitaWithRelations | null>(null);
+  const calendarRef = useRef<FullCalendar>(null);
 
+  // Cargar datos iniciales
   useEffect(() => {
-    fetchDisponibilidad();
-  }, []);
+    const cargarDatos = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const fetchDisponibilidad = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("rf_disponibilidad")
+        // Cargar citas
+        const { data: citasData, error: citasError } = await supabase
+          .from('rf_citas')
         .select(`
-          id,
-          tratamiento_id,
-          fecha_inicio,
-          fecha_fin,
-          hora_inicio,
-          hora_fin,
-          boxes_disponibles,
+            *,
+            rf_clientes (
+              id,
+              dni,
+              nombre_completo,
+              whatsapp
+            ),
+            rf_subtratamientos (
+              id,
+              nombre_subtratamiento,
+              duracion,
+              precio,
+              rf_tratamientos (
+                id,
+                nombre_tratamiento
+              )
+            ),
+            rf_citas_clientes ( count )
+          `)
+          .order('fecha', { ascending: true });
+
+        if (citasError) throw citasError;
+
+        // Cargar tratamientos
+        const { data: tratamientosData, error: tratamientosError } = await supabase
+          .from('rf_tratamientos')
+          .select('*')
+          .order('nombre_tratamiento');
+
+        if (tratamientosError) throw tratamientosError;
+
+        // Cargar disponibilidades
+        const { data: disponibilidadData, error: disponibilidadError } = await supabase
+          .from('rf_disponibilidad')
+          .select(`
+            *,
           rf_tratamientos (
             id,
             nombre_tratamiento
           )
         `)
-        .order("fecha_inicio", { ascending: true });
+          .order('fecha_inicio', { ascending: true });
 
-      if (error) {
-        console.error("Error al obtener disponibilidad:", error);
-        setError(error.message);
-        return;
-      }
+        if (disponibilidadError) throw disponibilidadError;
 
-      const disponibilidadTransformada = ((data as unknown) as DisponibilidadFromDB[]).map(d => ({
-        id: d.id,
-        tratamiento_id: d.tratamiento_id,
-        nombre_tratamiento: d.rf_tratamientos?.nombre_tratamiento || "Sin nombre",
-        fecha_inicio: d.fecha_inicio,
-        fecha_fin: d.fecha_fin,
-        hora_inicio: d.hora_inicio,
-        hora_fin: d.hora_fin,
-        boxes_disponibles: d.boxes_disponibles
-      }));
+        // Transformar disponibilidades para incluir nombre_tratamiento
+        const disponibilidadesFormateadas = disponibilidadData?.map(d => ({
+          ...d,
+          nombre_tratamiento: d.rf_tratamientos?.nombre_tratamiento || 'Sin tratamiento'
+        })) || [];
 
-      setDisponibilidad(disponibilidadTransformada);
+        setCitas(citasData || []);
+        setTratamientos(tratamientosData || []);
+        setDisponibilidad(disponibilidadesFormateadas);
     } catch (err) {
-      console.error("Error al obtener disponibilidad:", err);
-      setError(err instanceof Error ? err.message : "Error desconocido");
-    } finally {
-      setLoading(false);
+        console.error('Error al cargar datos:', err);
+        setError(err instanceof Error ? err.message : 'Error al cargar los datos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarDatos();
+  }, []);
+
+  // Función para recargar citas
+  const recargarCitas = async () => {
+    try {
+      const { data: citasData, error: citasError } = await supabase
+        .from('rf_citas')
+        .select(`
+          *,
+          rf_clientes (
+            id,
+            dni,
+            nombre_completo,
+            whatsapp
+          ),
+          rf_subtratamientos (
+            id,
+            nombre_subtratamiento,
+            duracion,
+            precio,
+            rf_tratamientos (
+              id,
+              nombre_tratamiento
+            )
+          ),
+          rf_citas_clientes ( count )
+        `)
+        .order('fecha', { ascending: true });
+
+      if (citasError) throw citasError;
+      setCitas(citasData || []);
+    } catch (err) {
+      console.error('Error al recargar citas:', err);
+      toast({
+        title: "Error",
+        description: "No se pudieron recargar las citas",
+        variant: "destructive"
+      });
     }
+  };
+
+  // Función para obtener la duración de una cita
+  const getCitaDuration = (cita: CitaWithRelations): number => {
+    // Si la cita tiene duración definida, usarla
+    if (cita.duracion) {
+      return cita.duracion;
+    }
+    
+    // Si no, intentar obtener la duración del subtratamiento
+    if (cita.rf_subtratamientos?.duracion) {
+      return cita.rf_subtratamientos.duracion;
+    }
+    
+    // Si no hay duración definida, usar 30 minutos por defecto
+    return 30;
+  };
+
+  // Función para obtener los colores según el estado
+  const getEstadoColor = (estado: string): EventColors => {
+    const colors = {
+      reservado: {
+        backgroundColor: '#dbeafe', // bg-blue-100
+        borderColor: '#bfdbfe',    // border-blue-200
+        textColor: '#1e40af'       // text-blue-800
+      },
+      confirmado: {
+        backgroundColor: '#dcfce7', // bg-green-100
+        borderColor: '#bbf7d0',    // border-green-200
+        textColor: '#166534'       // text-green-800
+      },
+      cancelado: {
+        backgroundColor: '#fee2e2', // bg-red-100
+        borderColor: '#fecaca',    // border-red-200
+        textColor: '#991b1b'       // text-red-800
+      },
+      completado: {
+        backgroundColor: '#f3f4f6', // bg-gray-100
+        borderColor: '#e5e7eb',    // border-gray-200
+        textColor: '#374151'       // text-gray-700
+      }
+    };
+
+    return colors[estado as keyof typeof colors] || colors.reservado;
   };
 
   // Mapear disponibilidades a eventos
-  const disponibilidadEvents: EventInput[] = disponibilidad.map((d) => ({
-    id: `disp-${d.id}`,
-    title: d.nombre_tratamiento,
-    start: `${d.fecha_inicio}T${d.hora_inicio}`,
-    end: `${d.fecha_fin}T${d.hora_fin}`,
-    resourceId: d.boxes_disponibles[0].toString(),
-    display: "block",
-    backgroundColor: "#dcfce7",
-    borderColor: "#dcfce7",
-    textColor: "#374151",
-    extendedProps: {
-      tipo: "disponibilidad",
-      boxes: d.boxes_disponibles,
-      tratamiento_id: d.tratamiento_id
-    }
-  }));
+  const disponibilidadEvents: EventInput[] = disponibilidad.map((d) => {
+    const start = new Date(`${d.fecha_inicio}T${d.hora_inicio}`);
+    const end = new Date(`${d.fecha_fin}T${d.hora_fin}`);
+    
+    return {
+      id: `disp-${d.id}`,
+      title: d.nombre_tratamiento,
+      start: start.toISOString(),
+      end: end.toISOString(),
+      resourceId: d.boxes_disponibles[0].toString(),
+      display: "background",
+      backgroundColor: "rgba(254, 249, 195, 0.15)", // bg-yellow-100 con muy poca opacidad
+      borderColor: "transparent",
+      textColor: "transparent",
+      extendedProps: {
+        tipo: "disponibilidad",
+        boxes: d.boxes_disponibles,
+        tratamiento_id: d.tratamiento_id
+      }
+    };
+  });
 
-  // Cambiar vista
-  const handleViewChange = (newView: ViewType) => {
-    setView(newView);
-    if (calendarRef.current) {
-      calendarRef.current.getApi().changeView(newView);
-    }
+  // Función para transformar citas a eventos del calendario
+  const getCitaEvents = () => {
+    return citas.map(cita => {
+      const subtratamiento = cita.rf_subtratamientos?.nombre_subtratamiento || 'Sin tratamiento';
+      const cantidad = cita.rf_citas_clientes?.[0]?.count || 0;
+      const clienteInfo = cita.es_multiple
+        ? `${cantidad} ${cantidad === 1 ? 'cliente' : 'clientes'}`
+        : (cita.rf_clientes?.nombre_completo || 'Sin cliente');
+      
+      return {
+        id: cita.id,
+        title: subtratamiento, // se usará en el content
+        start: `${cita.fecha}T${cita.hora}`,
+        end: `${cita.fecha}T${cita.hora}`,
+        resourceId: cita.box.toString(),
+        extendedProps: {
+          cita,
+          subtratamiento,
+          clienteInfo,
+          duracion: getCitaDuration(cita),
+          estado: cita.estado,
+          es_multiple: cita.es_multiple,
+          cantidad,
+          tipo: "cita"
+        }
+      };
+    });
   };
 
-  // Cambiar día en vista diaria
-  const goToPrevDay = () => {
-    const prev = new Date(date);
-    prev.setDate(prev.getDate() - 1);
-    setDate(prev);
-    if (calendarRef.current) {
-      calendarRef.current.getApi().gotoDate(prev);
-    }
-  };
+  // Combinar eventos de disponibilidad y citas
+  const allEvents = [...disponibilidadEvents, ...getCitaEvents()];
 
-  const goToNextDay = () => {
-    const next = new Date(date);
-    next.setDate(next.getDate() + 1);
-    setDate(next);
-    if (calendarRef.current) {
-      calendarRef.current.getApi().gotoDate(next);
-    }
-  };
-
-  // Renderizar marca de agua en background events
-  const eventContent = (arg: any) => {
+  // Renderizar contenido de eventos
+  const eventContent = (arg: { event: CalendarEvent }) => {
     const { event } = arg;
     const tipo = event.extendedProps.tipo;
+    const estado = event.extendedProps.estado;
+    const es_multiple = event.extendedProps.es_multiple;
+    const subtratamiento = event.extendedProps.subtratamiento;
+    const clienteInfo = event.extendedProps.clienteInfo;
+    
+    const defaultColors: EventColors = { 
+      backgroundColor: '#fef9c3',  // bg-yellow-100 sólido
+      textColor: '#854d0e',        // text-yellow-800 sólido
+      borderColor: '#fef08a'       // border-yellow-200 sólido
+    };
+    
+    const colors: EventColors = estado ? getEstadoColor(estado) : defaultColors;
 
     if (tipo === "disponibilidad") {
       return {
         html: `
-          <div class="fc-event-main-frame">
+          <div class="fc-event-main-frame" style="background-color: ${colors.backgroundColor}; border-color: ${colors.borderColor}; color: ${colors.textColor}; z-index: 0; pointer-events: none; opacity: 0.15;">
             <div class="fc-event-title-container">
-              <div class="fc-event-title fc-sticky text-sm font-medium text-gray-700">
+              <div class="fc-event-title fc-sticky text-sm font-medium">
                 ${event.title}
                 <br/>
-                <span class="text-xs">Boxes: ${event.extendedProps.boxes.join(", ")}</span>
+                <span class="text-xs">Boxes: ${event.extendedProps.boxes?.join(", ") || ""}</span>
+              </div>
+            </div>
+          </div>
+        `
+      };
+    } else if (tipo === "cita" || !tipo) {
+      const multipleBadge = es_multiple ? '<span class="inline-block px-1 bg-blue-500 text-white text-[9px] rounded ml-1">MÚLTIPLE</span>' : '';
+      
+      return {
+        html: `
+          <div class="fc-event-main-frame" style="background-color: ${colors.backgroundColor}; border-color: ${colors.borderColor}; color: ${colors.textColor}; z-index: 20;">
+            <div class="fc-event-title-container">
+              <div class="fc-event-title fc-sticky text-xs font-semibold leading-tight truncate">
+                ${subtratamiento}${multipleBadge}
+              </div>
+              <div class="text-[10px] leading-tight truncate">
+                ${clienteInfo}
               </div>
             </div>
           </div>
         `
       };
     }
-
     return null;
   };
 
-  const formatearFecha = (fecha: Date) => {
-    return fecha.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+  const handleEventDrop = async (info: any) => {
+    const cita = info.event.extendedProps.cita;
+    if (!cita) return;
+    const nuevaFecha = info.event.startStr.split('T')[0];
+    const nuevaHora = info.event.startStr.split('T')[1]?.slice(0,5);
+    const nuevoBox = parseInt(info.event.getResources?.()[0]?.id || info.event.getResources?.()[0] || cita.box);
+    try {
+      const { error } = await supabase
+        .from('rf_citas')
+        .update({ fecha: nuevaFecha, hora: nuevaHora, box: nuevoBox })
+        .eq('id', cita.id);
+      if (error) throw error;
+      await recargarCitas();
+      toast({ title: "Cita actualizada", description: "Se guardaron los cambios de horario/box." });
+    } catch (err) {
+      toast({ title: "Error", description: "No se pudo actualizar la cita.", variant: "destructive" });
+      info.revert();
+    }
   };
 
-  // Función para manejar el evento de actualización de disponibilidad
-  const handleEventDrop = async (info: any) => {
-    // Prevenir la actualización automática
-    info.revert();
+  // Manejador para clic en una cita
+  const handleEventClick = (info: any) => {
+    const { event } = info;
+    const cita = event.extendedProps.cita as CitaWithRelations;
+    if (cita) {
+      setCitaAEditar(cita);
+      setShowModalEditar(true);
+    }
+  };
 
+  // Manejador para clic en una celda del calendario
+  const handleDateSelect = (selectInfo: any) => {
+    const fecha = selectInfo.start;
+    setCurrentDate(fecha);
+    setSelectedCita(null);
+    setShowModal(true);
+  };
+
+  const handleSubmitCita = async (formData: any) => {
     try {
-      const eventId = info.event.id.replace('disp-', '');
-      const nuevaFechaInicio = info.event.start.toISOString().split('T')[0];
-      const nuevaFechaFin = info.event.end.toISOString().split('T')[0];
-      const horaInicio = info.event.start.toTimeString().slice(0, 5);
-      const horaFin = info.event.end.toTimeString().slice(0, 5);
-
-      // Mostrar diálogo de confirmación
-      const confirmar = window.confirm(
-        `¿Desea actualizar la disponibilidad?\n\n` +
-        `Nueva fecha inicio: ${nuevaFechaInicio}\n` +
-        `Nueva fecha fin: ${nuevaFechaFin}\n` +
-        `Nueva hora inicio: ${horaInicio}\n` +
-        `Nueva hora fin: ${horaFin}`
-      );
-
-      if (!confirmar) {
-        return;
-      }
-
-      // Obtener los datos actuales
-      const { data: disponibilidadActual, error: errorObtener } = await supabase
-        .from("rf_disponibilidad")
-        .select("*")
-        .eq("id", eventId)
-        .single();
-
-      if (errorObtener) {
-        throw errorObtener;
-      }
-
-      // Eliminar el registro actual
-      const { error: errorEliminar } = await supabase
-        .from("rf_disponibilidad")
-        .delete()
-        .eq("id", eventId);
-
-      if (errorEliminar) {
-        throw errorEliminar;
-      }
-
-      // Crear nuevo registro
-      const { error: errorCrear } = await supabase
-        .from("rf_disponibilidad")
-        .insert({
-          tratamiento_id: disponibilidadActual.tratamiento_id,
-          fecha_inicio: nuevaFechaInicio,
-          fecha_fin: nuevaFechaFin,
-          hora_inicio: horaInicio,
-          hora_fin: horaFin,
-          boxes_disponibles: disponibilidadActual.boxes_disponibles,
-          cantidad_clientes: disponibilidadActual.cantidad_clientes
-        });
-
-      if (errorCrear) {
-        // Si hay error, restaurar el registro original
-        await supabase
-          .from("rf_disponibilidad")
-          .insert(disponibilidadActual);
-        throw errorCrear;
-      }
-
-      // Actualizar el calendario
-      await fetchDisponibilidad();
-      toast({
-        title: "Éxito",
-        description: "Disponibilidad actualizada correctamente"
-      });
-
-    } catch (err) {
-      console.error("Error al actualizar disponibilidad:", err);
+      await recargarCitas();
+      setShowModal(false);
+    } catch (error) {
+      console.error("Error al actualizar citas:", error);
       toast({
         title: "Error",
-        description: "Error al actualizar la disponibilidad. Por favor, intente nuevamente.",
+        description: "No se pudieron actualizar las citas",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleGuardarCita = async (citaData: any) => {
+    try {
+      // Recargar las citas después de guardar
+      await recargarCitas();
+      
+      // Cerrar el modal
+      setShowModalEditar(false);
+      setCitaAEditar(null);
+      
+      toast({
+        title: "Éxito",
+        description: citaData.id ? "Cita actualizada correctamente" : "Cita creada correctamente"
+      });
+    } catch (error) {
+      console.error("Error al guardar cita:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error al guardar la cita",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleViewChange = (newView: ViewType) => {
+    setCurrentView(newView);
+  };
+
+  const goToPrevDay = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() - 1);
+    setCurrentDate(newDate);
+    calendarRef.current?.getApi().gotoDate(newDate);
+  };
+
+  const goToNextDay = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() + 1);
+    setCurrentDate(newDate);
+    calendarRef.current?.getApi().gotoDate(newDate);
+  };
+
+  // Función para formatear fechas
+  const formatearFecha = (fecha: string) => {
+    try {
+      const fechaObj = parseISO(fecha);
+      return format(fechaObj, "EEEE d 'de' MMMM", { locale: es });
+    } catch (error) {
+      console.error("Error al formatear fecha:", error);
+      return fecha;
     }
   };
 
@@ -272,7 +496,7 @@ export default function CalendarioPage() {
               <ArrowLeft className="w-4 h-4 mr-2" /> Volver
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold">Calendario de Disponibilidad</h1>
+          <h1 className="text-3xl font-bold">Calendario de Citas</h1>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -285,7 +509,7 @@ export default function CalendarioPage() {
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="text-sm font-medium min-w-[200px] text-center">
-              {formatearFecha(date)}
+              {formatearFecha(currentDate.toISOString())}
             </div>
             <Button
               variant="outline"
@@ -299,54 +523,41 @@ export default function CalendarioPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-4">
-        <Button 
-          variant={view === "resourceTimeGridDay" ? "default" : "outline"} 
-          onClick={() => handleViewChange("resourceTimeGridDay")}
-        >
-          DÍA
-        </Button>
-        <Button 
-          variant={view === "timeGridWeek" ? "default" : "outline"} 
-          onClick={() => handleViewChange("timeGridWeek")}
-        >
-          SEMANA
-        </Button>
-        <Button 
-          variant={view === "dayGridMonth" ? "default" : "outline"} 
-          onClick={() => handleViewChange("dayGridMonth")}
-        >
-          MES
-        </Button>
-      </div>
-
       {loading ? (
-        <div>Cargando disponibilidad...</div>
-      ) : error ? (
-        <div className="text-red-500">Error: {error}</div>
+        <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-lg text-gray-600">Cargando citas...</p>
+          </div>
+      </div>
       ) : (
-        <Card className="p-2">
+        <Card className="p-2 bg-white">
           <FullCalendar
             ref={calendarRef}
             plugins={[resourceTimeGridPlugin, timeGridPlugin, dayGridPlugin, interactionPlugin]}
-            initialView={view}
-            locale={esLocale}
+            initialView={currentView}
+            initialDate={currentDate}
+            locale={es}
             slotMinTime="08:00:00"
             slotMaxTime="21:00:00"
             slotDuration="00:15:00"
             allDaySlot={false}
             nowIndicator={true}
-            headerToolbar={false}
+            headerToolbar={{
+              left: "prev,next today",
+              center: "title",
+              right: "dayGridMonth,timeGridWeek,resourceTimeGridDay"
+            }}
             resources={BOXES}
-            datesSet={(arg) => setDate(arg.start)}
-            events={disponibilidadEvents}
+            datesSet={(arg) => setCurrentDate(arg.start)}
+            events={allEvents}
             eventContent={eventContent}
             height="auto"
             eventOrder="tipo"
             eventDisplay="block"
-            eventBackgroundColor="#dcfce7"
-            eventBorderColor="#dcfce7"
-            eventTextColor="#374151"
+            eventBackgroundColor="#fef9c3"
+            eventBorderColor="#fef08a"
+            eventTextColor="#854d0e"
             eventTimeFormat={{
               hour: '2-digit',
               minute: '2-digit',
@@ -362,22 +573,63 @@ export default function CalendarioPage() {
             eventResize={handleEventDrop}
             eventChange={handleEventDrop}
             droppable={false}
-            eventOverlap={false}
+            eventOverlap={true}
             eventConstraint={{
               startTime: '08:00',
               endTime: '21:00',
               dows: [1, 2, 3, 4, 5, 6] // Lunes a Sábado
             }}
-            eventAllow={(dropInfo, draggedEvent) => {
-              // Permitir cualquier cambio
-              return true;
+            eventAllow={(dropInfo) => {
+              const start = dropInfo.start;
+              if (!start) return false;
+              
+              // Validar horario
+              const hora = start.getHours();
+              const minutos = start.getMinutes();
+              return hora >= 8 && (hora < 21 || (hora === 21 && minutos === 0));
             }}
-            eventSourceSuccess={(content: EventInput[]) => content}
-            eventSourceFailure={(error: unknown) => {
-              console.error("Error en la fuente de eventos:", error);
+            selectable={true}
+            select={handleDateSelect}
+            eventClick={handleEventClick}
+            selectMirror={true}
+            selectConstraint={{
+              startTime: '08:00',
+              endTime: '21:00',
+              dows: [1, 2, 3, 4, 5, 6]
             }}
+            dayCellClassNames="fc-day-today:bg-white"
           />
         </Card>
+      )}
+
+      {showModal && (
+      <CitaModal
+          open={showModal}
+          onOpenChange={setShowModal}
+        onSubmit={handleSubmitCita}
+        cita={selectedCita}
+        tratamientos={tratamientos}
+          fechaSeleccionada={selectedCita ? format(selectedCita.fecha, 'yyyy-MM-dd') : undefined}
+          horaSeleccionada={selectedCita ? format(selectedCita.hora, 'HH:mm') : undefined}
+          boxSeleccionado={selectedCita ? selectedCita.box : undefined}
+          title={selectedCita ? "Editar Cita" : "Nueva Cita"}
+          description={selectedCita ? "Modifica los detalles de la cita" : "Complete los datos para crear una nueva cita"}
+        />
+      )}
+
+      {showModalEditar && citaAEditar && (
+        <CitaModal
+          open={showModalEditar}
+          onOpenChange={setShowModalEditar}
+          onSubmit={handleGuardarCita}
+          cita={citaAEditar}
+          tratamientos={tratamientos}
+          fechaSeleccionada={citaAEditar?.fecha}
+          horaSeleccionada={citaAEditar?.hora}
+          boxSeleccionado={citaAEditar.box}
+          title="Editar Cita"
+          description="Modifica los detalles de la cita"
+        />
       )}
     </div>
   );

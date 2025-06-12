@@ -24,14 +24,19 @@ import { getTratamientos, verificarDisponibilidadBox, supabase } from "@/lib/sup
 import type { Cita } from "@/types/cita"
 
 interface FormularioCitaProps {
-  fechaInicial?: Date | null
-  horaInicialInicio?: string | null
-  horaInicialFin?: string | null
+  fechaInicial?: Date
+  horaInicialInicio?: string
+  horaInicialFin?: string
   tratamientoInicial?: string
   subTratamientoInicial?: string
   boxInicial?: number
   onSuccess?: () => void
-  citaExistente?: Cita
+  citaExistente?: Cita & {
+    dni?: string
+    nombreCompleto?: string
+    whatsapp?: string
+    color?: string
+  }
 }
 
 // Actualizar los tipos para manejar correctamente los IDs
@@ -52,20 +57,22 @@ type SubTratamiento = {
 // Modificar la interfaz de la cita para que coincida con la base de datos
 interface NuevaCita {
   id: string
+  cliente_id?: string
   dni: string
   nombreCompleto: string
   whatsapp: string
-  fecha: Date
+  fecha: string
   horaInicio: string
   horaFin: string
-  tratamiento: string
-  subTratamiento: string
+  tratamiento_id: string
+  subtratamiento_id: string
   color: string
-  duracion: number | null
-  precio: number | null
-  senia: number
+  duracion?: number
+  precio?: number
+  sena: number
   notas: string
-  box_id: number // Cambiado de box a box_id para coincidir con la DB
+  box: number
+  estado: "reservado" | "seniado" | "confirmado" | "cancelado"
 }
 
 export function FormularioCita({
@@ -352,104 +359,149 @@ export function FormularioCita({
     return data
   }
 
-  // Función para guardar la cita
-  const guardarCita = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
     try {
       // Validaciones básicas
-      if (!nombreCompleto?.trim()) {
-        throw new Error('El nombre completo es requerido')
+      if (!fecha || !horaInicio || !tratamiento || !subTratamiento) {
+        toast({
+          title: "Error",
+          description: "Por favor complete todos los campos requeridos",
+          variant: "destructive"
+        })
+        return
       }
 
-      if (!fecha) {
-        throw new Error('La fecha es requerida')
+      // Si es una cita existente, actualizar
+      if (citaExistente?.id) {
+        // Primero actualizar el cliente si es necesario
+        let clienteId = citaExistente.cliente_id
+        if (dni !== citaExistente.dni || nombreCompleto !== citaExistente.nombreCompleto || whatsapp !== citaExistente.whatsapp) {
+          const { data: clienteData, error: clienteError } = await supabase
+            .from("rf_clientes")
+            .upsert({
+              dni,
+              nombre_completo: nombreCompleto,
+              whatsapp: whatsapp || null
+            })
+            .select("id")
+            .single()
+
+          if (clienteError) {
+            console.error("Error al actualizar cliente:", clienteError)
+            throw new Error(`Error al actualizar cliente: ${clienteError.message}`)
+          }
+
+          if (!clienteData) {
+            throw new Error("No se pudo actualizar el cliente")
+          }
+
+          clienteId = clienteData.id
+        }
+
+        // Actualizar la cita
+        const { error: citaError } = await supabase
+          .from("rf_citas")
+          .update({
+            cliente_id: clienteId,
+            tratamiento_id: tratamiento,
+            subtratamiento_id: subTratamiento,
+            fecha: format(fecha, "yyyy-MM-dd"),
+            hora: horaInicio,
+            box: boxId,
+            estado: estado === "completado" ? "confirmado" : (estado as "reservado" | "confirmado" | "cancelado"),
+            precio: precioSeleccionado,
+            sena: parseFloat(senia) || 0,
+            notas: notas || null
+          })
+          .eq("id", citaExistente.id)
+
+        if (citaError) {
+          console.error("Error al actualizar cita:", citaError)
+          throw new Error(`Error al actualizar cita: ${citaError.message}`)
+        }
+
+        toast({
+          title: "Éxito",
+          description: "Cita actualizada correctamente"
+        })
+      } else {
+        // Crear nuevo cliente
+        const { data: clienteData, error: clienteError } = await supabase
+          .from("rf_clientes")
+          .insert({
+            dni,
+            nombre_completo: nombreCompleto,
+            whatsapp: whatsapp || null
+          })
+          .select("id")
+          .single()
+
+        if (clienteError) {
+          console.error("Error al crear cliente:", clienteError)
+          throw new Error(`Error al crear cliente: ${clienteError.message}`)
+        }
+
+        if (!clienteData) {
+          throw new Error("No se pudo crear el cliente")
+        }
+
+        // Crear nueva cita
+        const { error: citaError } = await supabase
+          .from("rf_citas")
+          .insert({
+            cliente_id: clienteData.id,
+            tratamiento_id: tratamiento,
+            subtratamiento_id: subTratamiento,
+            fecha: format(fecha, "yyyy-MM-dd"),
+            hora: horaInicio,
+            box: boxId,
+            estado: estado === "completado" ? "confirmado" : (estado as "reservado" | "confirmado" | "cancelado"),
+            precio: precioSeleccionado,
+            sena: parseFloat(senia) || 0,
+            notas: notas || null
+          })
+
+        if (citaError) {
+          console.error("Error al crear cita:", citaError)
+          throw new Error(`Error al crear cita: ${citaError.message}`)
+        }
+
+        toast({
+          title: "Éxito",
+          description: "Cita creada correctamente"
+        })
       }
 
-      if (!horaInicio) {
-        throw new Error('La hora de inicio es requerida')
+      // Limpiar formulario y notificar éxito
+      setFecha(undefined)
+      setHoraInicio("")
+      setHoraFin("")
+      setDni("")
+      setNombreCompleto("")
+      setWhatsapp("")
+      setTratamiento("")
+      setSubTratamiento("")
+      setColor("#3b82f6")
+      setDuracionSeleccionada(null)
+      setPrecioSeleccionado(null)
+      setSenia("0")
+      setNotas("")
+      setBoxId(1)
+      setEstado("reservado")
+
+      if (onSuccess) {
+        onSuccess()
       }
-
-      if (!tratamiento) {
-        throw new Error('El tratamiento es requerido')
-      }
-
-      if (!subTratamiento) {
-        throw new Error('El sub-tratamiento es requerido')
-      }
-
-      // En este punto, fecha no puede ser undefined
-      const fechaFormateada = format(fecha, 'yyyy-MM-dd')
-      console.log('Iniciando guardado de cita con datos:', {
-        nombreCompleto,
-        dni,
-        whatsapp,
-        fecha: fechaFormateada,
-        horaInicio,
-        horaFin,
-        box: boxInicial,
-        tratamiento,
-        subTratamiento,
-        duracion: duracionSeleccionada,
-        precio: precioSeleccionado,
-        senia,
-        notas,
-        estado
-      })
-
-      // Crear la cita usando la API
-      const response = await fetch('/api/citas', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          nombreCompleto: nombreCompleto.trim(),
-          dni: dni?.trim() || null,
-          whatsapp: whatsapp?.trim() || null,
-          fecha: fecha.toISOString(), // Ahora fecha no puede ser undefined
-          horaInicio: horaInicio,
-          horaFin: horaFin,
-          box_id: boxInicial || 1,
-          tratamiento: tratamiento,
-          subTratamiento: subTratamiento,
-          color: color,
-          duracion: duracionSeleccionada,
-          precio: precioSeleccionado,
-          senia: Number(senia) || 0,
-          notas: notas?.trim() || null,
-          estado: estado
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Error al crear la cita')
-      }
-
-      const nuevaCita = await response.json()
-
-      if (!nuevaCita?.id) {
-        throw new Error("No se pudo crear la cita: No se recibió ID de la cita")
-      }
-
-      toast({
-        title: "Cita guardada",
-        description: "La cita se ha guardado correctamente"
-      })
-
-      if (onSuccess) onSuccess()
-      router.refresh()
-
     } catch (error) {
-      console.error('Error detallado al guardar la cita:', error)
-      const mensajeError = error instanceof Error ? error.message : "No se pudo guardar la cita"
-      setError(mensajeError)
+      console.error("Error en handleSubmit:", error)
+      setError(error instanceof Error ? error.message : "Error al guardar la cita")
       toast({
         title: "Error",
-        description: mensajeError,
+        description: error instanceof Error ? error.message : "Error al guardar la cita",
         variant: "destructive"
       })
     } finally {
@@ -523,7 +575,7 @@ export function FormularioCita({
 
   return (
     <ScrollArea className="h-[600px] pr-4 bg-background" suppressHydrationWarning>
-      <form onSubmit={guardarCita} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-4 border p-4 rounded-md">
           <h3 className="font-medium">Datos del Cliente</h3>
 

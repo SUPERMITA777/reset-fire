@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
-import { Plus, Edit, Trash2, ArrowLeft, Calendar, Clock, Copy, MoreVertical, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowLeft, Calendar, Clock, Copy, MoreVertical, ChevronLeft, ChevronRight, Pencil, Settings2 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { format, parseISO } from "date-fns";
@@ -14,24 +14,30 @@ import { es } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "@/components/ui/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DisponibilidadModal } from "@/components/modals/disponibilidad-modal"
+import { Badge } from "@/components/ui/badge";
+import { DisponibilidadList } from "@/components/disponibilidad/disponibilidad-list";
 
 interface Disponibilidad {
-  id?: string;
+  id: string;
   tratamiento_id: string;
   fecha_inicio: string;
   fecha_fin: string;
   hora_inicio: string;
   hora_fin: string;
   boxes_disponibles: number[];
-  tratamientos: {
+  cantidad_clientes?: number;
+  rf_tratamientos: {
     id: string;
     nombre_tratamiento: string;
-  };
+  } | null;
 }
 
 interface Tratamiento {
   id: string;
-  nombre_tratamiento: string;
+  nombre: string;
+  nombre_tratamiento?: string;
+  disponibilidades?: Disponibilidad[];
 }
 
 interface FormData {
@@ -41,194 +47,257 @@ interface FormData {
   hora_inicio: string;
   hora_fin: string;
   boxes_disponibles: number[];
+  cantidad_clientes?: number;
 }
 
 export default function DisponibilidadPage() {
-  const [disponibilidades, setDisponibilidades] = useState<Disponibilidad[]>([]);
   const [tratamientos, setTratamientos] = useState<Tratamiento[]>([]);
+  const [selectedTratamiento, setSelectedTratamiento] = useState<Tratamiento | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDisponibilidad, setEditingDisponibilidad] = useState<Disponibilidad | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [disponibilidadToDelete, setDisponibilidadToDelete] = useState<Disponibilidad | null>(null);
-  
-  // Form states
-  const [form, setForm] = useState<FormData>({
-    tratamiento_id: "",
-    fecha_inicio: "",
-    fecha_fin: "",
-    hora_inicio: "",
-    hora_fin: "",
-    boxes_disponibles: [1]
-  });
-
-  const [fechaActual, setFechaActual] = useState(new Date());
+  const [selectedTratamientoForNew, setSelectedTratamientoForNew] = useState<Tratamiento | null>(null);
 
   useEffect(() => {
-    fetchDisponibilidades();
     fetchTratamientos();
   }, []);
 
-  const fetchDisponibilidades = async () => {
-    setIsLoading(true);
-    
-    const { data, error } = await supabase
-      .from("rf_disponibilidad")
-      .select(`
-        id,
-        tratamiento_id,
-        fecha_inicio,
-        fecha_fin,
-        hora_inicio,
-        hora_fin,
-        boxes_disponibles,
-        tratamientos:rf_tratamientos (
-          id,
-          nombre_tratamiento
-        )
-      `)
-      .order("fecha_inicio", { ascending: true });
-
-    if (error) {
-      console.error("Error al obtener disponibilidades:", error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar las disponibilidades",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Transformar los datos para que coincidan con la interfaz
-    const disponibilidadesTransformadas = (data || []).map(d => ({
-      ...d,
-      tratamientos: Array.isArray(d.tratamientos) ? d.tratamientos[0] : d.tratamientos
-    }));
-
-    setDisponibilidades(disponibilidadesTransformadas);
-    setIsLoading(false);
-  };
-
   const fetchTratamientos = async () => {
-    const { data, error } = await supabase
-      .from("rf_tratamientos")
-      .select("id, nombre_tratamiento")
-      .order("nombre_tratamiento");
+    try {
+      setIsLoading(true);
+      
+      // Obtener tratamientos
+      const { data: tratamientosData, error: tratamientosError } = await supabase
+        .from("rf_tratamientos")
+        .select("id, nombre_tratamiento")
+        .order("nombre_tratamiento");
 
-    if (error) {
-      console.error("Error al obtener tratamientos:", error);
+      if (tratamientosError) throw tratamientosError;
+
+      // Obtener disponibilidades
+      const { data: disponibilidadesData, error: disponibilidadesError } = await supabase
+        .from("rf_disponibilidad")
+        .select(`
+          id,
+          tratamiento_id,
+          fecha_inicio,
+          fecha_fin,
+          hora_inicio,
+          hora_fin,
+          boxes_disponibles,
+          rf_tratamientos (
+            id,
+            nombre_tratamiento
+          )
+        `)
+        .gte('fecha_inicio', new Date().toISOString().split('T')[0]) // Solo disponibilidades futuras
+        .order("fecha_inicio", { ascending: true });
+
+      if (disponibilidadesError) throw disponibilidadesError;
+
+      // Transformar y agrupar disponibilidades por tratamiento
+      const disponibilidadesFormateadas = (disponibilidadesData || []).map(d => ({
+        ...d,
+        rf_tratamientos: Array.isArray(d.rf_tratamientos) ? d.rf_tratamientos[0] : d.rf_tratamientos
+      }));
+
+      const tratamientosConDisponibilidades = (tratamientosData || []).map(trat => ({
+        ...trat,
+        nombre: trat.nombre_tratamiento,
+        disponibilidades: disponibilidadesFormateadas.filter(d => d.tratamiento_id === trat.id)
+      }));
+
+      setTratamientos(tratamientosConDisponibilidades);
+    } catch (error) {
+      console.error("Error al cargar datos:", error);
       toast({
         title: "Error",
-        description: "No se pudieron cargar los tratamientos",
+        description: "No se pudieron cargar los tratamientos y disponibilidades",
         variant: "destructive"
       });
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    setTratamientos(data || []);
   };
 
   const openNew = () => {
     setEditingDisponibilidad(null);
-    setForm({
-      tratamiento_id: "",
-      fecha_inicio: format(new Date(), 'yyyy-MM-dd'),
-      fecha_fin: format(new Date(), 'yyyy-MM-dd'),
-      hora_inicio: "09:00",
-      hora_fin: "17:00",
-      boxes_disponibles: [1]
-    });
+    setSelectedTratamientoForNew(null);
     setDialogOpen(true);
+  };
+
+  const openNewForTratamiento = (tratamiento: Tratamiento) => {
+    setEditingDisponibilidad(null);
+    setSelectedTratamientoForNew(tratamiento);
+    setDialogOpen(true);
+  };
+
+  const handleDisponibilidadCreated = () => {
+    setDialogOpen(false);
+    setSelectedTratamientoForNew(null);
+    fetchTratamientos();
   };
 
   const handleEdit = (disponibilidad: Disponibilidad) => {
     setEditingDisponibilidad(disponibilidad);
-    setForm({
-      tratamiento_id: disponibilidad.tratamiento_id,
-      fecha_inicio: disponibilidad.fecha_inicio,
-      fecha_fin: disponibilidad.fecha_fin,
-      hora_inicio: disponibilidad.hora_inicio,
-      hora_fin: disponibilidad.hora_fin,
-      boxes_disponibles: disponibilidad.boxes_disponibles
-    });
     setDialogOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSubmit = async (formData: FormData) => {
     try {
-      const datosActualizados = {
-        tratamiento_id: form.tratamiento_id,
-        fecha_inicio: form.fecha_inicio,
-        fecha_fin: form.fecha_fin,
-        hora_inicio: form.hora_inicio,
-        hora_fin: form.hora_fin,
-        boxes_disponibles: form.boxes_disponibles
+      const tratamientoId = selectedTratamientoForNew?.id || formData.tratamiento_id;
+
+      if (!tratamientoId) {
+        throw new Error("Debe seleccionar un tratamiento");
+      }
+
+      // Validar que la fecha fin no sea anterior a la fecha inicio
+      if (formData.fecha_fin < formData.fecha_inicio) {
+        throw new Error("La fecha fin no puede ser anterior a la fecha inicio");
+      }
+
+      console.log("Verificando disponibilidades existentes para:", {
+        tratamientoId,
+        fechaInicio: formData.fecha_inicio,
+        fechaFin: formData.fecha_fin,
+        disponibilidadId: editingDisponibilidad?.id || "nueva"
+      });
+
+      // Validar que no haya solapamiento de fechas para el mismo tratamiento
+      let query = supabase
+        .from("rf_disponibilidad")
+        .select("id, fecha_inicio, fecha_fin")
+        .eq("tratamiento_id", tratamientoId)
+        .or(`fecha_inicio.lte.${formData.fecha_fin},fecha_fin.gte.${formData.fecha_inicio}`);
+
+      // Solo agregamos el filtro de ID si estamos editando una disponibilidad existente
+      if (editingDisponibilidad?.id) {
+        query = query.neq("id", editingDisponibilidad.id);
+      }
+
+      const { data: disponibilidadesExistentes, error: errorCheck } = await query;
+
+      if (errorCheck) {
+        console.error("Error detallado al verificar disponibilidades:", {
+          error: errorCheck,
+          code: errorCheck.code,
+          message: errorCheck.message,
+          details: errorCheck.details,
+          query: {
+            tratamientoId,
+            fechaInicio: formData.fecha_inicio,
+            fechaFin: formData.fecha_fin,
+            editingId: editingDisponibilidad?.id
+          }
+        });
+        throw new Error(`Error al verificar disponibilidades: ${errorCheck.message}`);
+      }
+
+      console.log("Disponibilidades existentes encontradas:", disponibilidadesExistentes);
+
+      // Verificar solapamiento
+      const haySolapamiento = disponibilidadesExistentes?.some(disp => {
+        const inicioExistente = new Date(disp.fecha_inicio);
+        const finExistente = new Date(disp.fecha_fin);
+        const inicioNueva = new Date(formData.fecha_inicio);
+        const finNueva = new Date(formData.fecha_fin);
+
+        const solapamiento = (
+          (inicioNueva >= inicioExistente && inicioNueva <= finExistente) || // La fecha inicio está dentro del rango existente
+          (finNueva >= inicioExistente && finNueva <= finExistente) || // La fecha fin está dentro del rango existente
+          (inicioNueva <= inicioExistente && finNueva >= finExistente) // El nuevo rango engloba al existente
+        );
+
+        if (solapamiento) {
+          console.log("Solapamiento detectado:", {
+            disponibilidadExistente: {
+              id: disp.id,
+              inicio: disp.fecha_inicio,
+              fin: disp.fecha_fin
+            },
+            nuevaDisponibilidad: {
+              inicio: formData.fecha_inicio,
+              fin: formData.fecha_fin
+            }
+          });
+        }
+
+        return solapamiento;
+      });
+
+      if (haySolapamiento) {
+        throw new Error("Ya existe una disponibilidad para este tratamiento en el rango de fechas seleccionado");
+      }
+
+      const disponibilidadData = {
+        tratamiento_id: tratamientoId,
+        fecha_inicio: formData.fecha_inicio,
+        fecha_fin: formData.fecha_fin,
+        hora_inicio: formData.hora_inicio,
+        hora_fin: formData.hora_fin,
+        boxes_disponibles: formData.boxes_disponibles
       };
 
-      if (editingDisponibilidad?.id) {
+      console.log("Intentando guardar disponibilidad:", disponibilidadData);
+
+      if (editingDisponibilidad) {
         const { error } = await supabase
           .from("rf_disponibilidad")
-          .update(datosActualizados)
+          .update(disponibilidadData)
           .eq("id", editingDisponibilidad.id);
 
         if (error) {
-          if (error.code === '23505') {
-            toast({
-              title: "Error",
-              description: "No se puede actualizar el turno porque se solapa con otro existente",
-              variant: "destructive"
-            });
-          } else {
-            throw error;
-          }
-          return;
+          console.error("Error detallado al actualizar:", {
+            error,
+            code: error.code,
+            message: error.message,
+            details: error.details
+          });
+          throw new Error(error.message || "Error al actualizar la disponibilidad");
         }
 
         toast({
           title: "Éxito",
-          description: "Turno actualizado correctamente"
+          description: "Disponibilidad actualizada correctamente"
         });
       } else {
         const { error } = await supabase
           .from("rf_disponibilidad")
-          .insert(datosActualizados);
+          .insert(disponibilidadData);
 
         if (error) {
-          if (error.code === '23505') {
-            toast({
-              title: "Error",
-              description: "No se puede crear el turno porque se solapa con otro existente",
-              variant: "destructive"
-            });
-          } else {
-            throw error;
+          console.error("Error detallado al crear:", {
+            error,
+            code: error.code,
+            message: error.message,
+            details: error.details
+          });
+          if (error.code === "23505") {
+            throw new Error("Ya existe una disponibilidad para este tratamiento en el rango de fechas seleccionado");
           }
-          return;
+          throw new Error(error.message || "Error al crear la disponibilidad");
         }
 
         toast({
           title: "Éxito",
-          description: "Turno creado correctamente"
+          description: "Disponibilidad creada correctamente"
         });
       }
 
       setDialogOpen(false);
-      fetchDisponibilidades();
+      setEditingDisponibilidad(null);
+      setSelectedTratamientoForNew(null);
+      fetchTratamientos();
     } catch (error) {
-      console.error("Error al guardar disponibilidad:", error);
+      console.error("Error completo al guardar disponibilidad:", error);
       toast({
         title: "Error",
-        description: "No se pudo guardar el turno",
+        description: error instanceof Error ? error.message : "No se pudo guardar la disponibilidad",
         variant: "destructive"
       });
     }
-  };
-
-  const confirmDelete = (disp: Disponibilidad) => {
-    setDisponibilidadToDelete(disp);
-    setDeleteDialogOpen(true);
   };
 
   const handleDelete = async () => {
@@ -244,341 +313,160 @@ export default function DisponibilidadPage() {
 
       toast({
         title: "Éxito",
-        description: "Turno eliminado correctamente"
+        description: "Disponibilidad eliminada correctamente"
       });
 
       setDeleteDialogOpen(false);
-      fetchDisponibilidades();
+      fetchTratamientos();
     } catch (error) {
       console.error("Error al eliminar disponibilidad:", error);
       toast({
         title: "Error",
-        description: "No se pudo eliminar el turno",
+        description: "No se pudo eliminar la disponibilidad",
         variant: "destructive"
       });
     }
   };
 
-  const handleDuplicate = async (disp: Disponibilidad) => {
-    try {
-      // Modificar la fecha para evitar el conflicto de solapamiento
-      const fechaInicio = new Date(disp.fecha_inicio);
-      const fechaFin = new Date(disp.fecha_fin);
-      const diasDiferencia = Math.ceil((fechaFin.getTime() - fechaInicio.getTime()) / (1000 * 60 * 60 * 24));
-      
-      // Agregar 7 días a ambas fechas
-      fechaInicio.setDate(fechaInicio.getDate() + 7);
-      fechaFin.setDate(fechaFin.getDate() + 7);
-
-      const { error } = await supabase
-        .from("rf_disponibilidad")
-        .insert({
-          tratamiento_id: disp.tratamiento_id,
-          fecha_inicio: fechaInicio.toISOString().split('T')[0],
-          fecha_fin: fechaFin.toISOString().split('T')[0],
-          hora_inicio: disp.hora_inicio,
-          hora_fin: disp.hora_fin,
-          boxes_disponibles: disp.boxes_disponibles
-        });
-
-      if (error) {
-        if (error.code === '23505') {
-          toast({
-            title: "Error",
-            description: "No se puede duplicar el turno porque se solapa con otro existente",
-            variant: "destructive"
-          });
-        } else {
-          throw error;
-        }
-        return;
-      }
-
-      toast({
-        title: "Éxito",
-        description: "Turno duplicado correctamente"
-      });
-
-      fetchDisponibilidades();
-    } catch (error) {
-      console.error("Error al duplicar disponibilidad:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo duplicar el turno",
-        variant: "destructive"
-      });
-    }
+  const confirmDelete = (disp: Disponibilidad) => {
+    setDisponibilidadToDelete(disp);
+    setDeleteDialogOpen(true);
   };
 
-  const navegarFecha = (dias: number) => {
-    const nuevaFecha = new Date(fechaActual);
-    nuevaFecha.setDate(nuevaFecha.getDate() + dias);
-    setFechaActual(nuevaFecha);
-  };
-
-  const formatearFecha = (fecha: Date) => {
-    return fecha.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
+  const formatearHora = (hora: string) => {
+    const [horas, minutos] = hora.split(':')
+    return `${horas.padStart(2, '0')}:${minutos.padStart(2, '0')}`
+  }
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-4">
-          <Link href="/">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Volver
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold">Disponibilidad de Turnos</h1>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => navegarFecha(-1)}
-              className="h-8 w-8"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="text-sm font-medium min-w-[200px] text-center">
-              {formatearFecha(fechaActual)}
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => navegarFecha(1)}
-              className="h-8 w-8"
-            >
-              <ChevronRight className="h-4 w-4" />
+    <div className="container py-6 space-y-6">
+      {!selectedTratamiento ? (
+        <>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-semibold">Disponibilidad</h1>
+            <Button onClick={openNew}>
+              <Plus className="w-4 h-4 mr-2" />
+              Nueva Disponibilidad
             </Button>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) {
-              setEditingDisponibilidad(null);
-              setForm({
-                tratamiento_id: "",
-                fecha_inicio: "",
-                fecha_fin: "",
-                hora_inicio: "",
-                hora_fin: "",
-                boxes_disponibles: [1]
-              });
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button onClick={openNew}>
-                <Plus className="w-4 h-4 mr-2" />
-                Nueva Disponibilidad
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[350px]">
-              <DialogHeader>
-                <DialogTitle className="text-base">
-                  {editingDisponibilidad ? "Editar Disponibilidad" : "Nueva Disponibilidad"}
-                </DialogTitle>
-                <DialogDescription className="text-sm">
-                  {editingDisponibilidad
-                    ? "Modifica los datos de la disponibilidad"
-                    : "Ingresa los datos de la disponibilidad"}
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-sm">Tratamiento</Label>
-                  <select 
-                    value={form.tratamiento_id} 
-                    onChange={e => setForm(f => ({ ...f, tratamiento_id: e.target.value }))} 
-                    required 
-                    className="w-full h-8 px-2 text-sm rounded-md border border-input bg-background"
-                  >
-                    <option value="">Seleccionar tratamiento...</option>
-                    {tratamientos.map(t => (
-                      <option key={t.id} value={t.id}>{t.nombre_tratamiento}</option>
-                    ))}
-                  </select>
-                </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">Fecha Inicio</Label>
-                    <Input 
-                      type="date" 
-                      value={form.fecha_inicio} 
-                      onChange={e => setForm(f => ({ ...f, fecha_inicio: e.target.value }))} 
-                      required 
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">Fecha Fin</Label>
-                    <Input 
-                      type="date" 
-                      value={form.fecha_fin} 
-                      onChange={e => setForm(f => ({ ...f, fecha_fin: e.target.value }))} 
-                      required 
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">Hora Inicio</Label>
-                    <Input 
-                      type="time" 
-                      value={form.hora_inicio} 
-                      onChange={e => setForm(f => ({ ...f, hora_inicio: e.target.value }))} 
-                      required 
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">Hora Fin</Label>
-                    <Input 
-                      type="time" 
-                      value={form.hora_fin} 
-                      onChange={e => setForm(f => ({ ...f, hora_fin: e.target.value }))} 
-                      required 
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-sm">Box</Label>
-                  <Input 
-                    type="number" 
-                    min="1" 
-                    max="8" 
-                    value={form.boxes_disponibles[0]} 
-                    onChange={e => setForm(f => ({ ...f, boxes_disponibles: [Number(e.target.value)] }))} 
-                    required 
-                    className="h-8 text-sm"
-                  />
-                </div>
-
-                <Button type="submit" className="w-full h-8 text-sm">
-                  {editingDisponibilidad ? "Guardar Cambios" : "Crear Disponibilidad"}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
-
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <p className="text-lg text-muted-foreground">Cargando turnos disponibles...</p>
-        </div>
-      ) : disponibilidades.length === 0 ? (
-        <div className="flex justify-center items-center h-64">
-          <p className="text-lg text-muted-foreground">No hay turnos disponibles</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {disponibilidades.map((disp) => (
-            <Card key={disp.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="p-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-base font-medium line-clamp-1">
-                      {disp.tratamientos?.nombre_tratamiento || "Tratamiento no encontrado"}
-                    </CardTitle>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(disp)}>
-                          <Edit className="w-4 h-4 mr-2" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDuplicate(disp)}>
-                          <Copy className="w-4 h-4 mr-2" />
-                          Duplicar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => confirmDelete(disp)}
+          {isLoading ? (
+            <p>Cargando tratamientos...</p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {tratamientos.map((trat) => (
+                <Card key={trat.id} className="cursor-pointer hover:border-primary transition-colors">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-lg">{trat.nombre}</CardTitle>
+                        <CardDescription>
+                          {trat.disponibilidades?.length || 0} disponibilidades futuras
+                        </CardDescription>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedTratamiento(trat)}
                         >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Eliminar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  
-                  <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span className="line-clamp-1">
-                        {format(parseISO(disp.fecha_inicio), "EEEE d 'de' MMMM", { locale: es })}
-                        {disp.fecha_fin !== disp.fecha_inicio && 
-                          ` - ${format(parseISO(disp.fecha_fin), "EEEE d 'de' MMMM", { locale: es })}`}
-                      </span>
+                          VER DISPONIBILIDADES
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span>{disp.hora_inicio} - {disp.hora_fin}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Box:</span>
-                      <span>{disp.boxes_disponibles.join(', ')}</span>
-                    </div>
-                  </div>
+                  </CardHeader>
+                  <CardContent>
+                    {trat.disponibilidades && trat.disponibilidades.length > 0 ? (
+                      <div>
+                        <h4 className="font-semibold mb-2">Próximas disponibilidades:</h4>
+                        <ul className="space-y-1">
+                          {trat.disponibilidades.slice(0, 3).map((disp) => (
+                            <li key={disp.id} className="text-sm">
+                              <span className="font-medium">
+                                {format(parseISO(disp.fecha_inicio), "dd/MM/yyyy", { locale: es })}
+                                {disp.fecha_fin && disp.fecha_fin !== disp.fecha_inicio && (
+                                  <> - {format(parseISO(disp.fecha_fin), "dd/MM/yyyy", { locale: es })}</>
+                                )}
+                              </span>
+                              <br />
+                              <span className="text-muted-foreground">
+                                {formatearHora(disp.hora_inicio)} a {formatearHora(disp.hora_fin)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No hay disponibilidades futuras</p>
+                    )}
+                  </CardContent>
+                  <CardFooter className="flex justify-between">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openNewForTratamiento(trat);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Nueva Disponibilidad
+                    </Button>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedTratamiento(null)}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver
+            </Button>
+            <h1 className="text-2xl font-semibold">
+              Disponibilidad - {selectedTratamiento.nombre}
+            </h1>
+          </div>
 
-                  <div className="flex gap-2 pt-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1 h-8 text-xs"
-                      onClick={() => handleEdit(disp)}
-                    >
-                      <Edit className="w-3.5 h-3.5 mr-1" />
-                      Editar
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1 h-8 text-xs"
-                      onClick={() => handleDuplicate(disp)}
-                    >
-                      <Copy className="w-3.5 h-3.5 mr-1" />
-                      Duplicar
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      size="sm" 
-                      className="flex-1 h-8 text-xs"
-                      onClick={() => confirmDelete(disp)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5 mr-1" />
-                      Eliminar
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
+          <div className="flex justify-end mb-4">
+            <Button onClick={() => openNewForTratamiento(selectedTratamiento)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Nueva Disponibilidad
+            </Button>
+          </div>
+
+          <DisponibilidadList
+            disponibilidades={selectedTratamiento.disponibilidades || []}
+            onEdit={handleEdit}
+            onDelete={confirmDelete}
+          />
+        </>
       )}
 
+      {/* Diálogo de disponibilidad */}
+      <DisponibilidadModal
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSubmit={handleSubmit}
+        disponibilidad={editingDisponibilidad}
+        tratamientos={tratamientos}
+        defaultTratamientoId={selectedTratamientoForNew?.id}
+      />
+
+      {/* Diálogo de confirmación de eliminación */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar disponibilidad?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente el turno seleccionado.
+              Esta acción no se puede deshacer. Se eliminará la disponibilidad seleccionada.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

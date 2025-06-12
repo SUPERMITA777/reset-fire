@@ -20,7 +20,13 @@ importers:
       '@fullcalendar/react':
         specifier: ^6.1.17
         version: 6.1.17(@fullcalendar/core@6.1.17)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@fullcalendar/resource-daygrid':
+        specifier: ^6.1.17
+        version: 6.1.17(@fullcalendar/core@6.1.17)(@fullcalendar/resource@6.1.17(@fullcalendar/core@6.1.17))
       '@fullcalendar/resource-timegrid':
+        specifier: ^6.1.17
+        version: 6.1.17(@fullcalendar/core@6.1.17)(@fullcalendar/resource@6.1.17(@fullcalendar/core@6.1.17))
+      '@fullcalendar/resource-timeline':
         specifier: ^6.1.17
         version: 6.1.17(@fullcalendar/core@6.1.17)(@fullcalendar/resource@6.1.17(@fullcalendar/core@6.1.17))
       '@fullcalendar/timegrid':
@@ -125,6 +131,9 @@ importers:
       '@tanstack/react-table':
         specifier: ^8.21.3
         version: 8.21.3(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@types/lodash':
+        specifier: ^4.17.17
+        version: 4.17.17
       '@types/uuid':
         specifier: ^10.0.0
         version: 10.0.0
@@ -158,6 +167,9 @@ importers:
       input-otp:
         specifier: 1.4.1
         version: 1.4.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
       lucide-react:
         specifier: ^0.454.0
         version: 0.454.0(react@19.1.0)
@@ -322,13 +334,29 @@ packages:
       '@fullcalendar/core': ~6.1.17
       '@fullcalendar/resource': ~6.1.17
 
+  '@fullcalendar/resource-timeline@6.1.17':
+    resolution: {integrity: sha512-QMrtc1mLs4c6DtlBNmWICef8Lr4CmzE47uWS/rcJBd9K2kBzvusTp7AQQ1qn3RX5UnjNHqT8pkKO/wE4yspJQw==}
+    peerDependencies:
+      '@fullcalendar/core': ~6.1.17
+      '@fullcalendar/resource': ~6.1.17
+
   '@fullcalendar/resource@6.1.17':
     resolution: {integrity: sha512-hWnbOWlroIN5Wt4NJmHAJh/F7ge2cV6S0PdGSmLFoZJZJA0hJX9GeYRzyz4MlUoj7f4dGzBlesy2RdC+t5FEMw==}
     peerDependencies:
       '@fullcalendar/core': ~6.1.17
 
+  '@fullcalendar/scrollgrid@6.1.17':
+    resolution: {integrity: sha512-lzphEKwxWMS4xQVEuimzZjKFLijlSn49ExvzkYZls0VLDwOa3BYHcRlDJBjQ0LP6kauz9aatg3MfRIde/LAazA==}
+    peerDependencies:
+      '@fullcalendar/core': ~6.1.17
+
   '@fullcalendar/timegrid@6.1.17':
     resolution: {integrity: sha512-K4PlA3L3lclLOs3IX8cvddeiJI9ZVMD7RA9IqaWwbvac771971foc9tFze9YY+Pqesf6S+vhS2dWtEVlERaGlQ==}
+    peerDependencies:
+      '@fullcalendar/core': ~6.1.17
+
+  '@fullcalendar/timeline@6.1.17':
+    resolution: {integrity: sha512-UhL2OOph/S0cEKs3lzbXjS2gTxmQwaNug2XFjdljvO/ERj10v7OBXj/zvJrPyhjvWR/CSgjNgBaUpngkCu4JtQ==}
     peerDependencies:
       '@fullcalendar/core': ~6.1.17
 
@@ -1315,6 +1343,9 @@ packages:
   '@types/fullcalendar@3.8.0':
     resolution: {integrity: sha512-uxYNAnvH7s3asQjkH8p0K1V4ENMLQDGNmFHWA7/iRZwU13A7RCOvnNoRapEIIRx8hI/+wHWkd4Q9KmpVCQfIEg==}
     deprecated: This is a stub types definition for FullCalendar (http://arshaw.com/fullcalendar/). FullCalendar provides its own type definitions, so you don\'t need @types/fullcalendar installed!
+
+  '@types/lodash@4.17.17':
+    resolution: {integrity: sha512-RRVJ+J3J+WmyOTqnz3PiBLA501eKwXl2noseKOrNo/6+XEHjTAxO4xHvxQB6QuNm+s4WRbn6rSiap8+EA+ykFQ==}
 
   '@types/node@22.15.20':
     resolution: {integrity: sha512-A6BohGFRGHAscJsTslDCA9JG7qSJr/DWUvrvY8yi9IgnGtMxCyat7vvQ//MFa0DnLsyuS3wYTpLdw4Hf+Q5JXw==}
@@ -2384,7 +2415,20 @@ snapshots:
       '@fullcalendar/resource-daygrid': 6.1.17(@fullcalendar/core@6.1.17)(@fullcalendar/resource@6.1.17(@fullcalendar/core@6.1.17))
       '@fullcalendar/timegrid': 6.1.17(@fullcalendar/core@6.1.17)
 
+  '@fullcalendar/resource-timeline@6.1.17(@fullcalendar/core@6.1.17)(@fullcalendar/resource@6.1.17(@fullcalendar/core@6.1.17))':
+    dependencies:
+      '@fullcalendar/core': 6.1.17
+      '@fullcalendar/premium-common': 6.1.17(@fullcalendar/core@6.1.17)
+      '@fullcalendar/resource': 6.1.17(@fullcalendar/core@6.1.17)
+      '@fullcalendar/scrollgrid': 6.1.17(@fullcalendar/core@6.1.17)
+      '@fullcalendar/timeline': 6.1.17(@fullcalendar/core@6.1.17)
+
   '@fullcalendar/resource@6.1.17(@fullcalendar/core@6.1.17)':
+    dependencies:
+      '@fullcalendar/core': 6.1.17
+      '@fullcalendar/premium-common': 6.1.17(@fullcalendar/core@6.1.17)
+
+  '@fullcalendar/scrollgrid@6.1.17(@fullcalendar/core@6.1.17)':
     dependencies:
       '@fullcalendar/core': 6.1.17
       '@fullcalendar/premium-common': 6.1.17(@fullcalendar/core@6.1.17)
@@ -2393,6 +2437,12 @@ snapshots:
     dependencies:
       '@fullcalendar/core': 6.1.17
       '@fullcalendar/daygrid': 6.1.17(@fullcalendar/core@6.1.17)
+
+  '@fullcalendar/timeline@6.1.17(@fullcalendar/core@6.1.17)':
+    dependencies:
+      '@fullcalendar/core': 6.1.17
+      '@fullcalendar/premium-common': 6.1.17(@fullcalendar/core@6.1.17)
+      '@fullcalendar/scrollgrid': 6.1.17(@fullcalendar/core@6.1.17)
 
   '@heroicons/react@2.2.0(react@19.1.0)':
     dependencies:
@@ -3365,6 +3415,8 @@ snapshots:
   '@types/fullcalendar@3.8.0':
     dependencies:
       fullcalendar: 6.1.17
+
+  '@types/lodash@4.17.17': {}
 
   '@types/node@22.15.20':
     dependencies:

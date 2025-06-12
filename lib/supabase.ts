@@ -464,39 +464,44 @@ export async function getCitasPorFecha(fecha: Date, obtenerMesCompleto: boolean 
     })
 
     const { data: citasRaw, error } = await supabase
-      .from('citas')
+      .from('rf_citas')
       .select(`
         id,
-        nombre_completo,
-        dni,
-        whatsapp,
-        fecha,
-        hora_inicio,
-        box_id,
+        cliente_id,
         tratamiento_id,
-        sub_tratamiento_id,
-        observaciones,
+        subtratamiento_id,
+        precio,
+        sena,
+        fecha,
+        hora,
+        box,
+        estado,
+        notas,
         created_at,
         updated_at,
-        estado,
         duracion,
-        precio,
-        senia,
-        tratamientos (
+        es_multiple,
+        rf_clientes (
           id,
-          nombre_tratamiento
+          dni,
+          nombre_completo,
+          whatsapp
         ),
-        sub_tratamientos (
+        rf_subtratamientos (
           id,
           nombre_subtratamiento,
           duracion,
           precio
+        ),
+        rf_citas_clientes (
+          cita_id,
+          count
         )
       `)
       .gte('fecha', fechaInicioStr)
       .lte('fecha', fechaFinStr)
       .order('fecha', { ascending: true })
-      .order('hora_inicio', { ascending: true })
+      .order('hora', { ascending: true })
 
     if (error) {
       console.error('Error en consulta a Supabase:', error)
@@ -510,54 +515,34 @@ export async function getCitasPorFecha(fecha: Date, obtenerMesCompleto: boolean 
     console.log(`Se encontraron ${citasRaw.length} citas en el rango`)
 
     const citasTransformadas: Cita[] = citasRaw.map((cita: any) => {
-      const fechaCitaStr = `${cita.fecha}T00:00:00-03:00`
-      const fechaCita = new Date(fechaCitaStr)
-      
-      if (isNaN(fechaCita.getTime())) {
-        throw new Error(`Fecha inválida: ${cita.fecha}`)
-      }
-      
-      const boxNombre = `Box ${cita.box_id}`
-      const tratamiento = Array.isArray(cita.tratamientos) ? cita.tratamientos[0] : cita.tratamientos
-      const subTratamiento = Array.isArray(cita.sub_tratamientos) ? cita.sub_tratamientos[0] : cita.sub_tratamientos
-      
-      // Calcular hora_fin basado en la duración del sub-tratamiento
-      const horaInicio = parseISO(`${format(fechaCita, 'yyyy-MM-dd')}T${cita.hora_inicio}`)
-      const horaFin = addMinutes(horaInicio, subTratamiento?.duracion || 30)
-      
-      // Generar un color basado en el tratamiento
-      const color = tratamiento?.nombre_tratamiento ? 
-        `hsl(${tratamiento.nombre_tratamiento.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) % 360}, 70%, 50%)` : 
-        "#808080"
+      // Obtener la cantidad de clientes para citas múltiples
+      const cantidadClientes = cita.es_multiple ? 
+        (cita.rf_citas_clientes?.[0]?.count || 0) : 
+        (cita.rf_clientes ? 1 : 0)
       
       return {
         id: cita.id,
-        fecha: fechaCita,
-        horaInicio: cita.hora_inicio,
-        horaFin: format(horaFin, 'HH:mm'),
-        box: boxNombre,
-        box_id: cita.box_id,
-        nombreCompleto: cita.nombre_completo || "Sin nombre",
-        dni: cita.dni || null,
-        whatsapp: cita.whatsapp || null,
-        tratamiento: cita.tratamiento_id,
-        subTratamiento: cita.sub_tratamiento_id || undefined,
-        nombreTratamiento: tratamiento?.nombre_tratamiento,
-        nombreSubTratamiento: subTratamiento?.nombre_subtratamiento,
-        color,
-        duracion: subTratamiento?.duracion || null,
-        precio: subTratamiento?.precio || null,
-        senia: cita.senia || 0,
-        notas: cita.observaciones || undefined,
-        estado: (cita.estado as "reservado" | "seniado" | "confirmado" | "cancelado") || "reservado",
-        observaciones: cita.observaciones,
-        created_at: cita.created_at ? format(new Date(cita.created_at), "yyyy-MM-dd'T'HH:mm:ssXXX") : undefined,
-        updated_at: cita.updated_at ? format(new Date(cita.updated_at), "yyyy-MM-dd'T'HH:mm:ssXXX") : undefined
+        cliente_id: cita.cliente_id,
+        tratamiento_id: cita.tratamiento_id,
+        subtratamiento_id: cita.subtratamiento_id,
+        precio: cita.precio || 0,
+        sena: cita.sena || 0,
+        fecha: cita.fecha,
+        hora: cita.hora,
+        box: cita.box,
+        estado: cita.estado || "reservado",
+        notas: cita.notas,
+        created_at: cita.created_at,
+        updated_at: cita.updated_at,
+        duracion: cita.duracion || cita.rf_subtratamientos?.duracion,
+        es_multiple: cita.es_multiple || false,
+        rf_clientes: cita.rf_clientes,
+        rf_subtratamientos: cita.rf_subtratamientos
       }
     })
 
     const citasAgrupadas = citasTransformadas.reduce<{ [key: string]: Cita[] }>((acc, cita) => {
-      const fechaStr = format(cita.fecha, "yyyy-MM-dd")
+      const fechaStr = format(parseISO(cita.fecha), "yyyy-MM-dd")
       if (!acc[fechaStr]) {
         acc[fechaStr] = []
       }

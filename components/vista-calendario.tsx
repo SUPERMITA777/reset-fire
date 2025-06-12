@@ -12,6 +12,10 @@ import type { Cita } from "@/types/cita"
 import { getCitasPorFecha } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { ModalEditarCita } from "@/components/modal-editar-cita"
+import { supabase } from "@/lib/supabase"
+import { CitaModal } from "@/components/modals/cita-modal"
+import { CitaCard } from "@/components/ui/cita-card"
 
 interface VistaCalendarioProps {
   vista: "dia" | "semana" | "mes"
@@ -21,341 +25,273 @@ interface VistaCalendarioProps {
 }
 
 export function VistaCalendario({ vista, fechaActual, onCambiarVista, onCambiarFecha }: VistaCalendarioProps) {
-  const [citasAgrupadas, setCitasAgrupadas] = useState<{ [key: string]: Cita[] }>({})
-  const [citaSeleccionada, setCitaSeleccionada] = useState<Cita | null>(null)
-  const [mostrarFormulario, setMostrarFormulario] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [mounted, setMounted] = useState(false)
+  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [citasAgrupadas, setCitasAgrupadas] = useState<{ [key: string]: Cita[] }>({});
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedCita, setSelectedCita] = useState<Cita | null>(null);
 
+  // Cargar citas cuando cambia la fecha
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    const cargarCitas = async () => {
+      try {
+        setLoading(true);
+        const citas = await getCitasPorFecha(fechaActual);
+        setCitasAgrupadas(citas);
+      } catch (err) {
+        console.error('Error al cargar citas:', err);
+        setError('No se pudieron cargar las citas. Por favor, intente nuevamente.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Función para cargar las citas
-  const cargarCitas = async (fecha: Date) => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      // Determinar si debemos obtener el mes completo basado en la vista
-      const obtenerMesCompleto = vista === 'mes' || vista === 'semana'
-      
-      console.log('Cargando citas:', {
-        fecha: fecha.toISOString(),
-        vista,
-        obtenerMesCompleto
-      })
+    cargarCitas();
+  }, [fechaActual]);
 
-      const citas = await getCitasPorFecha(fecha, obtenerMesCompleto)
-      setCitasAgrupadas(citas)
-    } catch (error) {
-      console.error('Error al cargar citas:', error)
-      setError(error instanceof Error ? error.message : 'Error al cargar citas')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Cargar citas cuando cambia la vista o la fecha
-  useEffect(() => {
-    cargarCitas(fechaActual)
-  }, [vista, fechaActual])
-
-  // Función auxiliar para filtrar citas por fecha
-  const filtrarCitasPorFecha = (fecha: Date) => {
-    const fechaStr = format(fecha, 'yyyy-MM-dd')
-    return citasAgrupadas[fechaStr] || []
-  }
-
-  // Función para manejar el clic en una cita
+  // Manejar clic en una cita
   const handleCitaClick = (cita: Cita) => {
-    setCitaSeleccionada(cita)
-    setMostrarFormulario(true)
-  }
+    setSelectedCita(cita);
+    setShowEditModal(true);
+  };
 
-  // Función para manejar el guardado de una cita
-  const handleGuardarCita = async () => {
-    setMostrarFormulario(false)
-    setCitaSeleccionada(null)
-    // Recargar las citas después de guardar
-    await cargarCitas(fechaActual)
-  }
+  // Manejar guardado de cita
+  const handleGuardarCita = () => {
+    setShowEditModal(false);
+    setSelectedCita(null);
+    // Recargar citas
+    getCitasPorFecha(fechaActual).then(setCitasAgrupadas).catch(err => {
+      console.error('Error al recargar citas:', err);
+      setError('No se pudieron recargar las citas. Por favor, intente nuevamente.');
+    });
+  };
 
-  // Renderizar vista diaria
+  // Filtrar citas por fecha
+  const filtrarCitasPorFecha = (fecha: Date) => {
+    const fechaStr = format(fecha, 'yyyy-MM-dd');
+    return citasAgrupadas[fechaStr] || [];
+  };
+
+  // Función para renderizar la vista diaria
   const renderVistaDia = () => {
-    if (!mounted) return null
-
-    const citasDelDia = filtrarCitasPorFecha(fechaActual)
-    const boxes = Array.from({ length: 8 }, (_, i) => i + 1)
-
-    // Función para obtener las citas de un box específico
-    const getCitasPorBox = (boxId: number) => {
-      return citasDelDia.filter(cita => cita.box_id === boxId)
-    }
-
-    // Función para convertir hora string a minutos para ordenar
-    const horaAMinutos = (hora: string) => {
-      const [horas, minutos] = hora.split(':').map(Number)
-      return horas * 60 + minutos
-    }
-
-    // Ordenar las citas por hora de inicio
-    const ordenarCitasPorHora = (citas: Cita[]) => {
-      return [...citas].sort((a, b) => horaAMinutos(a.horaInicio) - horaAMinutos(b.horaInicio))
-    }
+    const citasDelDia = filtrarCitasPorFecha(fechaActual);
+    const citasPorBox = citasDelDia.reduce<{ [key: number]: Cita[] }>((acc, cita) => {
+      if (!acc[cita.box]) {
+        acc[cita.box] = [];
+      }
+      acc[cita.box].push(cita);
+      return acc;
+    }, {});
 
     return (
-      <div className="h-full flex flex-col">
-        <div className="p-4 border-b">
-          <h2 className="text-xl font-semibold">
-            {format(fechaActual, "EEEE d 'de' MMMM", { locale: es })}
-          </h2>
+      <div className="grid grid-cols-8 gap-4 h-full">
+        {/* Columna de horas */}
+        <div className="col-span-1 space-y-1">
+          {Array.from({ length: 24 }, (_, i) => (
+            <div key={i} className="h-12 text-xs text-gray-500 text-right pr-2">
+              {format(new Date().setHours(i, 0), 'HH:mm')}
+            </div>
+          ))}
         </div>
-        <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-8 h-full">
-            {boxes.map(boxId => {
-              const citasBox = ordenarCitasPorHora(getCitasPorBox(boxId))
+
+        {/* Columnas de boxes */}
+        {Array.from({ length: 7 }, (_, i) => (
+          <div key={i} className="col-span-1 space-y-1 relative">
+            {/* Encabezado del box */}
+            <div className="h-8 text-center text-sm font-medium">
+              Box {i + 1}
+            </div>
+
+            {/* Líneas de hora */}
+            {Array.from({ length: 24 }, (_, hora) => (
+              <div key={hora} className="h-12 border-b border-gray-100" />
+            ))}
+            
+            {/* Citas del box */}
+            {citasPorBox[i + 1]?.map((cita) => {
+              const horaInicio = parseISO(`${cita.fecha}T${cita.hora}`);
+              const horaInicioMinutos = horaInicio.getHours() * 60 + horaInicio.getMinutes();
+              const duracion = cita.duracion || cita.rf_subtratamientos?.duracion || 30;
               
               return (
-                <div key={boxId} className="border-r last:border-r-0 flex flex-col">
-                  <div className="p-2 bg-gray-50 border-b text-center font-medium">
-                    BOX {boxId}
-                  </div>
-                  <div className="flex-1 p-2 space-y-2">
-                    {citasBox.length === 0 ? (
-                      <div className="text-center text-gray-400 text-sm py-4">
-                        Sin citas
-                      </div>
-                    ) : (
-                      citasBox.map(cita => (
-                        <button
-                          key={cita.id}
-                          onClick={() => handleCitaClick(cita)}
-                          className={cn(
-                            "w-full p-2 rounded text-left transition-colors",
-                            "hover:bg-opacity-90",
-                            "border border-transparent hover:border-gray-200"
-                          )}
-                          style={{ backgroundColor: cita.color || '#808080' }}
-                        >
-                          <div className="text-white">
-                            <div className="font-medium text-sm">
-                              {cita.horaInicio} - {cita.horaFin}
-                            </div>
-                            <div className="text-xs opacity-90">
-                              {cita.nombreTratamiento || cita.nombreSubTratamiento}
-                            </div>
-                            <div className="text-xs font-medium mt-1">
-                              {cita.nombreCompleto}
-                            </div>
-                          </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
+                <div
+                  key={cita.id}
+                  className="absolute w-full"
+                  style={{
+                    top: `${(horaInicioMinutos / 60) * 48 + 32}px`,
+                    height: `${(duracion / 60) * 48}px`
+                  }}
+                >
+                  <CitaCard 
+                    cita={cita} 
+                    onClick={() => handleCitaClick(cita)}
+                  />
                 </div>
-              )
+              );
             })}
           </div>
-        </div>
+        ))}
       </div>
-    )
-  }
+    );
+  };
 
-  // Renderizar vista semanal
+  // Función para renderizar la vista semanal
   const renderVistaSemana = () => {
-    if (!mounted) return null
-
-    const inicioSemana = startOfWeek(fechaActual, { weekStartsOn: 1 })
-    const diasSemana = Array.from({ length: 7 }, (_, i) => addDays(inicioSemana, i))
+    const inicioSemana = startOfWeek(fechaActual, { weekStartsOn: 1 });
+    const diasSemana = Array.from({ length: 7 }, (_, i) => addDays(inicioSemana, i));
 
     return (
-      <div className="h-full flex flex-col">
-        <div className="grid grid-cols-7 border-b">
-          {diasSemana.map(dia => (
-            <div key={dia.toISOString()} className="p-2 text-center">
-              <div className="font-medium">
-                {format(dia, "EEE", { locale: es })}
-              </div>
-              <div className={cn(
-                "text-sm",
-                isSameDay(dia, fechaActual) && "bg-blue-100 text-blue-600 rounded-full w-6 h-6 flex items-center justify-center mx-auto"
-              )}>
-                {format(dia, "d")}
-              </div>
+      <div className="grid grid-cols-8 gap-4 h-full">
+        {/* Columna de horas */}
+        <div className="col-span-1 space-y-1">
+          {Array.from({ length: 24 }, (_, i) => (
+            <div key={i} className="h-12 text-xs text-gray-500 text-right pr-2">
+              {format(new Date().setHours(i, 0), 'HH:mm')}
             </div>
           ))}
         </div>
-        <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-7 h-full">
-            {diasSemana.map(dia => {
-              const citasDelDia = filtrarCitasPorFecha(dia)
 
-              return (
-                <div key={dia.toISOString()} className="border-r last:border-r-0 p-2">
-                  <div className="space-y-1">
-                    {citasDelDia.map(cita => (
-                      <button
-                        key={cita.id}
-                        onClick={() => handleCitaClick(cita)}
-                        className={cn(
-                          "w-full p-2 rounded text-left text-sm transition-colors",
-                          "hover:bg-opacity-90",
-                          "border border-transparent hover:border-gray-200"
-                        )}
-                        style={{ backgroundColor: cita.color || '#808080' }}
-                      >
-                        <div className="text-white">
-                          <div className="font-medium truncate">
-                            {cita.horaInicio} - {cita.nombreCompleto}
-                          </div>
-                          <div className="text-xs opacity-90 truncate">
-                            {cita.nombreTratamiento || cita.nombreSubTratamiento}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Renderizar vista mensual
-  const renderVistaMes = () => {
-    if (!mounted) return null
-
-    const inicioMes = startOfMonth(fechaActual)
-    const finMes = endOfMonth(fechaActual)
-    const diasEnMes = getDaysInMonth(fechaActual)
-    const diaSemanaInicio = getDay(inicioMes) === 0 ? 6 : getDay(inicioMes) - 1
-
-    const dias: { fecha: Date; esDelMesActual: boolean }[] = []
-    // Días del mes anterior
-    for (let i = 0; i < diaSemanaInicio; i++) {
-      dias.push({ fecha: addDays(inicioMes, i - diaSemanaInicio), esDelMesActual: false })
-    }
-    // Días del mes actual
-    for (let i = 0; i < diasEnMes; i++) {
-      dias.push({ fecha: addDays(inicioMes, i), esDelMesActual: true })
-    }
-    // Días del mes siguiente
-    const diasRestantes = 7 - (dias.length % 7)
-    if (diasRestantes < 7) {
-      for (let i = 1; i <= diasRestantes; i++) {
-        dias.push({ fecha: addDays(finMes, i), esDelMesActual: false })
-      }
-    }
-
-    return (
-      <div className="h-full flex flex-col">
-        <div className="grid grid-cols-7 border-b">
-          {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map(dia => (
-            <div key={dia} className="p-2 text-center font-medium">
-              {dia}
+        {/* Columnas de días */}
+        {diasSemana.map((dia, diaIndex) => (
+          <div key={diaIndex} className="col-span-1 space-y-1 relative">
+            {/* Encabezado del día */}
+            <div className="h-8 text-center text-sm font-medium">
+              {format(dia, 'EEE d', { locale: es })}
             </div>
-          ))}
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-7 auto-rows-fr">
-            {dias.map(({ fecha, esDelMesActual }, index) => {
-              const citasDelDia = filtrarCitasPorFecha(fecha)
 
+            {/* Líneas de hora */}
+            {Array.from({ length: 24 }, (_, hora) => (
+              <div key={hora} className="h-12 border-b border-gray-100" />
+            ))}
+
+            {/* Citas del día */}
+            {filtrarCitasPorFecha(dia).map((cita) => {
+              const horaInicio = parseISO(`${cita.fecha}T${cita.hora}`);
+              const horaInicioMinutos = horaInicio.getHours() * 60 + horaInicio.getMinutes();
+              const duracion = cita.duracion || cita.rf_subtratamientos?.duracion || 30;
+              
               return (
                 <div
-                  key={index}
-                  className={cn(
-                    "min-h-[100px] border-b border-r p-1",
-                    !esDelMesActual && "bg-gray-50 text-gray-400"
-                  )}
+                  key={cita.id}
+                  className="absolute w-full"
+                  style={{
+                    top: `${(horaInicioMinutos / 60) * 48 + 32}px`,
+                    height: `${(duracion / 60) * 48}px`
+                  }}
                 >
-                  <div className="text-right mb-1">
-                    {format(fecha, "d")}
-                  </div>
-                  <div className="space-y-1">
-                    {citasDelDia.map(cita => (
-                      <button
-                        key={cita.id}
-                        onClick={() => handleCitaClick(cita)}
-                        className={cn(
-                          "w-full p-1 rounded text-left text-xs transition-colors",
-                          "hover:bg-opacity-90",
-                          "border border-transparent hover:border-gray-200"
-                        )}
-                        style={{ backgroundColor: cita.color || '#808080' }}
-                      >
-                        <div className="text-white truncate">
-                          <div className="font-medium">
-                            {cita.horaInicio} - {cita.nombreCompleto}
-                          </div>
-                          <div className="opacity-90 truncate">
-                            {cita.nombreTratamiento || cita.nombreSubTratamiento}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                  <CitaCard 
+                    cita={cita} 
+                    onClick={() => handleCitaClick(cita)}
+                  />
                 </div>
-              )
+              );
             })}
           </div>
-        </div>
+        ))}
       </div>
-    )
-  }
+    );
+  };
+
+  // Función para renderizar la vista mensual
+  const renderVistaMes = () => {
+    const inicioMes = startOfMonth(fechaActual);
+    const finMes = endOfMonth(fechaActual);
+    const inicioSemana = startOfWeek(inicioMes, { weekStartsOn: 1 });
+    const finSemana = endOfWeek(finMes, { weekStartsOn: 1 });
+    const diasMes = Array.from(
+      { length: Math.ceil((finSemana.getTime() - inicioSemana.getTime()) / (1000 * 60 * 60 * 24)) },
+      (_, i) => addDays(inicioSemana, i)
+    );
+
+    return (
+      <div className="grid grid-cols-7 gap-1 h-full">
+        {/* Encabezados de días de la semana */}
+        {Array.from({ length: 7 }, (_, i) => (
+          <div key={i} className="text-center text-sm font-medium py-2">
+            {format(addDays(inicioSemana, i), 'EEE', { locale: es })}
+          </div>
+        ))}
+
+        {/* Días del mes */}
+        {diasMes.map((dia, index) => {
+          const esDiaActual = isSameDay(dia, fechaActual);
+          const esDiaMesActual = isSameMonth(dia, fechaActual);
+          const citasDelDia = filtrarCitasPorFecha(dia);
+
+          return (
+            <div
+              key={index}
+              className={cn(
+                "min-h-[120px] p-1 border border-gray-100",
+                {
+                  "bg-gray-50": !esDiaMesActual,
+                  "bg-white": esDiaMesActual,
+                  "ring-2 ring-blue-500": esDiaActual
+                }
+              )}
+            >
+              {/* Número del día */}
+              <div className={cn(
+                "text-sm font-medium mb-1",
+                {
+                  "text-gray-400": !esDiaMesActual,
+                  "text-gray-900": esDiaMesActual
+                }
+              )}>
+                {format(dia, 'd')}
+              </div>
+
+              {/* Citas del día */}
+              <div className="space-y-1">
+                {citasDelDia.map((cita) => (
+                  <CitaCard 
+                    key={cita.id} 
+                    cita={cita} 
+                    onClick={() => handleCitaClick(cita)}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   if (!mounted) {
     return null
   }
 
   return (
-    <>
+    <div className="h-full flex flex-col">
       <div className="h-full border rounded-lg overflow-hidden">
-        {loading && (
-          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-          </div>
-        )}
-        
-        {error && (
-          <div className="p-4 bg-red-50 text-red-600 border-b">
-            {error}
-          </div>
-        )}
-
-        {vista === "dia" && renderVistaDia()}
-        {vista === "semana" && renderVistaSemana()}
-        {vista === "mes" && renderVistaMes()}
+        <div className="flex-1 overflow-auto p-4">
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center h-full text-red-500">
+              {error}
+            </div>
+          ) : (
+            <div className="h-full">
+              {vista === 'dia' && renderVistaDia()}
+              {vista === 'semana' && renderVistaSemana()}
+              {vista === 'mes' && renderVistaMes()}
+            </div>
+          )}
+        </div>
       </div>
-
-      <Dialog open={mostrarFormulario} onOpenChange={setMostrarFormulario}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>
-              {citaSeleccionada ? "Editar Cita" : "Nueva Cita"}
-            </DialogTitle>
-            <DialogDescription>
-              {citaSeleccionada 
-                ? "Modifica los detalles de la cita existente"
-                : "Completa el formulario para crear una nueva cita"}
-            </DialogDescription>
-          </DialogHeader>
-          <FormularioCita
-            citaExistente={citaSeleccionada || undefined}
-            fechaInicial={citaSeleccionada?.fecha}
-            horaInicialInicio={citaSeleccionada?.horaInicio}
-            horaInicialFin={citaSeleccionada?.horaFin}
-            tratamientoInicial={citaSeleccionada?.tratamiento}
-            subTratamientoInicial={citaSeleccionada?.subTratamiento}
-            onSuccess={handleGuardarCita}
-          />
-        </DialogContent>
-      </Dialog>
-    </>
+      {showEditModal && selectedCita && (
+        <ModalEditarCita
+          citaId={selectedCita.id}
+          open={showEditModal}
+          onOpenChange={setShowEditModal}
+          onSuccess={handleGuardarCita}
+        />
+      )}
+    </div>
   )
 } 

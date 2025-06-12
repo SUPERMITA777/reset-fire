@@ -949,25 +949,33 @@ export function GestionTratamientos() {
             </div>
 
             <div>
-              <Label>Horario</Label>
-              <div className="flex items-center gap-2 mt-2">
-                <Input
-                  type="time"
-                  value={disponibilidad.hora_inicio}
-                  onChange={(e) => setDisponibilidad(prev => ({
-                    ...prev,
-                    hora_inicio: e.target.value
-                  }))}
-                />
-                <Input
-                  type="time"
-                  value={disponibilidad.hora_fin}
-                  onChange={(e) => setDisponibilidad(prev => ({
-                    ...prev,
-                    hora_fin: e.target.value
-                  }))}
-                />
-              </div>
+              <Label>Hora Inicio (24h)</Label>
+              <Input
+                type="time"
+                value={disponibilidad.hora_inicio}
+                onChange={(e) => setDisponibilidad(prev => ({
+                  ...prev,
+                  hora_inicio: e.target.value
+                }))}
+                className="mt-2 w-32 [&::-webkit-calendar-picker-indicator]:bg-white [&::-webkit-datetime-edit]:text-right [&::-webkit-datetime-edit-fields-wrapper]:text-right [&::-webkit-datetime-edit-hour-field]:text-right [&::-webkit-datetime-edit-minute-field]:text-right [&::-webkit-datetime-edit-ampm-field]:hidden [&::-webkit-datetime-edit]:w-[85px] [&::-webkit-datetime-edit-fields-wrapper]:w-[85px]"
+                step="1800"
+                style={{ direction: 'ltr' }}
+              />
+            </div>
+
+            <div>
+              <Label>Hora Fin (24h)</Label>
+              <Input
+                type="time"
+                value={disponibilidad.hora_fin}
+                onChange={(e) => setDisponibilidad(prev => ({
+                  ...prev,
+                  hora_fin: e.target.value
+                }))}
+                className="mt-2 w-32 [&::-webkit-calendar-picker-indicator]:bg-white [&::-webkit-datetime-edit]:text-right [&::-webkit-datetime-edit-fields-wrapper]:text-right [&::-webkit-datetime-edit-hour-field]:text-right [&::-webkit-datetime-edit-minute-field]:text-right [&::-webkit-datetime-edit-ampm-field]:hidden [&::-webkit-datetime-edit]:w-[85px] [&::-webkit-datetime-edit-fields-wrapper]:w-[85px]"
+                step="1800"
+                style={{ direction: 'ltr' }}
+              />
             </div>
 
             <div>

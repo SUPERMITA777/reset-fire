@@ -24,27 +24,36 @@ export interface CitaRaw {
 
 export interface Cita {
   id: string
-  fecha: Date
-  horaInicio: string
-  horaFin: string
-  box: string
-  box_id: number
-  nombreCompleto: string
-  dni: string | null
-  whatsapp: string | null
-  tratamiento: string | undefined
-  subTratamiento: string | undefined
-  nombreTratamiento: string | undefined
-  nombreSubTratamiento: string | undefined
-  color: string
-  duracion: number | null
-  precio: number | null
-  senia: number
-  notas: string | undefined
-  estado: "reservado" | "seniado" | "confirmado" | "cancelado"
-  observaciones: string | null
-  created_at: string | undefined
-  updated_at: string | undefined
+  cliente_id?: string
+  tratamiento_id: string
+  subtratamiento_id: string
+  precio: number
+  sena: number
+  fecha: string
+  hora: string
+  box: number
+  estado: "reservado" | "confirmado" | "cancelado" | "completado"
+  notas: string | null
+  created_at: string
+  updated_at: string
+  duracion?: number
+  es_multiple?: boolean
+  rf_clientes?: {
+    id: string
+    dni: string
+    nombre_completo: string
+    whatsapp: string
+  } | null
+  rf_subtratamientos?: {
+    id: string
+    nombre_subtratamiento: string
+    duracion: number
+    precio: number
+  } | null
+  rf_citas_clientes?: {
+    cita_id: string
+    count: number
+  }[] | null
 }
 
 export interface FechaDisponible {
@@ -62,25 +71,19 @@ export interface FechaDisponible {
 
 export interface Tratamiento {
   id: string
-  nombre: string
-  descripcion?: string
-  imagen?: string
-  es_compartido: boolean
-  max_clientes_por_turno: number
-  boxes_disponibles?: number[]
-  sub_tratamientos: SubTratamiento[]
-  fechas_disponibles?: FechaDisponible[]
-  created_at?: string
-  updated_at?: string
+  nombre_tratamiento: string
+  box: number
+  created_at: string
+  updated_at: string
+  rf_subtratamientos?: SubTratamiento[]
 }
 
 export interface SubTratamiento {
   id: string
   tratamiento_id: string
-  nombre: string
-  duracion: number
+  nombre_subtratamiento: string
   precio: number
-  box: number
+  duracion: number
   created_at?: string
   updated_at?: string
 }
@@ -89,3 +92,23 @@ export interface HorarioDisponible {
   hora_inicio: string
   disponibles: number
 }
+
+// Extender el tipo Cita para incluir las relaciones
+export type CitaWithRelations = Cita & {
+  rf_clientes: {
+    id: string;
+    dni: string;
+    nombre_completo: string;
+    whatsapp: string;
+  } | null;
+  rf_subtratamientos: {
+    id: string;
+    nombre_subtratamiento: string;
+    duracion: number;
+    precio: number;
+    rf_tratamientos: {
+      id: string;
+      nombre_tratamiento: string;
+    } | null;
+  } | null;
+};
