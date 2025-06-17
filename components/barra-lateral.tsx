@@ -50,7 +50,7 @@ export function BarraLateral() {
               <div
                 key={cita.id}
                 className="flex items-center justify-between rounded-lg border p-2"
-                style={{ borderLeftColor: cita.color, borderLeftWidth: 4 }}
+                style={{ borderLeftColor: '#808080', borderLeftWidth: 4 }}
               >
                 <div className="flex flex-col">
                   <span className="font-medium">
