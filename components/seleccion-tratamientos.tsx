@@ -8,7 +8,7 @@ import { toast } from "@/components/ui/use-toast"
 import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { toZonedTime, formatInTimeZone, zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz'
+import { toZonedTime, formatInTimeZone } from 'date-fns-tz'
 import { Database } from '@/types/supabase'
 
 import { Button } from "@/components/ui/button"
