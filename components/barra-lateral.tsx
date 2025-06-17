@@ -54,7 +54,9 @@ export function BarraLateral() {
               >
                 <div className="flex flex-col">
                   <span className="font-medium">
-                    {cita.nombreTratamiento || cita.nombreSubTratamiento} - {cita.nombreCompleto}
+                    {cita.tratamiento_id ? `Tratamiento: ${cita.tratamiento_id}` : ''}
+                    {cita.subtratamiento_id ? ` - Sub: ${cita.subtratamiento_id}` : ''}
+                    {cita.rf_clientes?.nombre_completo ? ` - ${cita.rf_clientes.nombre_completo}` : ''}
                   </span>
                   <span className="text-sm text-muted-foreground">
                     {format(cita.fecha, "HH:mm", { locale: es })} - {cita.box}
