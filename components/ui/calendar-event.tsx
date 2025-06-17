@@ -1,4 +1,4 @@
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, addMinutes } from 'date-fns'
 import { cn } from '@/lib/utils'
 import type { Cita } from '@/types/cita'
 
@@ -11,8 +11,8 @@ export function CalendarEvent({ cita, onEventClick }: CalendarEventProps) {
   const duracion = cita.duracion || 30 // Duración por defecto de 30 minutos
   const altura = Math.max(duracion / 15, 1) // Altura mínima de 1 unidad (15 minutos)
   
-  const horaInicio = parseISO(`${format(cita.fecha, 'yyyy-MM-dd')}T${cita.horaInicio}`)
-  const horaFin = parseISO(`${format(cita.fecha, 'yyyy-MM-dd')}T${cita.horaFin}`)
+  const horaInicio = parseISO(`${format(cita.fecha, 'yyyy-MM-dd')}T${cita.hora}`)
+  const horaFin = addMinutes(horaInicio, duracion)
   
   // Calcular la posición vertical basada en la hora de inicio
   const horaInicioMinutos = horaInicio.getHours() * 60 + horaInicio.getMinutes()
@@ -23,8 +23,13 @@ export function CalendarEvent({ cita, onEventClick }: CalendarEventProps) {
     reservado: 'bg-blue-500',
     seniado: 'bg-yellow-500',
     confirmado: 'bg-green-500',
-    cancelado: 'bg-red-500'
+    cancelado: 'bg-red-500',
+    completado: 'bg-gray-500'
   }[cita.estado] || 'bg-gray-500'
+
+  // Obtener datos del cliente y tratamiento
+  const nombreCompleto = cita.rf_clientes?.nombre_completo || "Cliente no especificado"
+  const nombreTratamiento = cita.rf_subtratamientos?.nombre_subtratamiento || "Tratamiento no especificado"
 
   return (
     <div
@@ -38,8 +43,7 @@ export function CalendarEvent({ cita, onEventClick }: CalendarEventProps) {
       style={{
         top: `${posicionInicio * 4}rem`, // 4rem = altura de una celda de 15 minutos
         height: `${altura * 4}rem`,
-        zIndex: 10,
-        backgroundColor: cita.color || undefined
+        zIndex: 10
       }}
       onClick={() => onEventClick?.(cita)}
     >
@@ -53,32 +57,25 @@ export function CalendarEvent({ cita, onEventClick }: CalendarEventProps) {
             {format(horaInicio, 'HH:mm')}
           </span>
           <span className="truncate">
-            {cita.nombreCompleto}
+            {nombreCompleto}
           </span>
         </div>
 
-        {/* Tratamiento y sub-tratamiento */}
+        {/* Tratamiento */}
         <div className="mt-0.5 space-y-0.5">
-          {cita.nombreTratamiento && (
-            <div className="truncate opacity-90">
-              {cita.nombreTratamiento}
-            </div>
-          )}
-          {cita.nombreSubTratamiento && (
-            <div className="truncate opacity-75 text-[10px]">
-              {cita.nombreSubTratamiento}
-            </div>
-          )}
+          <div className="truncate opacity-90">
+            {nombreTratamiento}
+          </div>
         </div>
 
         {/* Información adicional en hover */}
         <div className="mt-auto pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <div className="text-[10px] opacity-75">
-            {cita.box} • {format(horaInicio, 'HH:mm')} - {format(horaFin, 'HH:mm')}
+            Box {cita.box} • {format(horaInicio, 'HH:mm')} - {format(horaFin, 'HH:mm')}
           </div>
-          {cita.senia > 0 && (
+          {cita.sena > 0 && (
             <div className="text-[10px] opacity-75">
-              Seña: ${cita.senia}
+              Seña: ${cita.sena}
             </div>
           )}
         </div>
