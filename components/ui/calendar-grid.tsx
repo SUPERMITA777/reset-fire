@@ -370,7 +370,7 @@ export function CalendarGrid({
                    <SelectValue placeholder="Seleccionar sub-tratamiento" />
                  </SelectTrigger>
                  <SelectContent>
-                   {subTratamientosFiltrados.map((st) => ( <SelectItem key={st.id} value={st.id.toString()}> {st.nombre} </SelectItem> ))}
+                   {subTratamientosFiltrados.map((st) => ( <SelectItem key={st.id} value={st.id.toString()}> {st.nombre_subtratamiento} </SelectItem> ))}
                  </SelectContent>
                </Select>
              </div>
@@ -391,6 +391,13 @@ const CalendarEvent = ({ cita, onEventClick }: CalendarEventProps) => {
   const alturaPorMinuto = alturaBase / INTERVALO_MINUTOS // altura por minuto
   const altura = Math.max(alturaBase, duracion * alturaPorMinuto) // altura mínima de 2rem
 
+  // Calcular hora de inicio y fin
+  const horaInicio = parseISO(`${format(cita.fecha, 'yyyy-MM-dd')}T${cita.hora}`)
+  const horaFin = addMinutes(horaInicio, duracion)
+
+  // Obtener datos del tratamiento
+  const nombreTratamiento = cita.rf_subtratamientos?.nombre_subtratamiento || "Tratamiento no especificado"
+
   return (
     <div
       className={cn(
@@ -399,15 +406,15 @@ const CalendarEvent = ({ cita, onEventClick }: CalendarEventProps) => {
         "flex flex-col"
       )}
       style={{
-        top: `${(parseInt(cita.horaInicio.split(':')[0]) - HORAS_INICIO) * 4 + parseInt(cita.horaInicio.split(':')[1]) / INTERVALO_MINUTOS}rem`,
+        top: `${(parseInt(cita.hora.split(':')[0]) - HORAS_INICIO) * 4 + parseInt(cita.hora.split(':')[1]) / INTERVALO_MINUTOS}rem`,
         height: `${altura}rem`,
         zIndex: 10
       }}
       onClick={() => onEventClick(cita)}
     >
-      <div className="font-medium truncate">{cita.nombreSubTratamiento || cita.nombreTratamiento}</div>
+      <div className="font-medium truncate">{nombreTratamiento}</div>
       <div className="text-[10px] text-gray-600 truncate">
-        {format(parseISO(cita.horaInicio), 'HH:mm')} - {format(parseISO(cita.horaFin), 'HH:mm')}
+        {format(horaInicio, 'HH:mm')} - {format(horaFin, 'HH:mm')}
       </div>
     </div>
   )
