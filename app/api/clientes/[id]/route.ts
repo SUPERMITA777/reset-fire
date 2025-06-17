@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-export async function GET(request: Request, context: { params: { id: string } }) {
-  const { id } = context.params;
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
   console.log('Iniciando endpoint GET /api/clientes/[id]', { id })
   
   try {
@@ -84,9 +87,10 @@ export async function GET(request: Request, context: { params: { id: string } })
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  console.log('Iniciando endpoint PUT /api/clientes/[id]', { id: params.id })
+  const { id } = await params;
+  console.log('Iniciando endpoint PUT /api/clientes/[id]', { id })
   
   try {
     const body = await request.json()
@@ -105,7 +109,7 @@ export async function PUT(
       .from('rf_clientes')
       .select('id')
       .eq('dni', dni)
-      .neq('id', params.id)
+      .neq('id', id)
       .single()
 
     if (dniError && dniError.code !== 'PGRST116') {
@@ -132,7 +136,7 @@ export async function PUT(
         whatsapp: whatsapp || null,
         updated_at: new Date().toISOString()
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -176,16 +180,17 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  console.log('Iniciando endpoint DELETE /api/clientes/[id]', { id: params.id })
+  const { id } = await params;
+  console.log('Iniciando endpoint DELETE /api/clientes/[id]', { id })
   
   try {
     // Verificar si el cliente tiene citas
     const { data: citas, error: citasError } = await supabase
       .from('rf_citas')
       .select('id')
-      .eq('cliente_id', params.id)
+      .eq('cliente_id', id)
 
     if (citasError) {
       console.error('Error al verificar citas del cliente:', citasError)
@@ -206,37 +211,23 @@ export async function DELETE(
     const { error: deleteError } = await supabase
       .from('rf_clientes')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (deleteError) {
       console.error('Error al eliminar cliente:', deleteError)
       return NextResponse.json(
-        { 
-          error: 'Error al eliminar el cliente',
-          details: deleteError.message
-        },
+        { error: 'Error al eliminar el cliente' },
         { status: 500 }
       )
     }
 
-    console.log('Cliente eliminado exitosamente:', { id: params.id })
+    console.log('Cliente eliminado exitosamente:', { id })
 
     return NextResponse.json({ message: 'Cliente eliminado exitosamente' })
   } catch (error) {
-    const finalError = error instanceof Error ? error : new Error('Error desconocido')
-    console.error('Error detallado al eliminar cliente:', {
-      error: finalError,
-      message: finalError.message,
-      stack: finalError.stack,
-      type: finalError.constructor.name
-    })
-
+    console.error('Error al eliminar cliente:', error)
     return NextResponse.json(
-      { 
-        error: 'Error al eliminar el cliente',
-        details: finalError.message,
-        type: finalError.constructor.name
-      },
+      { error: 'Error al eliminar el cliente' },
       { status: 500 }
     )
   }

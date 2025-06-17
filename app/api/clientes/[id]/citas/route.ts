@@ -44,10 +44,10 @@ type CitaRaw = {
 
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params
+    const { id } = await params
     const { data: citas, error: citasError } = await supabase
       .from('citas')
       .select(`
