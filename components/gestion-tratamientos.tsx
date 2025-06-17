@@ -154,9 +154,9 @@ export function GestionTratamientos() {
 
   const abrirDialogoEditarTratamiento = (tratamiento: Tratamiento) => {
     setTratamientoEdicion(tratamiento)
-    setNuevoNombre(tratamiento.nombre)
-    setMaxClientesPorTurno(tratamiento.max_clientes_por_turno.toString())
-    setEsCompartido(tratamiento.es_compartido)
+    setNuevoNombre(tratamiento.nombre_tratamiento)
+    setMaxClientesPorTurno("1")
+    setEsCompartido(false)
     setTipoDialogo("tratamiento")
     setDialogoAbierto(true)
   }
@@ -174,7 +174,7 @@ export function GestionTratamientos() {
   const abrirDialogoEditarSubTratamiento = (tratamiento: Tratamiento, subTratamiento: SubTratamiento) => {
     setTratamientoEdicion(tratamiento)
     setSubTratamientoEdicion(subTratamiento)
-    setNuevoNombre(subTratamiento.nombre)
+    setNuevoNombre(subTratamiento.nombre_subtratamiento)
     setDuracion(subTratamiento.duracion.toString())
     setPrecio(subTratamiento.precio.toString())
     setTipoDialogo("subTratamiento")
@@ -420,7 +420,7 @@ export function GestionTratamientos() {
 
   const handleAbrirEditarTratamiento = async (tratamiento: Tratamiento) => {
     setTratamientoSeleccionado(tratamiento)
-    setNuevoNombre(tratamiento.nombre)
+    setNuevoNombre(tratamiento.nombre_tratamiento)
     setTipoDialogo("tratamiento")
     try {
       const fechas = await getFechasDisponibles(tratamiento.id)
@@ -712,9 +712,9 @@ export function GestionTratamientos() {
                   <div key={tratamiento.id} className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="font-medium">{tratamiento.nombre}</h3>
+                        <h3 className="font-medium">{tratamiento.nombre_tratamiento}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {tratamiento.sub_tratamientos.length} sub-tratamientos
+                          {tratamiento.rf_subtratamientos?.length || 0} sub-tratamientos
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -735,14 +735,14 @@ export function GestionTratamientos() {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {tratamiento.sub_tratamientos.map((subTrat) => (
+                      {tratamiento.rf_subtratamientos?.map((subTrat: SubTratamiento) => (
                         <Badge
                           key={subTrat.id}
                           variant="secondary"
                           className="cursor-pointer"
                           onClick={() => abrirDialogoEditarSubTratamiento(tratamiento, subTrat)}
                         >
-                          {subTrat.nombre}
+                          {subTrat.nombre_subtratamiento}
                         </Badge>
                       ))}
                     </div>
@@ -785,9 +785,9 @@ export function GestionTratamientos() {
                     </div>
 
                     {/* Mostrar disponibilidad actual */}
-                    {tratamientoSeleccionado.fechas_disponibles && tratamientoSeleccionado.fechas_disponibles.length > 0 && (
+                    {(tratamientoSeleccionado as any).fechas_disponibles && (tratamientoSeleccionado as any).fechas_disponibles.length > 0 && (
                       <div className="space-y-4">
-                        {tratamientoSeleccionado.fechas_disponibles.map((fecha) => (
+                        {(tratamientoSeleccionado as any).fechas_disponibles.map((fecha: any) => (
                           <div key={fecha.id} className="space-y-4 border rounded-lg p-4">
                             <div className="grid grid-cols-2 gap-4">
                               <div>
