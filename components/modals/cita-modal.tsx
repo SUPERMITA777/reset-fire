@@ -42,20 +42,20 @@ const ESTADOS = [
 
 type EstadoCita = typeof ESTADOS[number]["value"];
 
-type FormData = {
-  dni: string
-  nombre_completo: string
-  whatsapp?: string
-  tratamiento_id: string
-  subtratamiento_id: string
+interface FormData {
   fecha: string
   hora: string
   box: number
+  tratamiento_id: string
+  subtratamiento_id: string
+  dni: string
+  nombre_completo: string
+  whatsapp: string
   precio: number
   sena: number
-  estado: 'reservado' | 'confirmado' | 'completado' | 'cancelado'
-  notas?: string
+  notas: string
   paciente_id?: string
+  estado: EstadoCita
 }
 
 interface Cita {
@@ -106,13 +106,15 @@ interface ClienteMultiple {
 }
 
 interface FormDataMultiple {
-  tratamiento_id: string;
-  subtratamiento_id: string;
-  fecha: string;
-  hora: string;
-  box: number;
-  notas: string;
-  clientes: ClienteMultiple[];
+  fecha: string
+  hora: string
+  box: number
+  tratamiento_id: string
+  subtratamiento_id: string
+  precio: number
+  sena: number
+  notas: string
+  clientes: ClienteMultiple[]
 }
 
 interface ClienteCitaDB {
@@ -149,11 +151,8 @@ interface CitaData {
   precio: number
   sena: number
   notas: string | null
-  paciente_id?: string
+  paciente_id: string
   es_multiple: boolean
-  duracion: number
-  dni: string
-  nombre_completo: string
 }
 
 const getEstadoColor = (estado: FormData['estado']) => {
@@ -186,39 +185,36 @@ export function CitaModal({
     : "Complete los datos para crear una nueva cita"
 }: CitaModalProps) {
   const [activeTab, setActiveTab] = useState(cita?.es_multiple ? "multiple" : "individual")
-  const [form, setForm] = useState<FormData>({
-    dni: cita?.rf_clientes?.dni || "",
-    nombre_completo: cita?.rf_clientes?.nombre_completo || "",
-    whatsapp: cita?.rf_clientes?.whatsapp || "",
-    tratamiento_id: cita?.tratamiento_id || "",
-    subtratamiento_id: cita?.subtratamiento_id || "",
-    fecha: cita?.fecha || fechaSeleccionada || "",
-    hora: cita?.hora || horaSeleccionada || "",
-    box: cita?.box || boxSeleccionado || 1,
-    precio: cita?.precio || 0,
-    sena: cita?.sena || 0,
-    estado: cita?.estado || "reservado",
-    notas: cita?.notas || "",
-    paciente_id: cita?.cliente_id || ""
+  const form = useForm<FormData>({
+    defaultValues: {
+      fecha: '',
+      hora: '',
+      box: 1,
+      tratamiento_id: '',
+      subtratamiento_id: '',
+      dni: '',
+      nombre_completo: '',
+      whatsapp: '',
+      precio: 0,
+      sena: 0,
+      notas: '',
+      paciente_id: undefined,
+      estado: 'reservado'
+    }
   })
 
-  const [formMultiple, setFormMultiple] = useState<FormDataMultiple>({
-    tratamiento_id: cita?.tratamiento_id || "",
-    subtratamiento_id: cita?.subtratamiento_id || "",
-    fecha: cita?.fecha || fechaSeleccionada || "",
-    hora: cita?.hora || horaSeleccionada || "",
-    box: cita?.box || boxSeleccionado || 1,
-    notas: cita?.notas || "",
-    clientes: cita?.es_multiple ? [
-      {
-        dni: cita?.rf_clientes?.dni || "",
-        nombre_completo: cita?.rf_clientes?.nombre_completo || "",
-        whatsapp: cita?.rf_clientes?.whatsapp || "",
-        precio: cita?.precio || 0,
-        sena: cita?.sena || 0,
-        paciente_id: cita?.cliente_id
-      }
-    ] : [{ dni: "", nombre_completo: "", whatsapp: "", precio: 0, sena: 0 }]
+  const formMultiple = useForm<FormDataMultiple>({
+    defaultValues: {
+      fecha: '',
+      hora: '',
+      box: 1,
+      tratamiento_id: '',
+      subtratamiento_id: '',
+      precio: 0,
+      sena: 0,
+      notas: '',
+      clientes: []
+    }
   })
 
   const [subtratamientos, setSubtratamientos] = useState<SubTratamiento[]>([])
@@ -235,8 +231,8 @@ export function CitaModal({
         .eq('dni', dni)
         .single()
 
-      if (error) {
-        if (error.code === 'PGRST116') {
+        if (error) {
+          if (error.code === 'PGRST116') {
           // Cliente no encontrado, no es un error
           return
         }
@@ -244,40 +240,34 @@ export function CitaModal({
       }
 
       if (cliente) {
-        setForm(prev => ({
-          ...prev,
-          nombre_completo: cliente.nombre_completo,
-          whatsapp: cliente.whatsapp || '',
-          paciente_id: cliente.id
-        }))
-      }
-    } catch (error) {
+        form.setValue('nombre_completo', cliente.nombre_completo)
+        form.setValue('whatsapp', cliente.whatsapp || '')
+        form.setValue('paciente_id', cliente.id)
+        }
+      } catch (error) {
       console.error('Error al buscar cliente:', error)
-      toast({
-        title: "Error",
+        toast({
+          title: "Error",
         description: "No se pudo buscar el cliente",
-        variant: "destructive"
+          variant: "destructive"
       })
-    }
-  }, [])
+      }
+  }, [form, supabase])
 
-  // Memoizar los manejadores de eventos
+  // Actualizar el manejador de cambios de cliente
   const handleClienteChange = useCallback((index: number, field: keyof ClienteMultiple, value: string | number) => {
-    setFormMultiple(prev => ({
-      ...prev,
-      clientes: prev.clientes.map((cliente, i) => 
+    const clientes = formMultiple.watch('clientes')
+    const updatedClientes = clientes.map((cliente, i) => 
         i === index ? { ...cliente, [field]: value } : cliente
       )
-    }))
-  }, [])
+    formMultiple.setValue(`clientes.${index}.${field}`, value)
+  }, [formMultiple])
 
   const handleAddCliente = useCallback(() => {
-    const subtratamiento = subtratamientos.find(st => st.id === formMultiple.subtratamiento_id)
+    const subtratamiento = subtratamientos.find(st => st.id === formMultiple.watch('subtratamiento_id'))
     const precio = subtratamiento?.precio || 0
-    setFormMultiple(prev => ({
-      ...prev,
-      clientes: [
-        ...prev.clientes,
+    formMultiple.setValue('clientes', [
+      ...formMultiple.watch('clientes'),
         { 
           dni: "", 
           nombre_completo: "", 
@@ -285,16 +275,12 @@ export function CitaModal({
           precio: precio,
           sena: 0 
         }
-      ]
-    }))
-  }, [formMultiple.subtratamiento_id, subtratamientos])
+    ])
+  }, [formMultiple, subtratamientos])
 
   const handleRemoveCliente = useCallback((index: number) => {
-    setFormMultiple(prev => ({
-      ...prev,
-      clientes: prev.clientes.filter((_, i) => i !== index)
-    }))
-  }, [])
+    formMultiple.setValue('clientes', formMultiple.watch('clientes').filter((_, i) => i !== index))
+  }, [formMultiple])
 
   // Memoizar la función de búsqueda de clientes múltiples
   const buscarClienteMultiple = useCallback(async (dni: string, index: number) => {
@@ -314,18 +300,15 @@ export function CitaModal({
       }
 
       if (cliente) {
-        setFormMultiple(prev => ({
-          ...prev,
-          clientes: prev.clientes.map((c, i) => 
-            i === index ? {
-              ...c,
-              nombre_completo: cliente.nombre_completo,
-              whatsapp: cliente.whatsapp || '',
-              paciente_id: cliente.id
-            } : c
-          )
-        }))
-      }
+        formMultiple.setValue('clientes', formMultiple.watch('clientes').map((c, i) => 
+              i === index ? {
+            ...c,
+            nombre_completo: cliente.nombre_completo,
+            whatsapp: cliente.whatsapp || '',
+            paciente_id: cliente.id
+          } : c
+        ))
+        }
     } catch (error) {
       console.error('Error al buscar cliente:', error)
       toast({
@@ -334,7 +317,7 @@ export function CitaModal({
         variant: "destructive"
       })
     }
-  }, [])
+  }, [formMultiple, supabase])
 
   // Memoizar la función de reset
   const resetForm = useCallback(() => {
@@ -342,28 +325,30 @@ export function CitaModal({
     const horaInicial = horaSeleccionada || ""
     const boxInicial = boxSeleccionado || 1
 
-    setForm({
-      dni: "",
-      nombre_completo: "",
-      whatsapp: "",
+    form.reset({
+      fecha: fechaInicial,
+      hora: horaInicial,
+      box: boxInicial,
       tratamiento_id: "",
       subtratamiento_id: "",
       precio: 0,
       sena: 0,
-      fecha: fechaInicial,
-      hora: horaInicial,
-      box: boxInicial,
-      estado: "reservado",
+      dni: "",
+      nombre_completo: "",
+      whatsapp: "",
       notas: "",
-      paciente_id: undefined
+      paciente_id: undefined,
+      estado: "reservado"
     })
 
-    setFormMultiple({
-      tratamiento_id: "",
-      subtratamiento_id: "",
+    formMultiple.reset({
       fecha: fechaInicial,
       hora: horaInicial,
       box: boxInicial,
+      tratamiento_id: "",
+      subtratamiento_id: "",
+      precio: 0,
+      sena: 0,
       notas: "",
       clientes: [{ 
         dni: "", 
@@ -401,103 +386,100 @@ export function CitaModal({
   // Asegurar que se hereden los datos seleccionados
   useEffect(() => {
     if (fechaSeleccionada) {
-      setForm(prev => ({
-        ...prev,
-        fecha: fechaSeleccionada
-      }))
+      form.setValue('fecha', fechaSeleccionada)
     }
-  }, [fechaSeleccionada])
+  }, [fechaSeleccionada, form])
 
   useEffect(() => {
     if (horaSeleccionada) {
-      setForm(prev => ({
-        ...prev,
-        hora: horaSeleccionada
-      }))
+      form.setValue('hora', horaSeleccionada)
     }
-  }, [horaSeleccionada])
+  }, [horaSeleccionada, form])
 
   useEffect(() => {
     if (boxSeleccionado) {
-      setForm(prev => ({
-        ...prev,
-        box: boxSeleccionado
-      }))
+      form.setValue('box', boxSeleccionado)
     }
-  }, [boxSeleccionado])
+  }, [boxSeleccionado, form])
 
   // Efecto para cargar subtratamientos cuando se selecciona un tratamiento
   useEffect(() => {
-    if (form.tratamiento_id) {
-      fetchSubtratamientos(form.tratamiento_id)
+    if (form.watch('tratamiento_id')) {
+      fetchSubtratamientos(form.watch('tratamiento_id'))
     }
-  }, [form.tratamiento_id, fetchSubtratamientos])
+  }, [form.watch('tratamiento_id'), fetchSubtratamientos])
 
   // Efecto para cargar subtratamientos en el formulario múltiple
   useEffect(() => {
-    if (formMultiple.tratamiento_id) {
-      fetchSubtratamientos(formMultiple.tratamiento_id)
+    if (formMultiple.watch('tratamiento_id')) {
+      fetchSubtratamientos(formMultiple.watch('tratamiento_id'))
     }
-  }, [formMultiple.tratamiento_id, fetchSubtratamientos])
+  }, [formMultiple.watch('tratamiento_id'), fetchSubtratamientos])
 
   // Efecto para inicializar el formulario cuando se abre el modal
   useEffect(() => {
     if (open) {
       if (cita) {
         // Si es una cita existente, cargar sus datos
-        setForm({
-          fecha: cita.fecha,
-          hora: cita.hora,
-          box: cita.box,
-          tratamiento_id: cita.tratamiento_id,
-          subtratamiento_id: cita.subtratamiento_id,
-          dni: cita.rf_clientes?.dni || '',
-          nombre_completo: cita.rf_clientes?.nombre_completo || '',
-          whatsapp: cita.rf_clientes?.whatsapp || '',
-          precio: cita.precio || 0,
-          sena: cita.sena || 0,
-          notas: cita.notas || '',
-          paciente_id: cita.cliente_id,
-          estado: cita.estado
-        })
+        form.setValue('fecha', cita.fecha)
+        form.setValue('hora', cita.hora)
+        form.setValue('box', cita.box)
+        form.setValue('tratamiento_id', cita.tratamiento_id)
+        form.setValue('subtratamiento_id', cita.subtratamiento_id)
+        form.setValue('dni', cita.rf_clientes?.dni || '')
+        form.setValue('nombre_completo', cita.rf_clientes?.nombre_completo || '')
+        form.setValue('whatsapp', cita.rf_clientes?.whatsapp || '')
+        form.setValue('precio', cita.precio || 0)
+        form.setValue('sena', cita.sena || 0)
+        form.setValue('notas', cita.notas || '')
+        form.setValue('paciente_id', cita.cliente_id)
+        form.setValue('estado', cita.estado)
       } else {
         // Si es una nueva cita, inicializar con los datos seleccionados
-        setForm({
-          fecha: fechaSeleccionada || '',
-          hora: horaSeleccionada || '',
-          box: boxSeleccionado || 1,
-          tratamiento_id: '',
-          subtratamiento_id: '',
+        form.setValue('fecha', fechaSeleccionada || '')
+        form.setValue('hora', horaSeleccionada || '')
+        form.setValue('box', boxSeleccionado || 1)
+        form.setValue('tratamiento_id', '')
+        form.setValue('subtratamiento_id', '')
+        form.setValue('dni', '')
+        form.setValue('nombre_completo', '')
+        form.setValue('whatsapp', '')
+        form.setValue('precio', 0)
+        form.setValue('sena', 0)
+        form.setValue('notas', '')
+        form.setValue('paciente_id', '')
+        form.setValue('estado', 'reservado')
+
+        // Inicializar el formulario múltiple también
+        formMultiple.setValue('fecha', fechaSeleccionada || '')
+        formMultiple.setValue('hora', horaSeleccionada || '')
+        formMultiple.setValue('box', boxSeleccionado || 1)
+        formMultiple.setValue('tratamiento_id', '')
+        formMultiple.setValue('subtratamiento_id', '')
+        formMultiple.setValue('clientes', [{
           dni: '',
           nombre_completo: '',
           whatsapp: '',
           precio: 0,
           sena: 0,
-          notas: '',
-          paciente_id: '',
-          estado: 'reservado'
-        })
-
-        // Inicializar el formulario múltiple también
-        setFormMultiple({
-          fecha: fechaSeleccionada || '',
-          hora: horaSeleccionada || '',
-          box: boxSeleccionado || 1,
-          tratamiento_id: '',
-          subtratamiento_id: '',
-          clientes: [{
-            dni: '',
-            nombre_completo: '',
-            whatsapp: '',
-            precio: 0,
-            sena: 0,
-            paciente_id: ''
-          }],
-          notas: ''
-        })
+          paciente_id: ''
+        }])
+        formMultiple.setValue('notas', '')
       }
     }
   }, [open, cita, fechaSeleccionada, horaSeleccionada, boxSeleccionado, fetchSubtratamientos])
+
+  // En el componente CitaModal, actualizar el useEffect para limpiar el estado
+  useEffect(() => {
+    if (!open) {
+      // Limpiar el estado cuando se cierra el modal
+      form.reset()
+      formMultiple.reset()
+      setActiveTab('individual')
+      setSubtratamientos([])
+      setLoading(false) // Asegurarse de que el estado de carga se resetee
+    }
+  }, [open, form, formMultiple])
 
   // Funciones de manejo de citas
   async function verificarDisponibilidad(fecha: string, hora: string, box: number, citaId?: string) {
@@ -533,11 +515,16 @@ export function CitaModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    if (loading) return
+    
     try {
       setLoading(true)
-
+      const formData = form.getValues()
+      
       // Validar campos requeridos
-      if (!form.fecha || !form.hora || !form.box || !form.tratamiento_id || !form.subtratamiento_id || !form.nombre_completo) {
+      if (!formData.fecha || !formData.hora || !formData.box || 
+          !formData.tratamiento_id || !formData.subtratamiento_id || 
+          !formData.nombre_completo) {
         toast({
           title: "Error",
           description: "Por favor complete todos los campos requeridos",
@@ -548,7 +535,12 @@ export function CitaModal({
 
       // Verificar disponibilidad
       try {
-        const disponible = await verificarDisponibilidad(form.fecha, form.hora, form.box, cita?.id)
+        const disponible = await verificarDisponibilidad(
+          formData.fecha, 
+          formData.hora, 
+          formData.box, 
+          cita?.id
+        )
         if (!disponible) {
           toast({
             title: "Error",
@@ -567,16 +559,16 @@ export function CitaModal({
         return
       }
 
-      // Buscar o crear cliente
-      let pacienteId = form.paciente_id
-      if (!pacienteId && form.dni) {
+      // Buscar o crear cliente primero
+      let pacienteId = formData.paciente_id
+      if (!pacienteId && formData.dni) {
         try {
           const { data: cliente, error: clienteError } = await supabase
             .from('rf_clientes')
             .upsert({
-              dni: form.dni,
-              nombre_completo: form.nombre_completo,
-              whatsapp: form.whatsapp || null
+              dni: formData.dni,
+              nombre_completo: formData.nombre_completo,
+              whatsapp: formData.whatsapp || null
             })
             .select()
             .single()
@@ -598,24 +590,31 @@ export function CitaModal({
         }
       }
 
-      // Preparar datos de la cita
-      const citaData: CitaData = {
-        tratamiento_id: form.tratamiento_id,
-        subtratamiento_id: form.subtratamiento_id,
-        fecha: form.fecha,
-        hora: form.hora,
-        box: form.box,
-        estado: form.estado || 'reservado',
-        precio: form.precio,
-        sena: form.sena,
-        notas: form.notas || null,
-        paciente_id: pacienteId,
-        es_multiple: false,
-        duracion: subtratamientos.find(st => st.id === form.subtratamiento_id)?.duracion || 30,
-        dni: form.dni,
-        nombre_completo: form.nombre_completo
+      if (!pacienteId) {
+        toast({
+          title: "Error",
+          description: "No se pudo obtener el ID del paciente",
+          variant: "destructive"
+        })
+        return
       }
 
+      // Preparar datos de la cita
+      const citaData: CitaData = {
+        tratamiento_id: formData.tratamiento_id,
+        subtratamiento_id: formData.subtratamiento_id,
+        fecha: formData.fecha,
+        hora: formData.hora,
+        box: formData.box,
+        estado: formData.estado,
+        precio: formData.precio,
+        sena: formData.sena,
+        notas: formData.notas || null,
+        paciente_id: pacienteId,
+        es_multiple: false
+      }
+
+      let success = false
       try {
         if (cita?.id) {
           // Actualizar cita existente
@@ -624,35 +623,28 @@ export function CitaModal({
             .update(citaData)
             .eq('id', cita.id)
 
-          if (updateError) {
-            console.error('Error al actualizar cita:', updateError)
-            throw new Error(`Error al actualizar cita: ${updateError.message}`)
-          }
-
-          toast({
-            title: "Éxito",
-            description: "Cita actualizada correctamente"
-          })
+          if (updateError) throw updateError
+          success = true
         } else {
-          // Crear nueva cita
-          const { error: createError } = await supabase
+          // Crear nueva cita - Modificado para evitar duplicación
+          const { data, error: createError } = await supabase
             .from('rf_citas')
             .insert(citaData)
+            .select()
+            .limit(1)
+            .single()
 
-          if (createError) {
-            console.error('Error al crear cita:', createError)
-            throw new Error(`Error al crear cita: ${createError.message}`)
-          }
-
-          toast({
-            title: "Éxito",
-            description: "Cita creada correctamente"
-          })
+          if (createError) throw createError
+          if (!data) throw new Error('No se pudo crear la cita')
+          success = true
         }
 
-        // Cerrar modal y notificar
-        onOpenChange(false)
-        onSubmit(citaData)
+        if (success) {
+          onOpenChange(false)
+          // Esperar a que el modal se cierre antes de notificar
+          await new Promise(resolve => setTimeout(resolve, 100))
+          if (onSubmit) onSubmit(citaData)
+        }
 
       } catch (error) {
         console.error('Error al guardar cita:', error)
@@ -682,9 +674,9 @@ export function CitaModal({
       setLoading(true)
 
       // Validar campos requeridos
-      if (!formMultiple.fecha || !formMultiple.hora || !formMultiple.box || 
-          !formMultiple.tratamiento_id || !formMultiple.subtratamiento_id || 
-          formMultiple.clientes.length === 0) {
+      if (!formMultiple.watch('fecha') || !formMultiple.watch('hora') || !formMultiple.watch('box') || 
+          !formMultiple.watch('tratamiento_id') || !formMultiple.watch('subtratamiento_id') || 
+          formMultiple.watch('clientes').length === 0) {
         toast({
           title: "Error",
           description: "Por favor complete todos los campos requeridos",
@@ -694,33 +686,98 @@ export function CitaModal({
       }
 
       // Verificar disponibilidad
-      const disponible = await verificarDisponibilidad(formMultiple.fecha, formMultiple.hora, formMultiple.box)
-      if (!disponible) {
+      try {
+        const disponible = await verificarDisponibilidad(
+          formMultiple.watch('fecha'), 
+          formMultiple.watch('hora'), 
+          formMultiple.watch('box')
+        )
+        if (!disponible) {
         toast({
-          title: "Error",
-          description: "El horario seleccionado no está disponible",
+            title: "Error",
+            description: "El horario seleccionado no está disponible",
           variant: "destructive"
+          })
+          return
+        }
+      } catch (error) {
+        console.error('Error al verificar disponibilidad:', error)
+          toast({
+          title: "Error",
+          description: "No se pudo verificar la disponibilidad del horario",
+            variant: "destructive"
         })
         return
       }
 
-      // Preparar datos de las citas múltiples
-      const citasData: CitaData[] = formMultiple.clientes.map(cliente => ({
-        tratamiento_id: formMultiple.tratamiento_id,
-        subtratamiento_id: formMultiple.subtratamiento_id,
-        fecha: formMultiple.fecha,
-        hora: formMultiple.hora,
-        box: formMultiple.box,
-        estado: 'reservado',
-        precio: cliente.precio,
-        sena: cliente.sena,
-        notas: formMultiple.notas || null,
-        paciente_id: cliente.paciente_id,
-        es_multiple: true,
-        duracion: subtratamientos.find(st => st.id === formMultiple.subtratamiento_id)?.duracion || 30,
-        dni: cliente.dni,
-        nombre_completo: cliente.nombre_completo
-      }))
+      // Procesar cada cliente y crear sus citas
+      const citasData: CitaData[] = []
+      
+      for (const cliente of formMultiple.watch('clientes')) {
+        // Buscar o crear cliente
+        let pacienteId = cliente.paciente_id
+        if (!pacienteId && cliente.dni) {
+          try {
+            const { data: clienteData, error: clienteError } = await supabase
+              .from('rf_clientes')
+              .upsert({
+                dni: cliente.dni,
+                nombre_completo: cliente.nombre_completo,
+                whatsapp: cliente.whatsapp || null
+              })
+              .select()
+              .single()
+
+            if (clienteError) {
+              console.error('Error al crear/actualizar cliente:', clienteError)
+              throw new Error(`Error al procesar cliente: ${clienteError.message}`)
+            }
+
+            pacienteId = clienteData.id
+          } catch (error) {
+            console.error('Error al procesar cliente:', error)
+        toast({
+              title: "Error",
+              description: `No se pudo procesar la información del cliente ${cliente.nombre_completo}`,
+          variant: "destructive"
+            })
+            continue
+          }
+        }
+
+        if (!pacienteId) {
+        toast({
+            title: "Error",
+            description: `No se pudo obtener el ID del paciente ${cliente.nombre_completo}`,
+          variant: "destructive"
+          })
+          continue
+        }
+
+        // Agregar cita para este cliente (sin duracion)
+        citasData.push({
+          tratamiento_id: formMultiple.watch('tratamiento_id'),
+          subtratamiento_id: formMultiple.watch('subtratamiento_id'),
+          fecha: formMultiple.watch('fecha'),
+          hora: formMultiple.watch('hora'),
+          box: formMultiple.watch('box'),
+          estado: 'reservado',
+          precio: cliente.precio,
+          sena: cliente.sena,
+          notas: formMultiple.watch('notas') || null,
+          paciente_id: pacienteId,
+          es_multiple: true
+        })
+      }
+
+      if (citasData.length === 0) {
+        toast({
+          title: "Error",
+          description: "No se pudo procesar ningún cliente",
+          variant: "destructive"
+        })
+        return
+      }
 
       try {
         // Crear nuevas citas
@@ -728,13 +785,13 @@ export function CitaModal({
           .from('rf_citas')
           .insert(citasData)
 
-        if (createError) {
+            if (createError) {
           console.error('Error al crear citas:', createError)
           throw new Error(`Error al crear citas: ${createError.message}`)
         }
 
-        toast({
-          title: "Éxito",
+      toast({
+        title: "Éxito",
           description: "Citas creadas correctamente"
         })
 
@@ -765,7 +822,7 @@ export function CitaModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[750px] max-h-[80vh] overflow-y-scroll scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <div className="w-full pr-2">
           <DialogHeader className="space-y-2 sticky top-0 bg-white z-10 pb-2">
             <div className="flex items-center justify-between">
@@ -803,8 +860,8 @@ export function CitaModal({
                     <Input
                       id="fecha"
                       type="date"
-                      value={form.fecha}
-                      onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+                      value={form.watch('fecha')}
+                      onChange={(e) => form.setValue('fecha', e.target.value)}
                       className="h-7 text-xs"
                       disabled={!!fechaSeleccionada}
                     />
@@ -814,8 +871,8 @@ export function CitaModal({
                     <Input
                       id="hora"
                       type="time"
-                      value={form.hora}
-                      onChange={(e) => setForm({ ...form, hora: e.target.value })}
+                      value={form.watch('hora')}
+                      onChange={(e) => form.setValue('hora', e.target.value)}
                       className="h-7 text-xs"
                       disabled={!!horaSeleccionada}
                     />
@@ -827,8 +884,8 @@ export function CitaModal({
                       type="number"
                       min="1"
                       max="8"
-                      value={form.box}
-                      onChange={(e) => setForm({ ...form, box: parseInt(e.target.value) || 1 })}
+                      value={form.watch('box')}
+                      onChange={(e) => form.setValue('box', parseInt(e.target.value) || 1)}
                       className="h-7 text-xs"
                       disabled={!!boxSeleccionado}
                     />
@@ -840,10 +897,10 @@ export function CitaModal({
                     <Label htmlFor="dni" className="mb-1.5 block">DNI</Label>
                     <Input
                       id="dni"
-                      value={form.dni}
+                      value={form.watch('dni')}
                       onChange={(e) => {
                         const dni = e.target.value
-                        setForm({ ...form, dni })
+                        form.setValue('dni', dni)
                         if (dni.length >= 3) {
                           buscarCliente(dni)
                         }
@@ -857,8 +914,8 @@ export function CitaModal({
                     <Label htmlFor="whatsapp" className="mb-1.5 block">WHATSAPP</Label>
                     <Input
                       id="whatsapp"
-                      value={form.whatsapp}
-                      onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+                      value={form.watch('whatsapp')}
+                      onChange={(e) => form.setValue('whatsapp', e.target.value)}
                       placeholder="9 dígitos"
                       className="h-8"
                     />
@@ -869,8 +926,8 @@ export function CitaModal({
                   <Label htmlFor="nombre_completo" className="mb-1.5 block">NOMBRE Y APELLIDO</Label>
                   <Input
                     id="nombre_completo"
-                    value={form.nombre_completo}
-                    onChange={(e) => setForm({ ...form, nombre_completo: e.target.value })}
+                    value={form.watch('nombre_completo')}
+                    onChange={(e) => form.setValue('nombre_completo', e.target.value)}
                     placeholder="Ingrese nombre completo"
                     className="h-8"
                     required
@@ -881,9 +938,11 @@ export function CitaModal({
                   <div className="flex-1">
                     <Label htmlFor="tratamiento" className="mb-1.5 block">TRATAMIENTO</Label>
                     <Select
-                      value={form.tratamiento_id}
+                      value={form.watch('tratamiento_id')}
                       onValueChange={(value) => {
-                        setForm({ ...form, tratamiento_id: value, subtratamiento_id: "", precio: 0 })
+                        form.setValue('tratamiento_id', value)
+                        form.setValue('subtratamiento_id', '')
+                        form.setValue('precio', 0)
                         fetchSubtratamientos(value)
                       }}
                     >
@@ -902,15 +961,15 @@ export function CitaModal({
                   <div className="flex-1">
                     <Label htmlFor="subtratamiento" className="mb-1.5 block">SUBTRATAMIENTO</Label>
                     <Select
-                      value={String(form.subtratamiento_id)}
+                      value={String(form.watch('subtratamiento_id'))}
                       onValueChange={(value) => {
-                        setForm(prev => ({ ...prev, subtratamiento_id: value }))
+                        form.setValue('subtratamiento_id', value)
                         const subtratamiento = subtratamientos.find(st => st.id === value)
                         if (subtratamiento) {
-                          setForm(prev => ({ ...prev, precio: subtratamiento.precio }))
+                          form.setValue('precio', subtratamiento.precio)
                         }
                       }}
-                      disabled={!form.tratamiento_id}
+                      disabled={!form.watch('tratamiento_id')}
                     >
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Seleccione subtratamiento" />
@@ -926,39 +985,69 @@ export function CitaModal({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <Label htmlFor="precio" className="mb-1.5 block">PRECIO</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="precio" className="mb-1.5 block text-xs">PRECIO</Label>
                     <Input
                       id="precio"
                       type="number"
                       min="0"
-                      value={form.precio}
-                      onChange={(e) => setForm({ ...form, precio: parseFloat(e.target.value) || 0 })}
-                      className="h-8"
+                      value={form.watch('precio')}
+                      onChange={(e) => form.setValue('precio', parseFloat(e.target.value) || 0)}
+                      className="h-8 text-sm"
                       required
                     />
                   </div>
-                  <div className="flex-1">
-                    <Label htmlFor="sena" className="mb-1.5 block">SEÑA</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="sena" className="mb-1.5 block text-xs">SEÑA</Label>
                     <Input
                       id="sena"
                       type="number"
                       min="0"
-                      value={form.sena}
-                      onChange={(e) => setForm({ ...form, sena: parseFloat(e.target.value) || 0 })}
-                      className="h-8"
+                      value={form.watch('sena')}
+                      onChange={(e) => form.setValue('sena', parseFloat(e.target.value) || 0)}
+                      className="h-8 text-sm"
                       required
                     />
                   </div>
+                  {cita && (
+                    <div className="space-y-2">
+                      <Label className="mb-1.5 block text-xs">ESTADO</Label>
+                      <Select
+                        value={form.watch('estado')}
+                        onValueChange={(value: EstadoCita) => form.setValue('estado', value)}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="Seleccionar estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ESTADOS.map((estado) => (
+                            <SelectItem 
+                              key={estado.value} 
+                              value={estado.value}
+                              className="flex items-center gap-2 text-sm"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div 
+                                  className="w-2 h-2 rounded-full" 
+                                  style={{ backgroundColor: getEstadoColor(estado.value) }}
+                                />
+                                {estado.label}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
 
                 <div>
                   <Label htmlFor="notas" className="mb-1.5 block">NOTAS</Label>
                   <Textarea
                     id="notas"
-                    value={form.notas}
-                    onChange={(e) => setForm({ ...form, notas: e.target.value })}
+                    value={form.watch('notas')}
+                    onChange={(e) => form.setValue('notas', e.target.value)}
                     placeholder="Ingrese notas adicionales"
                     className="h-20"
                   />
@@ -991,8 +1080,8 @@ export function CitaModal({
                     <Input
                       id="fecha_multiple"
                       type="date"
-                      value={formMultiple.fecha}
-                      onChange={(e) => setFormMultiple(prev => ({ ...prev, fecha: e.target.value }))}
+                      value={formMultiple.watch('fecha')}
+                      onChange={(e) => formMultiple.setValue('fecha', e.target.value)}
                       className="h-7 text-xs"
                       disabled={!!fechaSeleccionada}
                     />
@@ -1002,8 +1091,8 @@ export function CitaModal({
                     <Input
                       id="hora_multiple"
                       type="time"
-                      value={formMultiple.hora}
-                      onChange={(e) => setFormMultiple(prev => ({ ...prev, hora: e.target.value }))}
+                      value={formMultiple.watch('hora')}
+                      onChange={(e) => formMultiple.setValue('hora', e.target.value)}
                       className="h-7 text-xs"
                       disabled={!!horaSeleccionada}
                     />
@@ -1015,8 +1104,8 @@ export function CitaModal({
                       type="number"
                       min="1"
                       max="8"
-                      value={formMultiple.box}
-                      onChange={(e) => setFormMultiple(prev => ({ ...prev, box: parseInt(e.target.value) || 1 }))}
+                      value={formMultiple.watch('box')}
+                      onChange={(e) => formMultiple.setValue('box', parseInt(e.target.value) || 1)}
                       className="h-7 text-xs"
                       disabled={!!boxSeleccionado}
                     />
@@ -1027,13 +1116,10 @@ export function CitaModal({
                   <div className="flex-1">
                     <Label htmlFor="tratamiento_multiple" className="mb-1.5 block">TRATAMIENTO</Label>
                     <Select
-                      value={formMultiple.tratamiento_id}
+                      value={formMultiple.watch('tratamiento_id')}
                       onValueChange={(value) => {
-                        setFormMultiple(prev => ({
-                          ...prev,
-                          tratamiento_id: value,
-                          subtratamiento_id: ""
-                        }))
+                        formMultiple.setValue('tratamiento_id', value)
+                        formMultiple.setValue('subtratamiento_id', '')
                         fetchSubtratamientos(value)
                       }}
                     >
@@ -1051,34 +1137,31 @@ export function CitaModal({
                   </div>
                   <div className="flex-1">
                     <Label htmlFor="subtratamiento_multiple" className="mb-1.5 block">SUBTRATAMIENTO</Label>
-                    <Select
-                      value={formMultiple.subtratamiento_id}
-                      onValueChange={(value) => {
-                        setFormMultiple(prev => ({ ...prev, subtratamiento_id: value }))
+                      <Select
+                      value={String(formMultiple.watch('subtratamiento_id'))}
+                        onValueChange={(value) => {
+                        formMultiple.setValue('subtratamiento_id', value)
                         const subtratamiento = subtratamientos.find(st => st.id === value)
                         if (subtratamiento) {
-                          setFormMultiple(prev => ({
-                            ...prev,
-                            clientes: prev.clientes.map(c => ({
-                              ...c,
-                              precio: subtratamiento.precio
-                            }))
-                          }))
+                          formMultiple.setValue('clientes', formMultiple.watch('clientes').map(c => ({
+                            ...c,
+                            precio: subtratamiento.precio
+                          })))
                         }
                       }}
-                      disabled={!formMultiple.tratamiento_id}
+                      disabled={!formMultiple.watch('tratamiento_id')}
                     >
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Seleccione subtratamiento" />
-                      </SelectTrigger>
-                      <SelectContent>
+                        </SelectTrigger>
+                        <SelectContent>
                         {subtratamientos.map((sub) => (
                           <SelectItem key={sub.id} value={sub.id}>
                             {sub.nombre_subtratamiento}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                   </div>
                 </div>
 
@@ -1086,7 +1169,7 @@ export function CitaModal({
                   <Label className="text-xs font-semibold">CLIENTES</Label>
                   
                   <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-                    {formMultiple.clientes.map((cliente, index) => (
+                    {formMultiple.watch('clientes').map((cliente, index) => (
                       <div key={index} className="p-2 border rounded-lg bg-gray-50">
                         <div className="flex items-center gap-2">
                           <div className="flex-1">
@@ -1112,7 +1195,7 @@ export function CitaModal({
                               className="h-7 text-sm"
                             />
                           </div>
-
+                          
                           <div className="flex-1">
                             <Label className="text-xs">WHATSAPP</Label>
                             <Input
@@ -1122,7 +1205,7 @@ export function CitaModal({
                               className="h-7 text-sm"
                             />
                           </div>
-
+                          
                           <div className="flex-1">
                             <Label className="text-xs">PRECIO</Label>
                             <Input
@@ -1146,15 +1229,15 @@ export function CitaModal({
                           </div>
 
                           {index > 0 && (
-                            <Button
-                              type="button"
+                          <Button
+                            type="button"
                               variant="destructive"
-                              size="sm"
-                              onClick={() => handleRemoveCliente(index)}
+                            size="sm"
+                            onClick={() => handleRemoveCliente(index)}
                               className="h-7 mt-6"
-                            >
+                          >
                               <Trash2 className="h-4 w-4" />
-                            </Button>
+                          </Button>
                           )}
                         </div>
                       </div>
@@ -1177,8 +1260,8 @@ export function CitaModal({
                   <Label htmlFor="notas_multiple" className="mb-1.5 block">NOTAS</Label>
                   <Textarea
                     id="notas_multiple"
-                    value={formMultiple.notas}
-                    onChange={(e) => setFormMultiple(prev => ({ ...prev, notas: e.target.value }))}
+                    value={formMultiple.watch('notas')}
+                    onChange={(e) => formMultiple.setValue('notas', e.target.value)}
                     placeholder="Ingrese notas adicionales"
                     className="h-20"
                   />

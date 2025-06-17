@@ -1,12 +1,30 @@
 {
-  "name": "my-v0-project",
-  "version": "0.1.0",
+  "name": "reset-fire",
+  "version": "1.0.0",
+  "description": "Sistema completo de gestión de citas y tratamientos para clínicas estéticas",
   "private": true,
+  "author": "Tu Nombre",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tu-usuario/reset-fire.git"
+  },
+  "keywords": [
+    "nextjs",
+    "react",
+    "typescript",
+    "supabase",
+    "calendario",
+    "citas",
+    "tratamientos",
+    "clinica-estetica"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "type-check": "tsc --noEmit",
     "migrate": "node scripts/run-migrations.js",
     "migrate:simple": "node scripts/run-migrations-simple.js"
   },
