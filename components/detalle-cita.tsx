@@ -12,10 +12,10 @@ interface DetalleCitaProps {
 
 export function DetalleCita({ cita }: DetalleCitaProps) {
   // Función auxiliar para formatear la fecha de manera segura
-  const formatearFecha = (fecha: Date | undefined) => {
+  const formatearFecha = (fecha: string | undefined) => {
     if (!fecha) return "Fecha no especificada"
     try {
-      return format(fecha, "EEEE d 'de' MMMM", { locale: es })
+      return format(new Date(fecha), "EEEE d 'de' MMMM", { locale: es })
     } catch (error) {
       console.error("Error al formatear fecha:", error)
       return "Fecha inválida"
@@ -34,13 +34,22 @@ export function DetalleCita({ cita }: DetalleCitaProps) {
     }
   }
 
+  // Obtener datos del cliente
+  const nombreCompleto = cita.rf_clientes?.nombre_completo || "Cliente no especificado"
+  const dni = cita.rf_clientes?.dni
+  const whatsapp = cita.rf_clientes?.whatsapp
+
+  // Obtener datos del tratamiento
+  const nombreTratamiento = cita.rf_subtratamientos?.nombre_subtratamiento || "Tratamiento no especificado"
+  const nombreSubTratamiento = cita.rf_subtratamientos?.nombre_subtratamiento || "Subtratamiento no especificado"
+
   return (
     <div className="space-y-4 py-2">
       <div className="flex items-start">
-        <div className="w-4 h-4 rounded-full mt-1 mr-2 flex-shrink-0" style={{ backgroundColor: cita.color }} />
+        <div className="w-4 h-4 rounded-full mt-1 mr-2 flex-shrink-0 bg-blue-500" />
         <div>
           <h3 className="font-medium text-lg">
-            {cita.nombreCompleto}
+            {nombreCompleto}
           </h3>
           <p className="text-muted-foreground">
             {formatearFecha(cita.fecha)}
@@ -54,39 +63,37 @@ export function DetalleCita({ cita }: DetalleCitaProps) {
         <div className="flex items-center">
           <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
           <span>
-            {formatearHora(cita.horaInicio)} - {formatearHora(cita.horaFin)}
+            {formatearHora(cita.hora)} - {cita.duracion ? `${cita.duracion} min` : "Duración no especificada"}
           </span>
         </div>
 
         <div className="flex items-center">
           <User className="w-4 h-4 mr-2 text-muted-foreground" />
           <span>
-            {cita.nombreCompleto} {cita.dni && `(DNI: ${cita.dni})`}
+            {nombreCompleto} {dni && `(DNI: ${dni})`}
           </span>
         </div>
 
-        {cita.whatsapp && (
+        {whatsapp && (
           <div className="flex items-center">
             <Phone className="w-4 h-4 mr-2 text-muted-foreground" />
-            <span>{cita.whatsapp}</span>
+            <span>{whatsapp}</span>
           </div>
         )}
 
         <div className="flex items-center">
           <Scissors className="w-4 h-4 mr-2 text-muted-foreground" />
           <span>
-            {cita.nombreTratamiento && cita.nombreSubTratamiento
-              ? `${cita.nombreTratamiento} - ${cita.nombreSubTratamiento}`
-              : "Tratamiento no especificado"}
+            {nombreTratamiento} - {nombreSubTratamiento}
           </span>
         </div>
 
-        {(cita.precio || cita.senia) && (
+        {(cita.precio || cita.sena) && (
           <div className="flex items-center">
             <CreditCard className="w-4 h-4 mr-2 text-muted-foreground" />
             <span>
               {cita.precio && `Precio: $${cita.precio.toLocaleString()}`}{" "}
-              {cita.senia && cita.senia > 0 && `(Seña: $${cita.senia.toLocaleString()})`}
+              {cita.sena && cita.sena > 0 && `(Seña: $${cita.sena.toLocaleString()})`}
             </span>
           </div>
         )}
