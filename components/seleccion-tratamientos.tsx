@@ -28,6 +28,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { CitaModal } from "@/components/modals/cita-modal"
 import type { CitaWithRelations } from "@/types/cita"
 
+// Tipo para las citas del box
+interface CitaBox {
+  horaInicio: Date
+  horaFin: Date
+}
+
 // Tipo para los sub-tratamientos con duración y precio
 interface SubTratamientoLocal {
   id: string
@@ -450,7 +456,7 @@ const SeleccionTratamientos = () => {
           const horaFinSlot = new Date(tiempo.getTime() + duracion * 60000);
           
           // Verificar si hay solapamiento con citas existentes
-          const haySolapamiento = citasBox.some(cita => {
+          const haySolapamiento = citasBox.some((cita: CitaBox) => {
             const solapamiento = (
               (tiempo >= cita.horaInicio && tiempo < cita.horaFin) || // El inicio del nuevo slot está dentro de una cita existente
               (horaFinSlot > cita.horaInicio && horaFinSlot <= cita.horaFin) || // El fin del nuevo slot está dentro de una cita existente
