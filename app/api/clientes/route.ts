@@ -5,11 +5,7 @@ type Cliente = {
   id: string
   nombre_completo: string
   dni: string
-  telefono: string | null
-  email: string | null
-  fecha_nacimiento: Date | null
-  direccion: string | null
-  historia_clinica: Record<string, any>
+  whatsapp: string | null
   created_at: Date
   updated_at: Date
   total_citas: number
@@ -19,30 +15,52 @@ type Cliente = {
 type Cita = {
   id: string
   fecha: string
+  hora: string
+  estado: string
+  rf_subtratamientos: {
+    nombre_subtratamiento: string
+    precio: number
+  } | null
 }
 
 type ClienteConCitas = Cliente & {
-  citas: Cita[]
+  rf_citas: Cita[]
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   console.log('Iniciando endpoint GET /api/clientes')
   
   try {
-    // Verificar la conexión a la base de datos
-    console.log('Intentando conectar a la base de datos...')
+    const { searchParams } = new URL(request.url)
+    const search = searchParams.get('search')
     
-    // Obtener los clientes usando Supabase
-    const { data: clientes, error: clientesError } = await supabase
-      .from('clientes')
+    console.log('Parámetros de búsqueda:', { search })
+    
+    // Construir la consulta base
+    let query = supabase
+      .from('rf_clientes')
       .select(`
         *,
-        citas:clientes_citas_fkey (
+        rf_citas (
           id,
-          fecha
+          fecha,
+          hora,
+          estado,
+          rf_subtratamientos (
+            nombre_subtratamiento,
+            precio
+          )
         )
       `)
       .order('nombre_completo', { ascending: true })
+
+    // Aplicar filtro de búsqueda si se proporciona
+    if (search && search.trim()) {
+      const searchTerm = search.trim()
+      query = query.or(`dni.ilike.%${searchTerm}%,nombre_completo.ilike.%${searchTerm}%,whatsapp.ilike.%${searchTerm}%`)
+    }
+
+    const { data: clientes, error: clientesError } = await query
 
     if (clientesError) {
       console.error('Error al obtener clientes:', clientesError)
@@ -56,8 +74,8 @@ export async function GET() {
     }
 
     // Procesar los datos para incluir el total de citas y la última cita
-    const clientesProcesados = clientes.map((cliente: ClienteConCitas) => {
-      const citas = cliente.citas || []
+    const clientesProcesados = (clientes || []).map((cliente: ClienteConCitas) => {
+      const citas = cliente.rf_citas || []
       const total_citas = citas.length
       const ultima_cita = citas.length > 0 
         ? new Date(Math.max(...citas.map((c: Cita) => new Date(c.fecha).getTime())))
@@ -67,7 +85,7 @@ export async function GET() {
         ...cliente,
         total_citas,
         ultima_cita,
-        citas: undefined // Eliminar el array de citas del resultado
+        rf_citas: undefined // Eliminar el array de citas del resultado
       }
     })
 
@@ -133,7 +151,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { nombre_completo, dni, telefono, email, fecha_nacimiento, direccion, historia_clinica } = body
+    const { nombre_completo, dni, whatsapp } = body
 
     // Validaciones básicas
     if (!nombre_completo || !dni) {
@@ -149,7 +167,7 @@ export async function POST(request: Request) {
 
     // Verificar si el DNI ya existe
     const { data: dniExistente, error: dniError } = await supabase
-      .from('clientes')
+      .from('rf_clientes')
       .select('id')
       .eq('dni', dni)
       .single()
@@ -172,15 +190,11 @@ export async function POST(request: Request) {
 
     // Crear el nuevo cliente
     const { data: cliente, error: createError } = await supabase
-      .from('clientes')
+      .from('rf_clientes')
       .insert([{
         nombre_completo,
         dni,
-        telefono: telefono || null,
-        email: email || null,
-        fecha_nacimiento: fecha_nacimiento ? new Date(fecha_nacimiento) : null,
-        direccion: direccion || null,
-        historia_clinica: historia_clinica || {}
+        whatsapp: whatsapp || null
       }])
       .select()
       .single()
@@ -202,10 +216,10 @@ export async function POST(request: Request) {
       dni: cliente.dni
     })
 
-    return NextResponse.json(cliente)
+    return NextResponse.json(cliente, { status: 201 })
   } catch (error) {
     const finalError = error instanceof Error ? error : new Error('Error desconocido')
-    console.error('Error al crear cliente:', {
+    console.error('Error detallado al crear cliente:', {
       error: finalError,
       message: finalError.message,
       stack: finalError.stack,

@@ -1,347 +1,487 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { 
-  Search, 
-  Plus, 
-  User, 
-  Phone, 
-  Calendar, 
-  FileText, 
-  Edit, 
-  Trash2,
-  Eye,
-  Clock,
-  MapPin
-} from "lucide-react"
+import { Search, User, Phone, Calendar, DollarSign, Clock, MapPin, Edit, Trash2, Plus } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
 interface Cliente {
   id: string
-  dni: string
   nombre_completo: string
-  whatsapp: string
-  email?: string
-  fecha_nacimiento?: string
-  direccion?: string
+  dni: string
+  whatsapp: string | null
   created_at: string
-  updated_at: string
+  total_citas: number
+  ultima_cita: string | null
 }
 
 interface Cita {
   id: string
   fecha: string
-  hora_inicio: string
-  hora_fin: string
-  box_id: number
-  tratamiento_id: string
-  sub_tratamiento_id: string | null
-  nombre_completo: string
-  observaciones: string | null
+  hora: string
   estado: string
-  created_at: string
-  tratamiento: {
-    id: string
-    nombre: string
+  notas: string | null
+  precio: number
+  sena: number
+  box: number
+  tratamiento_nombre: string
+  subtratamiento_nombre: string
+  duracion: number
+  fecha_formateada: string
+}
+
+interface ClienteDetalle extends Cliente {
+  rf_citas: Cita[]
+  estadisticas: {
+    total_citas: number
+    citas_confirmadas: number
+    citas_completadas: number
+    citas_canceladas: number
+    total_gastado: number
+    total_seniado: number
+    saldo_pendiente: number
   }
-  sub_tratamiento: {
-    id: string
-    nombre: string
-  } | null
 }
 
 export default function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [citas, setCitas] = useState<Cita[]>([])
+  const [clienteSeleccionado, setClienteSeleccionado] = useState<ClienteDetalle | null>(null)
+  const [showModal, setShowModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
-  const [showClienteDialog, setShowClienteDialog] = useState(false)
+  const [editingCliente, setEditingCliente] = useState<ClienteDetalle | null>(null)
+  const [editForm, setEditForm] = useState({
+    nombre_completo: "",
+    dni: "",
+    whatsapp: ""
+  })
 
-  useEffect(() => {
-    cargarClientes()
-  }, [])
-
-  const cargarClientes = async () => {
+  // Cargar clientes
+  const cargarClientes = async (search?: string) => {
     try {
-      const response = await fetch('/api/clientes')
-      if (response.ok) {
-        const data = await response.json()
-        setClientes(data)
-      }
+      setLoading(true)
+      const url = search 
+        ? `/api/clientes?search=${encodeURIComponent(search)}`
+        : '/api/clientes'
+      
+      const response = await fetch(url)
+      if (!response.ok) throw new Error('Error al cargar clientes')
+      
+      const data = await response.json()
+      setClientes(data)
     } catch (error) {
-      console.error('Error cargando clientes:', error)
+      console.error('Error al cargar clientes:', error)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los clientes",
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
     }
   }
 
-  const cargarCitasCliente = async (clienteId: string) => {
+  // Cargar detalles del cliente
+  const cargarDetallesCliente = async (id: string) => {
     try {
-      const response = await fetch(`/api/clientes/${clienteId}/citas`)
-      if (response.ok) {
-        const data = await response.json()
-        setCitas(data)
-      }
+      const response = await fetch(`/api/clientes/${id}`)
+      if (!response.ok) throw new Error('Error al cargar detalles del cliente')
+      
+      const data = await response.json()
+      setClienteSeleccionado(data)
+      setEditingCliente(data)
+      setEditForm({
+        nombre_completo: data.nombre_completo,
+        dni: data.dni,
+        whatsapp: data.whatsapp || ""
+      })
+      setShowModal(true)
     } catch (error) {
-      console.error('Error cargando citas del cliente:', error)
+      console.error('Error al cargar detalles del cliente:', error)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los detalles del cliente",
+        variant: "destructive"
+      })
     }
   }
 
-  const handleVerCliente = async (cliente: Cliente) => {
-    setSelectedCliente(cliente)
-    await cargarCitasCliente(cliente.id)
-    setShowClienteDialog(true)
+  // Actualizar cliente
+  const actualizarCliente = async () => {
+    if (!editingCliente) return
+
+    try {
+      const response = await fetch(`/api/clientes/${editingCliente.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm)
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error al actualizar cliente')
+      }
+
+      const clienteActualizado = await response.json()
+      
+      // Actualizar la lista de clientes
+      setClientes(prev => prev.map(c => 
+        c.id === clienteActualizado.id ? clienteActualizado : c
+      ))
+      
+      // Actualizar el cliente seleccionado
+      setClienteSeleccionado(prev => prev ? { ...prev, ...clienteActualizado } : null)
+      
+      toast({
+        title: "Éxito",
+        description: "Cliente actualizado correctamente"
+      })
+    } catch (error) {
+      console.error('Error al actualizar cliente:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error al actualizar cliente",
+        variant: "destructive"
+      })
+    }
   }
 
-  const clientesFiltrados = clientes.filter(cliente =>
-    cliente.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cliente.dni.includes(searchTerm) ||
-    cliente.whatsapp.includes(searchTerm)
-  )
+  // Eliminar cliente
+  const eliminarCliente = async (id: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este cliente?')) return
+
+    try {
+      const response = await fetch(`/api/clientes/${id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error al eliminar cliente')
+      }
+
+      setClientes(prev => prev.filter(c => c.id !== id))
+      setShowModal(false)
+      
+      toast({
+        title: "Éxito",
+        description: "Cliente eliminado correctamente"
+      })
+    } catch (error) {
+      console.error('Error al eliminar cliente:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error al eliminar cliente",
+        variant: "destructive"
+      })
+    }
+  }
+
+  // Búsqueda con debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      cargarClientes(searchTerm)
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm])
+
+  // Cargar clientes iniciales
+  useEffect(() => {
+    cargarClientes()
+  }, [])
 
   const getEstadoColor = (estado: string) => {
     switch (estado) {
       case 'reservado': return 'bg-blue-100 text-blue-800'
-      case 'confirmado': return 'bg-green-100 text-green-800'
+      case 'confirmado': return 'bg-orange-100 text-orange-800'
+      case 'completado': return 'bg-green-100 text-green-800'
       case 'cancelado': return 'bg-red-100 text-red-800'
-      case 'completado': return 'bg-gray-100 text-gray-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
 
-  if (loading) {
-    return (
-      <div className="container mx-auto py-8">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg">Cargando clientes...</div>
-        </div>
-      </div>
-    )
+  const getEstadoText = (estado: string) => {
+    switch (estado) {
+      case 'reservado': return 'Reservado'
+      case 'confirmado': return 'Confirmado'
+      case 'completado': return 'Completado'
+      case 'cancelado': return 'Cancelado'
+      default: return estado
+    }
   }
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Gestión de Clientes</h1>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
+        <Button onClick={() => setShowModal(true)}>
+          <Plus className="w-4 h-4 mr-2" />
           Nuevo Cliente
         </Button>
       </div>
 
       {/* Barra de búsqueda */}
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nombre, DNI o WhatsApp..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Buscar por DNI, nombre o WhatsApp..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
 
       {/* Lista de clientes */}
       <div className="grid gap-4">
-        {clientesFiltrados.map((cliente) => (
-          <Card key={cliente.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <User className="h-5 w-5 text-muted-foreground" />
-                    <h3 className="text-xl font-semibold">{cliente.nombre_completo}</h3>
+        {loading ? (
+          <div className="text-center py-8">Cargando clientes...</div>
+        ) : clientes.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            {searchTerm ? 'No se encontraron clientes con esa búsqueda' : 'No hay clientes registrados'}
+          </div>
+        ) : (
+          clientes.map((cliente) => (
+            <Card key={cliente.id} className="hover:shadow-md transition-shadow cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg font-semibold">{cliente.nombre_completo}</h3>
+                      <Badge variant="outline">{cliente.dni}</Badge>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      {cliente.whatsapp && (
+                        <div className="flex items-center gap-1">
+                          <Phone className="w-4 h-4" />
+                          {cliente.whatsapp}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        {cliente.total_citas} citas
+                      </div>
+                      {cliente.ultima_cita && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          Última: {format(new Date(cliente.ultima_cita), 'dd/MM/yyyy')}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      <span>DNI: {cliente.dni}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      <span>{cliente.whatsapp}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      <span>Registrado: {format(new Date(cliente.created_at), 'dd/MM/yyyy', { locale: es })}</span>
-                    </div>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        cargarDetallesCliente(cliente.id)
+                      }}
+                    >
+                      <User className="w-4 h-4 mr-1" />
+                      Ver
+                    </Button>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleVerCliente(cliente)}
-                  >
-                    <Eye className="mr-2 h-4 w-4" />
-                    Ver Detalles
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Edit className="mr-2 h-4 w-4" />
-                    Editar
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
-      {clientesFiltrados.length === 0 && (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">
-              {searchTerm ? 'No se encontraron clientes con esos criterios' : 'No hay clientes registrados'}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Dialog de detalles del cliente */}
-      <Dialog open={showClienteDialog} onOpenChange={setShowClienteDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh]">
+      {/* Modal de detalles del cliente */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detalles del Cliente</DialogTitle>
+            <DialogDescription>
+              Información completa del cliente y su historial
+            </DialogDescription>
           </DialogHeader>
-          
-          {selectedCliente && (
-            <Tabs defaultValue="info" className="w-full">
+
+          {clienteSeleccionado && (
+            <Tabs defaultValue="datos" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="info">Información</TabsTrigger>
-                <TabsTrigger value="citas">Historial de Citas</TabsTrigger>
-                <TabsTrigger value="clinica">Historia Clínica</TabsTrigger>
+                <TabsTrigger value="datos">Datos Personales</TabsTrigger>
+                <TabsTrigger value="historial">Historial Clínico</TabsTrigger>
+                <TabsTrigger value="estadisticas">Estadísticas</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="info" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Información Personal</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Nombre Completo</label>
-                        <p className="text-lg">{selectedCliente.nombre_completo}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">DNI</label>
-                        <p className="text-lg">{selectedCliente.dni}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">WhatsApp</label>
-                        <p className="text-lg">{selectedCliente.whatsapp}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Email</label>
-                        <p className="text-lg">{selectedCliente.email || 'No especificado'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Fecha de Nacimiento</label>
-                        <p className="text-lg">
-                          {selectedCliente.fecha_nacimiento 
-                            ? format(new Date(selectedCliente.fecha_nacimiento), 'dd/MM/yyyy', { locale: es })
-                            : 'No especificada'
-                          }
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Dirección</label>
-                        <p className="text-lg">{selectedCliente.direccion || 'No especificada'}</p>
-                      </div>
+              <TabsContent value="datos" className="space-y-4">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-4 flex-1">
+                    <div>
+                      <label className="text-sm font-medium">Nombre Completo</label>
+                      <Input
+                        value={editForm.nombre_completo}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, nombre_completo: e.target.value }))}
+                        className="mt-1"
+                      />
                     </div>
-                    <Separator />
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Fecha de Registro</label>
-                        <p className="text-lg">{format(new Date(selectedCliente.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Última Actualización</label>
-                        <p className="text-lg">{format(new Date(selectedCliente.updated_at), 'dd/MM/yyyy HH:mm', { locale: es })}</p>
-                      </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium">DNI</label>
+                      <Input
+                        value={editForm.dni}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, dni: e.target.value }))}
+                        className="mt-1"
+                      />
                     </div>
-                  </CardContent>
-                </Card>
+                    
+                    <div>
+                      <label className="text-sm font-medium">WhatsApp</label>
+                      <Input
+                        value={editForm.whatsapp}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, whatsapp: e.target.value }))}
+                        className="mt-1"
+                        placeholder="+54 9 11 1234-5678"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 ml-4">
+                    <Button onClick={actualizarCliente} size="sm">
+                      <Edit className="w-4 h-4 mr-1" />
+                      Guardar
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={() => eliminarCliente(clienteSeleccionado.id)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Eliminar
+                    </Button>
+                  </div>
+                </div>
               </TabsContent>
 
-              <TabsContent value="citas" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Historial de Citas</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="h-[400px]">
-                      {citas.length > 0 ? (
-                        <div className="space-y-4">
-                          {citas.map((cita) => (
-                            <div key={cita.id} className="border rounded-lg p-4">
-                              <div className="flex justify-between items-start mb-2">
-                                <div>
-                                  <h4 className="font-semibold">
-                                    {cita.tratamiento.nombre}
-                                    {cita.sub_tratamiento && ` - ${cita.sub_tratamiento.nombre}`}
-                                  </h4>
-                                  <p className="text-sm text-muted-foreground">
-                                    {format(new Date(cita.fecha), 'dd/MM/yyyy', { locale: es })} - {cita.hora_inicio} a {cita.hora_fin}
-                                  </p>
-                                </div>
+              <TabsContent value="historial" className="space-y-4">
+                <div className="space-y-4">
+                  {clienteSeleccionado.rf_citas.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      No hay citas registradas para este cliente
+                    </div>
+                  ) : (
+                    clienteSeleccionado.rf_citas.map((cita) => (
+                      <Card key={cita.id}>
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h4 className="font-semibold">{cita.tratamiento_nombre}</h4>
                                 <Badge className={getEstadoColor(cita.estado)}>
-                                  {cita.estado.toUpperCase()}
+                                  {getEstadoText(cita.estado)}
                                 </Badge>
                               </div>
-                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                <div className="flex items-center gap-1">
-                                  <MapPin className="h-4 w-4" />
-                                  <span>Box {cita.box_id}</span>
+                              
+                              <div className="text-sm text-gray-600 space-y-1">
+                                <div>Subtratamiento: {cita.subtratamiento_nombre}</div>
+                                <div>Fecha: {cita.fecha_formateada}</div>
+                                <div>Hora: {cita.hora}</div>
+                                <div>Box: {cita.box}</div>
+                                <div>Duración: {cita.duracion} minutos</div>
+                                <div className="flex gap-4">
+                                  <span>Precio: ${cita.precio}</span>
+                                  <span>Seña: ${cita.sena}</span>
                                 </div>
-                                {cita.observaciones && (
-                                  <div className="flex items-center gap-1">
-                                    <FileText className="h-4 w-4" />
-                                    <span>{cita.observaciones}</span>
+                                {cita.notas && (
+                                  <div className="mt-2 p-2 bg-gray-50 rounded">
+                                    <strong>Notas:</strong> {cita.notas}
                                   </div>
                                 )}
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-center text-muted-foreground py-8">
-                          No hay citas registradas para este cliente
-                        </p>
-                      )}
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
               </TabsContent>
 
-              <TabsContent value="clinica" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Historia Clínica</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="text-center text-muted-foreground py-8">
-                        <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>Funcionalidad de historia clínica en desarrollo</p>
-                        <p className="text-sm">Aquí se mostrará información médica, alergias, tratamientos previos, etc.</p>
+              <TabsContent value="estadisticas" className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Calendar className="w-5 h-5 text-blue-600" />
+                        <h4 className="font-semibold">Total de Citas</h4>
                       </div>
+                      <div className="text-2xl font-bold text-blue-600">
+                        {clienteSeleccionado.estadisticas.total_citas}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DollarSign className="w-5 h-5 text-green-600" />
+                        <h4 className="font-semibold">Total Gastado</h4>
+                      </div>
+                      <div className="text-2xl font-bold text-green-600">
+                        ${clienteSeleccionado.estadisticas.total_gastado}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="w-5 h-5 text-orange-600" />
+                        <h4 className="font-semibold">Citas Confirmadas</h4>
+                      </div>
+                      <div className="text-2xl font-bold text-orange-600">
+                        {clienteSeleccionado.estadisticas.citas_confirmadas}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DollarSign className="w-5 h-5 text-purple-600" />
+                        <h4 className="font-semibold">Saldo Pendiente</h4>
+                      </div>
+                      <div className="text-2xl font-bold text-purple-600">
+                        ${clienteSeleccionado.estadisticas.saldo_pendiente}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <h4 className="font-semibold">Resumen por Estado</h4>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="flex justify-between">
+                      <span>Completadas:</span>
+                      <Badge variant="outline">{clienteSeleccionado.estadisticas.citas_completadas}</Badge>
                     </div>
-                  </CardContent>
-                </Card>
+                    <div className="flex justify-between">
+                      <span>Canceladas:</span>
+                      <Badge variant="outline">{clienteSeleccionado.estadisticas.citas_canceladas}</Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total Seña:</span>
+                      <Badge variant="outline">${clienteSeleccionado.estadisticas.total_seniado}</Badge>
+                    </div>
+                  </div>
+                </div>
               </TabsContent>
             </Tabs>
           )}
