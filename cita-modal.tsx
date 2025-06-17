@@ -952,8 +952,8 @@ export function CitaModal({
                     <Input
                       id="fecha"
                       type="date"
-                      value={form.fecha}
-                      onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+                      value={form.getValues('fecha')}
+                      onChange={(e) => form.setValue('fecha', e.target.value)}
                       className="h-7 text-xs"
                       disabled={!!fechaSeleccionada}
                     />
@@ -963,8 +963,8 @@ export function CitaModal({
                     <Input
                       id="hora"
                       type="time"
-                      value={form.hora}
-                      onChange={(e) => setForm({ ...form, hora: e.target.value })}
+                      value={form.getValues('hora')}
+                      onChange={(e) => form.setValue('hora', e.target.value)}
                       className="h-7 text-xs"
                       disabled={!!horaSeleccionada}
                     />
@@ -976,8 +976,8 @@ export function CitaModal({
                       type="number"
                       min="1"
                       max="8"
-                      value={form.box}
-                      onChange={(e) => setForm({ ...form, box: parseInt(e.target.value) || 1 })}
+                      value={form.getValues('box')}
+                      onChange={(e) => form.setValue('box', parseInt(e.target.value) || 1)}
                       className="h-7 text-xs"
                       disabled={!!boxSeleccionado}
                     />
@@ -989,10 +989,10 @@ export function CitaModal({
                     <Label htmlFor="dni" className="mb-1.5 block">DNI</Label>
                     <Input
                       id="dni"
-                      value={form.dni}
+                      value={form.getValues('dni')}
                       onChange={(e) => {
                         const dni = e.target.value;
-                        setForm({ ...form, dni });
+                        form.setValue('dni', dni);
                         if (dni.length >= 3) {
                           buscarCliente(dni);
                         }
@@ -1006,8 +1006,8 @@ export function CitaModal({
                     <Label htmlFor="whatsapp" className="mb-1.5 block">WHATSAPP</Label>
                     <Input
                       id="whatsapp"
-                      value={form.whatsapp}
-                      onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+                      value={form.getValues('whatsapp')}
+                      onChange={(e) => form.setValue('whatsapp', e.target.value)}
                       placeholder="9 dígitos"
                       className="h-8"
                     />
@@ -1018,8 +1018,8 @@ export function CitaModal({
                   <Label htmlFor="nombre_completo" className="mb-1.5 block">NOMBRE Y APELLIDO</Label>
                   <Input
                     id="nombre_completo"
-                    value={form.nombre_completo}
-                    onChange={(e) => setForm({ ...form, nombre_completo: e.target.value })}
+                    value={form.getValues('nombre_completo')}
+                    onChange={(e) => form.setValue('nombre_completo', e.target.value)}
                     placeholder="Ingrese nombre completo"
                     className="h-8"
                     required
@@ -1030,9 +1030,11 @@ export function CitaModal({
                   <div className="flex-1">
                     <Label htmlFor="tratamiento" className="mb-1.5 block">TRATAMIENTO</Label>
                     <Select
-                      value={form.tratamiento_id}
+                      value={form.getValues('tratamiento_id')}
                       onValueChange={(value) => {
-                        setForm({ ...form, tratamiento_id: value, subtratamiento_id: "", precio: 0 });
+                        form.setValue('tratamiento_id', value);
+                        form.setValue('subtratamiento_id', "");
+                        form.setValue('precio', 0);
                         fetchSubtratamientos(value);
                       }}
                     >
@@ -1051,15 +1053,15 @@ export function CitaModal({
                   <div className="flex-1">
                     <Label htmlFor="subtratamiento" className="mb-1.5 block">SUBTRATAMIENTO</Label>
                     <Select
-                      value={String(form.subtratamiento_id)}
+                      value={String(form.getValues('subtratamiento_id'))}
                       onValueChange={(value) => {
-                        setForm(prev => ({ ...prev, subtratamiento_id: value }));
+                        form.setValue('subtratamiento_id', value);
                         const subtratamiento = subtratamientos.find(st => st.id === value);
                         if (subtratamiento) {
-                          setForm(prev => ({ ...prev, precio: subtratamiento.precio }));
+                          form.setValue('precio', subtratamiento.precio);
                         }
                       }}
-                      disabled={!form.tratamiento_id}
+                      disabled={!form.getValues('tratamiento_id')}
                     >
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Seleccione subtratamiento" />
@@ -1081,8 +1083,8 @@ export function CitaModal({
                     <Input
                       id="precio"
                       type="number"
-                      value={form.precio}
-                      onChange={(e) => setForm({ ...form, precio: parseFloat(e.target.value) || 0 })}
+                      value={form.getValues('precio')}
+                      onChange={(e) => form.setValue('precio', parseFloat(e.target.value) || 0)}
                       className="h-7 text-xs"
                     />
                   </div>
@@ -1091,16 +1093,16 @@ export function CitaModal({
                     <Input
                       id="sena"
                       type="number"
-                      value={form.sena}
-                      onChange={(e) => setForm({ ...form, sena: parseFloat(e.target.value) || 0 })}
+                      value={form.getValues('sena')}
+                      onChange={(e) => form.setValue('sena', parseFloat(e.target.value) || 0)}
                       className="h-7 text-xs"
                     />
                   </div>
                   <div className="w-1/3">
                     <Label htmlFor="estado" className="mb-1.5 block text-xs">ESTADO</Label>
                     <Select
-                      value={form.estado}
-                      onValueChange={(value: FormData['estado']) => setForm({ ...form, estado: value })}
+                      value={form.getValues('estado')}
+                      onValueChange={(value: FormData['estado']) => form.setValue('estado', value)}
                     >
                       <SelectTrigger className="h-7 text-xs">
                         <SelectValue placeholder="Seleccione estado" />
@@ -1120,8 +1122,8 @@ export function CitaModal({
                   <Label htmlFor="notas" className="mb-1.5 block">NOTAS</Label>
                   <Textarea
                     id="notas"
-                    value={form.notas}
-                    onChange={(e) => setForm({ ...form, notas: e.target.value })}
+                    value={form.getValues('notas')}
+                    onChange={(e) => form.setValue('notas', e.target.value)}
                     placeholder="Observaciones adicionales"
                     className="min-h-[80px] text-xs"
                   />
