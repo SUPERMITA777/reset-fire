@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  console.log('Iniciando endpoint GET /api/clientes/[id]', { id: params.id })
+export async function GET(request: Request, context: { params: { id: string } }) {
+  const { id } = context.params;
+  console.log('Iniciando endpoint GET /api/clientes/[id]', { id })
   
   try {
     // Obtener el cliente con todas sus citas
@@ -34,25 +32,11 @@ export async function GET(
           )
         )
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (clienteError) {
-      console.error('Error al obtener cliente:', clienteError)
-      return NextResponse.json(
-        { 
-          error: 'Error al obtener los datos del cliente',
-          details: clienteError.message
-        },
-        { status: 500 }
-      )
-    }
-
-    if (!cliente) {
-      return NextResponse.json(
-        { error: 'Cliente no encontrado' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: clienteError.message }, { status: 500 })
     }
 
     // Procesar las citas para incluir información adicional
@@ -74,10 +58,11 @@ export async function GET(
     const citasConfirmadas = citasProcesadas.filter((c: any) => c.estado === 'confirmado').length
     const citasCompletadas = citasProcesadas.filter((c: any) => c.estado === 'completado').length
     const citasCanceladas = citasProcesadas.filter((c: any) => c.estado === 'cancelado').length
-    const totalGastado = citasProcesadas.reduce((sum: number, c: any) => sum + (c.precio || 0), 0)
-    const totalSeniado = citasProcesadas.reduce((sum: number, c: any) => sum + (c.sena || 0), 0)
+    const totalGastado = citasProcesadas.reduce((acc: number, c: any) => acc + (c.precio || 0), 0)
+    const totalSeniado = citasProcesadas.reduce((acc: number, c: any) => acc + (c.sena || 0), 0)
+    const saldoPendiente = totalGastado - totalSeniado
 
-    const clienteConEstadisticas = {
+    const clienteDetalle = {
       ...cliente,
       rf_citas: citasProcesadas,
       estadisticas: {
@@ -87,35 +72,13 @@ export async function GET(
         citas_canceladas: citasCanceladas,
         total_gastado: totalGastado,
         total_seniado: totalSeniado,
-        saldo_pendiente: totalGastado - totalSeniado
+        saldo_pendiente: saldoPendiente
       }
     }
 
-    console.log('Cliente obtenido exitosamente:', {
-      id: cliente.id,
-      nombre: cliente.nombre_completo,
-      totalCitas,
-      totalGastado
-    })
-
-    return NextResponse.json(clienteConEstadisticas)
+    return NextResponse.json(clienteDetalle)
   } catch (error) {
-    const finalError = error instanceof Error ? error : new Error('Error desconocido')
-    console.error('Error detallado al obtener cliente:', {
-      error: finalError,
-      message: finalError.message,
-      stack: finalError.stack,
-      type: finalError.constructor.name
-    })
-
-    return NextResponse.json(
-      { 
-        error: 'Error al obtener los datos del cliente',
-        details: finalError.message,
-        type: finalError.constructor.name
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 })
   }
 }
 
