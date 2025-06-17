@@ -251,7 +251,7 @@ export function FormularioCita({
         setPrecioSeleccionado(subTrat.precio)
       }
     }
-  }, [cita?.subtratamiento_id, cita.tratamiento_id, tratamiento, subtratamientos])
+  }, [cita?.subtratamiento_id, cita?.tratamiento_id, tratamiento, subtratamientos])
 
   // Validar que la seña no sea mayor que el precio
   const validarSenia = (valor: string) => {
