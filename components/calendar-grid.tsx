@@ -7,14 +7,23 @@ import { ChevronLeft, ChevronRight, Clock, Calendar } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { FormularioCita } from "@/components/formulario-cita"
+import { CitaModal } from "@/components/modals/cita-modal"
 import { supabase } from "@/lib/supabase"
 
 interface CalendarGridProps {
   fecha: Date
   citas: any[]
   fechasDisponibles: any[]
-  tratamientos: any[]
+  tratamientos: {
+    id: string
+    nombre_tratamiento: string
+    rf_subtratamientos?: {
+      id: string
+      nombre_subtratamiento: string
+      precio: number
+      duracion: number
+    }[]
+  }[]
   subTratamientos: any[]
   onCrearDisponibilidad: (data: any) => Promise<void>
   onCrearCita: (data: any) => Promise<void>
@@ -188,16 +197,22 @@ export function CalendarGrid({
             </DialogDescription>
           </DialogHeader>
           {slotSeleccionado && (
-            <FormularioCita
-              fechaInicial={fechaActual}
-              horaInicialInicio={`${slotSeleccionado.hora}:${slotSeleccionado.minutos.toString().padStart(2, '0')}`}
-              boxInicial={boxSeleccionado || 1}
-              onSuccess={() => {
+            <CitaModal
+              open={showModalCita}
+              onOpenChange={setShowModalCita}
+              onSubmit={(data) => {
                 setShowModalCita(false)
                 setSlotSeleccionado(null)
                 setBoxSeleccionado(null)
                 setSubTratamientoSeleccionado(null)
+                // Aquí podrías llamar a onCrearCita si es necesario
               }}
+              tratamientos={tratamientos}
+              fechaSeleccionada={format(fechaActual, 'yyyy-MM-dd')}
+              horaSeleccionada={`${slotSeleccionado.hora.toString().padStart(2, '0')}:${slotSeleccionado.minutos.toString().padStart(2, '0')}`}
+              boxSeleccionado={boxSeleccionado || 1}
+              title="Nueva Cita"
+              description="Complete los datos del cliente para agendar la cita"
             />
           )}
         </DialogContent>

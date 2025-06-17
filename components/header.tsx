@@ -23,6 +23,9 @@ export function Header() {
               <Link href="/calendario">
                 <Button variant="outline">CALENDARIO</Button>
               </Link>
+              <Link href="/clientes">
+                <Button variant="outline">CLIENTES</Button>
+              </Link>
               <Link href="/disponibilidad">
                 <Button variant="outline">DISPONIBILIDAD</Button>
               </Link>
