@@ -1,0 +1,31 @@
+# Archivos generados de Prisma
+lib/generated/prisma/
+lib/generated/
+
+# Archivos de configuración
+next.config.mjs
+tailwind.config.ts
+postcss.config.mjs
+
+# Archivos de build
+.next/
+out/
+dist/
+
+# Archivos de dependencias
+node_modules/
+
+# Archivos de migración
+migrations/
+supabase/migrations/
+
+# Archivos de datos
+data/
+*.json
+
+# Archivos de scripts
+scripts/
+*.js
+
+# Archivos de configuración de Vercel
+vercel.json 

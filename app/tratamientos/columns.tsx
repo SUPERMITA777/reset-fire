@@ -29,6 +29,52 @@ export type Tratamiento = {
   rf_subtratamientos: SubTratamiento[];
 };
 
+// Componente separado para las acciones
+const ActionCell = ({ tratamiento }: { tratamiento: Tratamiento }) => {
+  const router = useRouter();
+  const supabase = createClientComponentClient();
+
+  const handleDelete = async () => {
+    if (confirm("¿Estás seguro de que quieres eliminar este tratamiento?")) {
+      try {
+        const { error } = await supabase
+          .from("rf_tratamientos")
+          .delete()
+          .eq("id", tratamiento.id);
+
+        if (error) throw error;
+        router.refresh();
+      } catch (error) {
+        console.error("Error deleting tratamiento:", error);
+        alert("Error al eliminar el tratamiento");
+      }
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-8 w-8 p-0">
+          <span className="sr-only">Abrir menú</span>
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => router.push(`/tratamientos/${tratamiento.id}`)}>
+          Ver detalles
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => router.push(`/tratamientos/${tratamiento.id}/edit`)}>
+          Editar
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleDelete} className="text-red-600">
+          Eliminar
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
 export const columns: ColumnDef<Tratamiento>[] = [
   {
     accessorKey: "nombre_tratamiento",
@@ -74,48 +120,7 @@ export const columns: ColumnDef<Tratamiento>[] = [
     id: "actions",
     cell: ({ row }) => {
       const tratamiento = row.original;
-      const router = useRouter();
-      const supabase = createClientComponentClient();
-
-      const handleDelete = async () => {
-        if (confirm("¿Estás seguro de que quieres eliminar este tratamiento?")) {
-          try {
-            const { error } = await supabase
-              .from("rf_tratamientos")
-              .delete()
-              .eq("id", tratamiento.id);
-
-            if (error) throw error;
-            router.refresh();
-          } catch (error) {
-            console.error("Error deleting tratamiento:", error);
-            alert("Error al eliminar el tratamiento");
-          }
-        }
-      };
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Abrir menú</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => router.push(`/tratamientos/${tratamiento.id}`)}>
-              Ver detalles
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push(`/tratamientos/${tratamiento.id}/edit`)}>
-              Editar
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDelete} className="text-red-600">
-              Eliminar
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
+      return <ActionCell tratamiento={tratamiento} />;
     },
   },
 ]; 
