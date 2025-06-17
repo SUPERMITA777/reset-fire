@@ -107,7 +107,7 @@ export async function GET(request: Request) {
     }
 
     // Transformar las citas al formato esperado por el frontend
-    const citasFormateadas = citas.map((cita: CitaSupabase) => ({
+    const citasFormateadas = citas.map((cita: any) => ({
       id: cita.id,
       fecha: cita.fecha,
       horaInicio: cita.hora_inicio,
