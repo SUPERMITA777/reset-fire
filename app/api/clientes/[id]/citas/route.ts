@@ -34,19 +34,20 @@ type CitaRaw = {
   senia: number
   tratamiento: {
     nombre: string
-  }
+  }[]
   sub_tratamiento: {
     nombre: string
     duracion: number
     precio: number
-  }
+  }[]
 }
 
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params
     const { data: citas, error: citasError } = await supabase
       .from('citas')
       .select(`
@@ -69,7 +70,7 @@ export async function GET(
         ),
         senia
       `)
-      .eq('cliente_id', context.params.id)
+      .eq('cliente_id', id)
       .order('fecha', { ascending: false })
       .order('hora_inicio', { ascending: false })
 
@@ -94,10 +95,10 @@ export async function GET(
         hora_fin: format(new Date(`2000-01-01T${cita.hora_fin}`), 'HH:mm'),
         created_at: format(new Date(cita.created_at), "yyyy-MM-dd'T'HH:mm:ssXXX"),
         updated_at: format(new Date(cita.updated_at), "yyyy-MM-dd'T'HH:mm:ssXXX"),
-        tratamiento_nombre: cita.tratamiento.nombre,
-        subtratamiento_nombre: cita.sub_tratamiento.nombre,
-        duracion: cita.sub_tratamiento.duracion,
-        precio: cita.sub_tratamiento.precio,
+        tratamiento_nombre: cita.tratamiento[0]?.nombre || '',
+        subtratamiento_nombre: cita.sub_tratamiento[0]?.nombre || '',
+        duracion: cita.sub_tratamiento[0]?.duracion || 0,
+        precio: cita.sub_tratamiento[0]?.precio || 0,
         estado,
         tratamiento: undefined, // Eliminar objetos anidados
         sub_tratamiento: undefined

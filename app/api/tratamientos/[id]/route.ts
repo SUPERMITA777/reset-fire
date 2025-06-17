@@ -31,15 +31,16 @@ async function writeJsonFile(filename: string, data: any) {
 // GET /api/tratamientos/[id]
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const data = await readJsonFile('tratamientos.json')
     if (!data) {
       return NextResponse.json({ error: 'No se pudieron cargar los tratamientos' }, { status: 500 })
     }
 
-    const tratamiento = data.tratamientos.find((t: any) => t.id === params.id)
+    const tratamiento = data.tratamientos.find((t: any) => t.id === id)
     if (!tratamiento) {
       return NextResponse.json({ error: 'Tratamiento no encontrado' }, { status: 404 })
     }
@@ -54,9 +55,10 @@ export async function GET(
 // PUT /api/tratamientos/[id]
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const tratamiento = await request.json()
     const data = await readJsonFile('tratamientos.json')
     
@@ -64,7 +66,7 @@ export async function PUT(
       return NextResponse.json({ error: 'No se pudieron cargar los tratamientos' }, { status: 500 })
     }
 
-    const index = data.tratamientos.findIndex((t: any) => t.id === params.id)
+    const index = data.tratamientos.findIndex((t: any) => t.id === id)
     if (index === -1) {
       return NextResponse.json({ error: 'Tratamiento no encontrado' }, { status: 404 })
     }
@@ -72,7 +74,7 @@ export async function PUT(
     data.tratamientos[index] = {
       ...data.tratamientos[index],
       ...tratamiento,
-      id: params.id // Asegurarnos de mantener el ID original
+      id: id // Asegurarnos de mantener el ID original
     }
 
     const success = await writeJsonFile('tratamientos.json', data)
@@ -90,15 +92,16 @@ export async function PUT(
 // DELETE /api/tratamientos/[id]
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const data = await readJsonFile('tratamientos.json')
     if (!data) {
       return NextResponse.json({ error: 'No se pudieron cargar los tratamientos' }, { status: 500 })
     }
 
-    const index = data.tratamientos.findIndex((t: any) => t.id === params.id)
+    const index = data.tratamientos.findIndex((t: any) => t.id === id)
     if (index === -1) {
       return NextResponse.json({ error: 'Tratamiento no encontrado' }, { status: 404 })
     }

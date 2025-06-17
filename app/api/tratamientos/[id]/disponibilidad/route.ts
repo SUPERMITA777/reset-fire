@@ -33,15 +33,16 @@ async function writeJsonFile(filename: string, data: any) {
 // GET /api/tratamientos/[id]/disponibilidad
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const data = await readJsonFile('disponibilidad.json')
     if (!data) {
       return NextResponse.json({ error: 'No se pudieron cargar la disponibilidad' }, { status: 500 })
     }
 
-    const disponibilidad = data.disponibilidad.find((d: any) => d.tratamiento_id === params.id)
+    const disponibilidad = data.disponibilidad.find((d: any) => d.tratamiento_id === id)
     if (!disponibilidad) {
       return NextResponse.json({ error: 'No hay disponibilidad para este tratamiento' }, { status: 404 })
     }
@@ -80,9 +81,10 @@ export async function GET(
 // POST /api/tratamientos/[id]/disponibilidad
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const disponibilidad = await request.json()
     
     // Validar que la fecha de inicio no sea posterior a la fecha de fin
@@ -153,7 +155,7 @@ export async function POST(
     const { data: turnosExistentes, error: errorVerificacion } = await supabase
       .from('fechas_disponibles')
       .select('*')
-      .eq('tratamiento_id', params.id)
+      .eq('tratamiento_id', id)
       .eq('fecha_inicio', disponibilidad.fecha_inicio)
       .eq('fecha_fin', disponibilidad.fecha_fin)
       .eq('hora_inicio', disponibilidad.hora_inicio)
@@ -189,7 +191,7 @@ export async function POST(
     const { data, error } = await supabase
       .from('fechas_disponibles')
       .insert([{
-        tratamiento_id: params.id,
+        tratamiento_id: id,
         fecha_inicio: disponibilidad.fecha_inicio,
         fecha_fin: disponibilidad.fecha_fin,
         hora_inicio: disponibilidad.hora_inicio,
@@ -219,9 +221,10 @@ export async function POST(
 // PUT /api/tratamientos/[id]/disponibilidad
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const disponibilidad = await request.json()
     const data = await readJsonFile('disponibilidad.json')
     
@@ -229,7 +232,7 @@ export async function PUT(
       return NextResponse.json({ error: 'No se pudieron cargar la disponibilidad' }, { status: 500 })
     }
 
-    const index = data.disponibilidad.findIndex((d: any) => d.tratamiento_id === params.id)
+    const index = data.disponibilidad.findIndex((d: any) => d.tratamiento_id === id)
     if (index === -1) {
       return NextResponse.json({ error: 'No hay disponibilidad para este tratamiento' }, { status: 404 })
     }
@@ -237,8 +240,7 @@ export async function PUT(
     data.disponibilidad[index] = {
       ...data.disponibilidad[index],
       ...disponibilidad,
-      tratamiento_id: params.id,
-      updated_at: new Date().toISOString()
+      tratamiento_id: id
     }
 
     const success = await writeJsonFile('disponibilidad.json', data)
@@ -256,15 +258,16 @@ export async function PUT(
 // DELETE /api/tratamientos/[id]/disponibilidad
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const data = await readJsonFile('disponibilidad.json')
     if (!data) {
       return NextResponse.json({ error: 'No se pudieron cargar la disponibilidad' }, { status: 500 })
     }
 
-    const index = data.disponibilidad.findIndex((d: any) => d.tratamiento_id === params.id)
+    const index = data.disponibilidad.findIndex((d: any) => d.tratamiento_id === id)
     if (index === -1) {
       return NextResponse.json({ error: 'No hay disponibilidad para este tratamiento' }, { status: 404 })
     }

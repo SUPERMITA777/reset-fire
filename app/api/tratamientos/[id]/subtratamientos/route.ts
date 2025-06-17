@@ -32,15 +32,16 @@ async function writeJsonFile(filename: string, data: any) {
 // GET /api/tratamientos/[id]/subtratamientos
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const data = await readJsonFile('tratamientos.json')
     if (!data) {
       return NextResponse.json({ error: 'No se pudieron cargar los tratamientos' }, { status: 500 })
     }
 
-    const tratamiento = data.tratamientos.find((t: any) => t.id === params.id)
+    const tratamiento = data.tratamientos.find((t: any) => t.id === id)
     if (!tratamiento) {
       return NextResponse.json({ error: 'Tratamiento no encontrado' }, { status: 404 })
     }
@@ -55,9 +56,10 @@ export async function GET(
 // POST /api/tratamientos/[id]/subtratamientos
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const subTratamiento = await request.json()
     const data = await readJsonFile('tratamientos.json')
     
@@ -65,7 +67,7 @@ export async function POST(
       return NextResponse.json({ error: 'No se pudieron cargar los tratamientos' }, { status: 500 })
     }
 
-    const tratamientoIndex = data.tratamientos.findIndex((t: any) => t.id === params.id)
+    const tratamientoIndex = data.tratamientos.findIndex((t: any) => t.id === id)
     if (tratamientoIndex === -1) {
       return NextResponse.json({ error: 'Tratamiento no encontrado' }, { status: 404 })
     }
@@ -73,7 +75,7 @@ export async function POST(
     const nuevoSubTratamiento = {
       ...subTratamiento,
       id: uuidv4(),
-      tratamiento_id: params.id,
+      tratamiento_id: id,
       created_at: new Date().toISOString()
     }
 
@@ -93,9 +95,10 @@ export async function POST(
 // PUT /api/tratamientos/[id]/subtratamientos/[subId]
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string; subId: string } }
+  { params }: { params: Promise<{ id: string; subId: string }> }
 ) {
   try {
+    const { id, subId } = await params
     const subTratamiento = await request.json()
     const data = await readJsonFile('tratamientos.json')
     
@@ -103,13 +106,13 @@ export async function PUT(
       return NextResponse.json({ error: 'No se pudieron cargar los tratamientos' }, { status: 500 })
     }
 
-    const tratamientoIndex = data.tratamientos.findIndex((t: any) => t.id === params.id)
+    const tratamientoIndex = data.tratamientos.findIndex((t: any) => t.id === id)
     if (tratamientoIndex === -1) {
       return NextResponse.json({ error: 'Tratamiento no encontrado' }, { status: 404 })
     }
 
     const subTratamientoIndex = data.tratamientos[tratamientoIndex].sub_tratamientos.findIndex(
-      (st: any) => st.id === params.subId
+      (st: any) => st.id === subId
     )
     if (subTratamientoIndex === -1) {
       return NextResponse.json({ error: 'Sub-tratamiento no encontrado' }, { status: 404 })
@@ -118,8 +121,8 @@ export async function PUT(
     data.tratamientos[tratamientoIndex].sub_tratamientos[subTratamientoIndex] = {
       ...data.tratamientos[tratamientoIndex].sub_tratamientos[subTratamientoIndex],
       ...subTratamiento,
-      id: params.subId,
-      tratamiento_id: params.id,
+      id: subId,
+      tratamiento_id: id,
       updated_at: new Date().toISOString()
     }
 
@@ -138,21 +141,22 @@ export async function PUT(
 // DELETE /api/tratamientos/[id]/subtratamientos/[subId]
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string; subId: string } }
+  { params }: { params: Promise<{ id: string; subId: string }> }
 ) {
   try {
+    const { id, subId } = await params
     const data = await readJsonFile('tratamientos.json')
     if (!data) {
       return NextResponse.json({ error: 'No se pudieron cargar los tratamientos' }, { status: 500 })
     }
 
-    const tratamientoIndex = data.tratamientos.findIndex((t: any) => t.id === params.id)
+    const tratamientoIndex = data.tratamientos.findIndex((t: any) => t.id === id)
     if (tratamientoIndex === -1) {
       return NextResponse.json({ error: 'Tratamiento no encontrado' }, { status: 404 })
     }
 
     const subTratamientoIndex = data.tratamientos[tratamientoIndex].sub_tratamientos.findIndex(
-      (st: any) => st.id === params.subId
+      (st: any) => st.id === subId
     )
     if (subTratamientoIndex === -1) {
       return NextResponse.json({ error: 'Sub-tratamiento no encontrado' }, { status: 404 })

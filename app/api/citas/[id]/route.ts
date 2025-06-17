@@ -20,12 +20,13 @@ async function writeJsonFile(filename: string, data: any) {
 // PUT /api/citas/[id]
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const cambios = await request.json()
     const data = await readJsonFile('citas.json')
-    const index = data.citas.findIndex((c: any) => c.id === params.id)
+    const index = data.citas.findIndex((c: any) => c.id === id)
     
     if (index === -1) {
       return NextResponse.json(
@@ -92,11 +93,12 @@ export async function PUT(
 // DELETE /api/citas/[id]
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const data = await readJsonFile('citas.json')
-    const index = data.citas.findIndex((c: any) => c.id === params.id)
+    const index = data.citas.findIndex((c: any) => c.id === id)
     
     if (index === -1) {
       return NextResponse.json(
