@@ -16,34 +16,36 @@ const nextConfig = {
   pageExtensions: ['js', 'jsx', 'mdx', 'ts', 'tsx'],
   // Excluir archivos de Supabase Functions del build
   webpack: (config, { isServer }) => {
-    // Excluir archivos de Supabase Functions completamente
+    // Excluir completamente los archivos de Supabase Functions
     config.module.rules.push({
       test: /supabase\/functions/,
       use: 'null-loader'
     });
     
-    // También excluir archivos específicos de Deno
+    // Excluir archivos que contengan imports de Deno
     config.module.rules.push({
-      test: /\.ts$/,
-      include: /supabase\/functions/,
+      test: /\.(ts|js)$/,
+      include: (input) => {
+        return input.includes('supabase/functions') || 
+               input.includes('deno.land') || 
+               input.includes('esm.sh');
+      },
       use: 'null-loader'
     });
     
-    // Excluir módulos de Deno específicamente
-    config.externals = config.externals || [];
-    config.externals.push({
-      'https://deno.land/std@0.168.0/http/server.ts': 'commonjs https://deno.land/std@0.168.0/http/server.ts',
-      'https://esm.sh/@supabase/supabase-js@2': 'commonjs https://esm.sh/@supabase/supabase-js@2',
-    });
+    // Configurar externals para módulos de Deno
+    if (!config.externals) {
+      config.externals = [];
+    }
     
-    // Agregar regla para excluir archivos que contengan imports de Deno
-    config.module.rules.push({
-      test: /\.ts$/,
-      include: /supabase\/functions/,
-      use: {
-        loader: 'null-loader'
-      }
-    });
+    if (Array.isArray(config.externals)) {
+      config.externals.push((context, request, callback) => {
+        if (request.includes('deno.land') || request.includes('esm.sh')) {
+          return callback(null, 'commonjs ' + request);
+        }
+        callback();
+      });
+    }
     
     return config;
   },

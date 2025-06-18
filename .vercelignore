@@ -1,0 +1,12 @@
+# Excluir archivos de Supabase Functions
+supabase/functions/
+supabase/config.toml
+supabase/init.sql
+supabase/migrations/
+
+# Otros archivos que no necesitan ser incluidos en el deploy
+*.log
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local 

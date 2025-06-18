@@ -72,6 +72,10 @@ export interface FechaDisponible {
 export interface Tratamiento {
   id: string
   nombre_tratamiento: string
+  descripcion?: string | null
+  max_clientes_por_turno: number
+  es_compartido: boolean
+  boxes_disponibles?: number[]
   box: number
   created_at: string
   updated_at: string
