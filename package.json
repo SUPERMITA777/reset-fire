@@ -113,6 +113,7 @@
     "eslint": "^8.0.0",
     "eslint-config-next": "^15.2.4",
     "ignore-loader": "^0.1.2",
+    "null-loader": "^4.0.1",
     "postcss": "^8",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"

@@ -16,13 +16,20 @@ const nextConfig = {
   pageExtensions: ['js', 'jsx', 'mdx', 'ts', 'tsx'],
   // Excluir archivos de Supabase Functions del build
   webpack: (config, { isServer }) => {
-    // Excluir archivos de Supabase Functions
+    // Excluir archivos de Supabase Functions completamente
     config.module.rules.push({
       test: /supabase\/functions/,
-      use: 'ignore-loader'
+      use: 'null-loader'
     });
     
-    // Excluir módulos de Deno
+    // También excluir archivos específicos de Deno
+    config.module.rules.push({
+      test: /\.ts$/,
+      include: /supabase\/functions/,
+      use: 'null-loader'
+    });
+    
+    // Excluir módulos de Deno como externals
     config.externals = config.externals || [];
     config.externals.push({
       'https://deno.land/std@0.168.0/http/server.ts': 'commonjs https://deno.land/std@0.168.0/http/server.ts',
