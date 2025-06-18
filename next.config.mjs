@@ -19,17 +19,17 @@ const nextConfig = {
     // Excluir archivos de Supabase Functions completamente
     config.module.rules.push({
       test: /supabase\/functions/,
-      use: 'null-loader'
+      use: 'ignore-loader'
     });
     
     // También excluir archivos específicos de Deno
     config.module.rules.push({
       test: /\.ts$/,
       include: /supabase\/functions/,
-      use: 'null-loader'
+      use: 'ignore-loader'
     });
     
-    // Excluir módulos de Deno como externals
+    // Excluir módulos de Deno específicamente
     config.externals = config.externals || [];
     config.externals.push({
       'https://deno.land/std@0.168.0/http/server.ts': 'commonjs https://deno.land/std@0.168.0/http/server.ts',
