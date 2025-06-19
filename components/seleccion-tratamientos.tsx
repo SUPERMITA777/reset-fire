@@ -123,6 +123,8 @@ const formatearFechaParaMostrar = (fecha: string) => {
   return format(fechaLocal, 'EEEE dd/MM/yyyy', { locale: es })
 }
 
+const DEFAULT_BUTTON_COLOR = "#eab308";
+
 const SeleccionTratamientos = () => {
   const { toast } = useToast()
   const router = useRouter()
@@ -172,6 +174,28 @@ const SeleccionTratamientos = () => {
   const [telefonoCliente, setTelefonoCliente] = useState("")
   const [observaciones, setObservaciones] = useState("")
   const [disponibilidadData, setDisponibilidadData] = useState<DisponibilidadData | null>(null)
+  const [buttonBgColor, setButtonBgColor] = useState(DEFAULT_BUTTON_COLOR);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      let color = localStorage.getItem("buttonBgColor") || DEFAULT_BUTTON_COLOR;
+      if (!color || color === "transparent" || color === "#00000000") {
+        color = DEFAULT_BUTTON_COLOR;
+      }
+      setButtonBgColor(color);
+      const onStorage = (e: StorageEvent) => {
+        if (e.key === "buttonBgColor") {
+          let newColor = e.newValue || DEFAULT_BUTTON_COLOR;
+          if (!newColor || newColor === "transparent" || newColor === "#00000000") {
+            newColor = DEFAULT_BUTTON_COLOR;
+          }
+          setButtonBgColor(newColor);
+        }
+      };
+      window.addEventListener("storage", onStorage);
+      return () => window.removeEventListener("storage", onStorage);
+    }
+  }, []);
 
   // Función para obtener la fecha actual en Argentina
   const getFechaActualArgentina = () => {
@@ -681,7 +705,7 @@ const SeleccionTratamientos = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full space-y-6 pt-8 mt-4">
       {/* Botón para volver atrás */}
       {(tratamientoSeleccionado || subTratamientoSeleccionado) && (
         <Button variant="ghost" onClick={volverAtras} className="mb-4">
@@ -692,19 +716,33 @@ const SeleccionTratamientos = () => {
 
       {/* Vista de selección de tratamiento */}
       {!tratamientoSeleccionado && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div 
+          className="grid gap-4" 
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem',
+            width: '100%'
+          }}
+        >
           {tratamientos.map((tratamiento) => (
             <Card
               key={tratamiento.id}
-              className="cursor-pointer hover:border-primary transition-colors"
+              className="cursor-pointer hover:border-primary transition-colors min-h-[120px] flex flex-col justify-between"
               onClick={() => seleccionarTratamiento(tratamiento)}
+              style={{
+                backgroundColor: buttonBgColor,
+                borderRadius: 8,
+                maxWidth: '300px',
+                minWidth: '200px'
+              }}
             >
-              <CardHeader>
-                <CardTitle>{tratamiento.nombre}</CardTitle>
-                <CardDescription>{tratamiento.sub_tratamientos.length} sub-tratamientos disponibles</CardDescription>
+              <CardHeader className="p-3">
+                <CardTitle className="text-sm font-medium truncate">{tratamiento.nombre}</CardTitle>
+                <CardDescription className="text-xs">{tratamiento.sub_tratamientos.length} sub-tratamientos</CardDescription>
               </CardHeader>
-              <CardFooter className="flex justify-end">
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              <CardFooter className="flex justify-end p-3 pt-0">
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </CardFooter>
             </Card>
           ))}
@@ -713,9 +751,17 @@ const SeleccionTratamientos = () => {
 
       {/* Vista de selección de sub-tratamiento */}
       {tratamientoSeleccionado && !subTratamientoSeleccionado && (
-        <div>
+        <div className="w-full">
           <h2 className="text-2xl font-bold mb-4">{tratamientoSeleccionado.nombre}</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div 
+            className="grid gap-4" 
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: '1rem',
+              width: '100%'
+            }}
+          >
             {tratamientoSeleccionado.sub_tratamientos.map((subTratamiento) => (
               <Card
                 key={subTratamiento.id}
@@ -729,13 +775,13 @@ const SeleccionTratamientos = () => {
                 })}
               >
                 <CardHeader>
-                  <CardTitle>{subTratamiento.nombre}</CardTitle>
+                  <CardTitle className="text-base">{subTratamiento.nombre}</CardTitle>
                   <div className="flex gap-2 mt-2">
-                    <Badge variant="outline" className="flex items-center gap-1">
+                    <Badge variant="outline" className="flex items-center gap-1 text-xs">
                       <Clock className="h-3 w-3" />
                       {formatearDuracion(subTratamiento.duracion)}
                     </Badge>
-                    <Badge variant="outline" className="flex items-center gap-1">
+                    <Badge variant="outline" className="flex items-center gap-1 text-xs">
                       <DollarSign className="h-3 w-3" />
                       {subTratamiento.precio.toLocaleString()}
                     </Badge>
@@ -752,7 +798,7 @@ const SeleccionTratamientos = () => {
 
       {/* Vista de fechas disponibles */}
       {tratamientoSeleccionado && subTratamientoSeleccionado && !fechaSeleccionada && (
-        <div>
+        <div className="w-full">
           <h2 className="text-2xl font-bold mb-2">
             {tratamientoSeleccionado.nombre} - {subTratamientoSeleccionado.nombre}
           </h2>
@@ -768,7 +814,15 @@ const SeleccionTratamientos = () => {
               </p>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-3">
+            <div 
+              className="grid gap-4" 
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '1rem',
+                width: '100%'
+              }}
+            >
               {fechasDisponibles.map((fecha) => (
                 <Card
                   key={fecha.id}
@@ -795,7 +849,7 @@ const SeleccionTratamientos = () => {
 
       {/* Vista de horarios disponibles */}
       {tratamientoSeleccionado && subTratamientoSeleccionado && fechaSeleccionada && (
-        <div>
+        <div className="w-full">
           <h2 className="text-2xl font-bold mb-2">
             {tratamientoSeleccionado.nombre} - {subTratamientoSeleccionado.nombre}
           </h2>
@@ -803,7 +857,15 @@ const SeleccionTratamientos = () => {
             Horarios disponibles para el {formatearFechaParaMostrar(fechaSeleccionada)}
           </p>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div 
+            className="grid gap-4" 
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: '1rem',
+              width: '100%'
+            }}
+          >
             {horariosDisponibles.map((horario, index) => (
               <Card
                 key={index}

@@ -4,7 +4,7 @@ import SeleccionTratamientos from "@/components/seleccion-tratamientos"
 
 export default function Home() {
   return (
-    <main className="container py-6">
+    <main className="w-full px-4 py-16">
       <SeleccionTratamientos />
     </main>
   )

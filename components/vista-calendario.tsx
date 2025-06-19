@@ -105,7 +105,7 @@ export function VistaCalendario({ vista, fechaActual, onCambiarVista, onCambiarF
 
             {/* Líneas de hora */}
             {Array.from({ length: 24 }, (_, hora) => (
-              <div key={hora} className="h-12 border-b border-gray-100" />
+              <div key={hora} className="h-12 border-b-2 border-gray-300" />
             ))}
             
             {/* Citas del box */}
@@ -162,7 +162,7 @@ export function VistaCalendario({ vista, fechaActual, onCambiarVista, onCambiarF
 
             {/* Líneas de hora */}
             {Array.from({ length: 24 }, (_, hora) => (
-              <div key={hora} className="h-12 border-b border-gray-100" />
+              <div key={hora} className="h-12 border-b-2 border-gray-300" />
             ))}
 
             {/* Citas del día */}
@@ -223,7 +223,7 @@ export function VistaCalendario({ vista, fechaActual, onCambiarVista, onCambiarF
             <div
               key={index}
               className={cn(
-                "min-h-[120px] p-1 border border-gray-100",
+                "min-h-[120px] p-1 border-2 border-gray-300",
                 {
                   "bg-gray-50": !esDiaMesActual,
                   "bg-white": esDiaMesActual,

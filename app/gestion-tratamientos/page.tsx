@@ -38,6 +38,10 @@ export default function GestionTratamientosPage() {
   const [subTratamientoForm, setSubTratamientoForm] = useState<SubTratamiento>({ nombre_subtratamiento: "", precio: 0, duracion: 30 });
   const [subTratamientosList, setSubTratamientosList] = useState<SubTratamiento[]>([]);
   const [currentTratamientoId, setCurrentTratamientoId] = useState<string | null>(null);
+  const [descripcionTratamiento, setDescripcionTratamiento] = useState("");
+  const [imagePreviewTratamiento, setImagePreviewTratamiento] = useState("");
+  const [descripcionSubTratamiento, setDescripcionSubTratamiento] = useState("");
+  const [imagePreviewSubTratamiento, setImagePreviewSubTratamiento] = useState("");
 
   useEffect(() => {
     fetchTratamientos();
@@ -144,6 +148,28 @@ export default function GestionTratamientosPage() {
     }
   };
 
+  const handleImageUploadTratamiento = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviewTratamiento(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImageUploadSubTratamiento = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviewSubTratamiento(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
@@ -176,6 +202,34 @@ export default function GestionTratamientosPage() {
             <form onSubmit={handleSubmitTratamiento} className="flex flex-col gap-2 p-4">
               <Label htmlFor="nombre" className="text-xs">Nombre</Label>
               <Input id="nombre" maxLength={20} value={nombreTratamiento} onChange={e => setNombreTratamiento(e.target.value)} required className="h-8 text-xs px-2 w-40" />
+              
+              <Label htmlFor="descripcion" className="text-xs mt-2">Descripción (NUEVO)</Label>
+              <textarea
+                id="descripcion"
+                value={descripcionTratamiento || ""}
+                onChange={e => setDescripcionTratamiento(e.target.value)}
+                placeholder="Describe el tratamiento..."
+                className="w-full min-h-[80px] p-2 border border-gray-300 rounded-md text-xs"
+              />
+              
+              <Label className="text-xs mt-2">Foto del Tratamiento (NUEVO)</Label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUploadTratamiento}
+                className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                aria-label="Subir imagen del tratamiento"
+              />
+              {imagePreviewTratamiento && (
+                <div className="mt-1">
+                  <img 
+                    src={imagePreviewTratamiento} 
+                    alt="Preview" 
+                    className="w-12 h-12 object-cover rounded border"
+                  />
+                </div>
+              )}
+              
               <Label htmlFor="box" className="text-xs mt-2">Box</Label>
               <Input id="box" type="number" min="1" max={999999} value={box} onChange={e => setBox(Number(e.target.value))} required className="h-8 text-xs px-2 w-20" />
               <hr className="my-2" />
@@ -212,6 +266,33 @@ export default function GestionTratamientosPage() {
             <form onSubmit={handleSubmitSubTratamiento} className="flex flex-col gap-2 p-4">
               <Label className="text-xs">Nombre subtratamiento</Label>
               <Input maxLength={20} value={subTratamientoForm.nombre_subtratamiento} onChange={e => setSubTratamientoForm({ ...subTratamientoForm, nombre_subtratamiento: e.target.value })} required className="h-8 text-xs px-2 w-40" />
+              
+              <Label className="text-xs mt-2">Descripción (NUEVO)</Label>
+              <textarea
+                value={descripcionSubTratamiento}
+                onChange={e => setDescripcionSubTratamiento(e.target.value)}
+                placeholder="Describe el subtratamiento..."
+                className="w-full min-h-[80px] p-2 border border-gray-300 rounded-md text-xs"
+              />
+              
+              <Label className="text-xs mt-2">Foto del Subtratamiento (NUEVO)</Label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUploadSubTratamiento}
+                className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                aria-label="Subir imagen del subtratamiento"
+              />
+              {imagePreviewSubTratamiento && (
+                <div className="mt-1">
+                  <img 
+                    src={imagePreviewSubTratamiento} 
+                    alt="Preview" 
+                    className="w-12 h-12 object-cover rounded border"
+                  />
+                </div>
+              )}
+              
               <Label className="text-xs">Precio (€)</Label>
               <Input type="number" min="0" max={999999} step="0.01" value={isNaN(subTratamientoForm.precio) || subTratamientoForm.precio === undefined ? '' : subTratamientoForm.precio} onChange={e => setSubTratamientoForm({ ...subTratamientoForm, precio: e.target.value === '' ? 0 : parseFloat(e.target.value) })} required className="h-8 text-xs px-2 w-20" />
               <Label className="text-xs">Duración (min)</Label>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Pencil, Trash2, Calendar as CalendarIcon, Settings2 } from "lucide-react"
+import { Plus, Pencil, Trash2, Calendar as CalendarIcon, Settings2, Upload, X } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,9 +10,12 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Textarea } from "@/components/ui/textarea"
 import { format, addDays, parseISO, parse, isValid } from "date-fns"
 import { es } from "date-fns/locale"
 import { useToast } from "@/hooks/use-toast"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { Database } from "@/types/supabase"
 import { 
   getTratamientos, 
   crearTratamientoDB, 
@@ -36,7 +39,6 @@ import { Badge } from "@/components/ui/badge"
 import type { Tratamiento, SubTratamiento, FechaDisponible } from "@/types/cita"
 import { getTratamientos as getTratamientosApi } from "@/utils/api"
 import { crearFechaDisponible as crearFechaDisponibleApi } from "@/lib/supabase"
-import { supabase } from "@/lib/supabase"
 
 // Tipos locales
 interface DisponibilidadForm {
@@ -74,6 +76,16 @@ export function GestionTratamientos() {
   const [precio, setPrecio] = useState("")
   const [maxClientesPorTurno, setMaxClientesPorTurno] = useState("1")
   const [esCompartido, setEsCompartido] = useState(false)
+  const [descripcionTratamiento, setDescripcionTratamiento] = useState("")
+  const [descripcionSubTratamiento, setDescripcionSubTratamiento] = useState("")
+  const [fotoUrlTratamiento, setFotoUrlTratamiento] = useState("")
+  const [fotoUrlSubTratamiento, setFotoUrlSubTratamiento] = useState("")
+  const [imagePreviewTratamiento, setImagePreviewTratamiento] = useState<string>("")
+  const [imagePreviewSubTratamiento, setImagePreviewSubTratamiento] = useState<string>("")
+  const [uploadingTratamiento, setUploadingTratamiento] = useState(false)
+  const [uploadingSubTratamiento, setUploadingSubTratamiento] = useState(false)
+  
+  const supabase = createClientComponentClient<Database>()
   const [disponibilidad, setDisponibilidad] = useState<DisponibilidadForm>({
     tratamiento_id: "",
     fecha_inicio: format(new Date(), 'yyyy-MM-dd'),
@@ -87,6 +99,98 @@ export function GestionTratamientos() {
   const [mostrarCalendarioFin, setMostrarCalendarioFin] = useState(false)
 
   const boxes = [1, 2, 3, 4, 5, 6, 7, 8]
+
+  // Función para subir imagen de tratamiento
+  const handleImageUploadTratamiento = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingTratamiento(true);
+      
+      // Crear un nombre único para el archivo
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `tratamientos/${fileName}`;
+
+      // Subir la imagen a Supabase Storage usando el bucket productos
+      const { error: uploadError } = await supabase.storage
+        .from('productos')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Obtener la URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('productos')
+        .getPublicUrl(filePath);
+
+      setFotoUrlTratamiento(publicUrl);
+      setImagePreviewTratamiento(publicUrl);
+      
+      toast({
+        title: "Imagen subida",
+        description: "La imagen se ha subido correctamente.",
+      });
+    } catch (error) {
+      console.error('Error al subir imagen:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo subir la imagen. Intenta de nuevo.",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingTratamiento(false);
+    }
+  };
+
+  // Función para subir imagen de subtratamiento
+  const handleImageUploadSubTratamiento = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingSubTratamiento(true);
+      
+      // Crear un nombre único para el archivo
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `subtratamientos/${fileName}`;
+
+      // Subir la imagen a Supabase Storage usando el bucket productos
+      const { error: uploadError } = await supabase.storage
+        .from('productos')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Obtener la URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('productos')
+        .getPublicUrl(filePath);
+
+      setFotoUrlSubTratamiento(publicUrl);
+      setImagePreviewSubTratamiento(publicUrl);
+      
+      toast({
+        title: "Imagen subida",
+        description: "La imagen se ha subido correctamente.",
+      });
+    } catch (error) {
+      console.error('Error al subir imagen:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo subir la imagen. Intenta de nuevo.",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingSubTratamiento(false);
+    }
+  };
 
   useEffect(() => {
     verificarYConfigurarBaseDatos()
@@ -146,6 +250,9 @@ export function GestionTratamientos() {
   const abrirDialogoNuevoTratamiento = () => {
     setTratamientoEdicion(null)
     setNuevoNombre("")
+    setDescripcionTratamiento("")
+    setFotoUrlTratamiento("")
+    setImagePreviewTratamiento("")
     setMaxClientesPorTurno("1")
     setEsCompartido(false)
     setTipoDialogo("tratamiento")
@@ -155,6 +262,9 @@ export function GestionTratamientos() {
   const abrirDialogoEditarTratamiento = (tratamiento: Tratamiento) => {
     setTratamientoEdicion(tratamiento)
     setNuevoNombre(tratamiento.nombre_tratamiento)
+    setDescripcionTratamiento(tratamiento.descripcion || "")
+    setFotoUrlTratamiento(tratamiento.foto_url || "")
+    setImagePreviewTratamiento(tratamiento.foto_url || "")
     setMaxClientesPorTurno("1")
     setEsCompartido(false)
     setTipoDialogo("tratamiento")
@@ -165,6 +275,9 @@ export function GestionTratamientos() {
     setTratamientoEdicion(tratamiento)
     setSubTratamientoEdicion(null)
     setNuevoNombre("")
+    setDescripcionSubTratamiento("")
+    setFotoUrlSubTratamiento("")
+    setImagePreviewSubTratamiento("")
     setDuracion("")
     setPrecio("")
     setTipoDialogo("subTratamiento")
@@ -175,6 +288,9 @@ export function GestionTratamientos() {
     setTratamientoEdicion(tratamiento)
     setSubTratamientoEdicion(subTratamiento)
     setNuevoNombre(subTratamiento.nombre_subtratamiento)
+    setDescripcionSubTratamiento(subTratamiento.descripcion || "")
+    setFotoUrlSubTratamiento(subTratamiento.foto_url || "")
+    setImagePreviewSubTratamiento(subTratamiento.foto_url || "")
     setDuracion(subTratamiento.duracion.toString())
     setPrecio(subTratamiento.precio.toString())
     setTipoDialogo("subTratamiento")
@@ -191,10 +307,10 @@ export function GestionTratamientos() {
 
     if (tratamientoEdicion) {
       // Editar tratamiento existente
-      await editarTratamiento(tratamientoEdicion.id, nombre, max_clientes_por_turno, es_compartido)
+      await editarTratamiento(tratamientoEdicion.id, nombre, descripcionTratamiento, fotoUrlTratamiento, max_clientes_por_turno, es_compartido)
     } else {
       // Crear nuevo tratamiento
-      await crearTratamiento(nombre, max_clientes_por_turno, es_compartido)
+      await crearTratamiento(nombre, descripcionTratamiento, fotoUrlTratamiento, max_clientes_por_turno, es_compartido)
     }
     setDialogoAbierto(false)
   }
@@ -205,24 +321,27 @@ export function GestionTratamientos() {
     const nombre = formData.get("nombre") as string
     const duracion = Number(formData.get("duracion"))
     const precio = Number(formData.get("precio"))
-    const id = formData.get("id") as string
-
-    if (!tratamientoEdicion) return
+    const tratamiento_id = formData.get("tratamiento_id") as string
+    const subtratamiento_id = formData.get("subtratamiento_id") as string
 
     if (subTratamientoEdicion) {
-      // Editar sub-tratamiento existente
+      // Editar subtratamiento existente
       await editarSubTratamiento({
-        id,
-        tratamiento_id: tratamientoEdicion.id,
+        id: subTratamientoEdicion.id,
+        tratamiento_id,
         nombre,
+        descripcion: descripcionSubTratamiento,
+        foto_url: fotoUrlSubTratamiento,
         duracion,
         precio
       })
     } else {
-      // Crear nuevo sub-tratamiento
+      // Crear nuevo subtratamiento
       await crearSubTratamiento({
-        tratamiento_id: tratamientoEdicion.id,
+        tratamiento_id,
         nombre,
+        descripcion: descripcionSubTratamiento,
+        foto_url: fotoUrlSubTratamiento,
         duracion,
         precio
       })
@@ -270,7 +389,7 @@ export function GestionTratamientos() {
     }
   }
 
-  async function crearTratamiento(nombre: string, max_clientes_por_turno: number, es_compartido: boolean) {
+  async function crearTratamiento(nombre: string, descripcion: string, foto_url: string, max_clientes_por_turno: number, es_compartido: boolean) {
     try {
       console.log('Iniciando creación de tratamiento:', { nombre, max_clientes_por_turno, es_compartido })
 
@@ -285,6 +404,8 @@ export function GestionTratamientos() {
 
       const tratamiento = await crearTratamientoDB({
         nombre,
+        descripcion,
+        foto_url,
         max_clientes_por_turno,
         es_compartido
       })
@@ -306,11 +427,13 @@ export function GestionTratamientos() {
     }
   }
 
-  async function editarTratamiento(id: string, nombre: string, max_clientes_por_turno: number, es_compartido: boolean) {
+  async function editarTratamiento(id: string, nombre: string, descripcion: string, foto_url: string, max_clientes_por_turno: number, es_compartido: boolean) {
     try {
       await actualizarTratamientoDB({
         id,
         nombre,
+        descripcion,
+        foto_url,
         max_clientes_por_turno,
         es_compartido
       })
@@ -334,6 +457,8 @@ export function GestionTratamientos() {
   async function crearSubTratamiento(params: {
     tratamiento_id: string
     nombre: string
+    descripcion: string
+    foto_url: string
     duracion: number
     precio: number
   }) {
@@ -396,6 +521,8 @@ export function GestionTratamientos() {
     id: string
     tratamiento_id: string
     nombre: string
+    descripcion: string
+    foto_url: string
     duracion: number
     precio: number
   }) {
@@ -585,6 +712,8 @@ export function GestionTratamientos() {
       await editarTratamiento(
         tratamientoEdicion.id,
         nuevoNombre,
+        tratamientoEdicion.descripcion,
+        tratamientoEdicion.foto_url,
         Number(maxClientesPorTurno),
         esCompartido
       )
@@ -612,6 +741,8 @@ export function GestionTratamientos() {
     try {
       await crearTratamiento(
         nuevoNombre,
+        "",
+        "",
         Number(maxClientesPorTurno),
         esCompartido
       )
@@ -673,6 +804,8 @@ export function GestionTratamientos() {
     crearSubTratamiento({
       tratamiento_id: tratamientoSeleccionado.id,
       nombre: nuevoNombre,
+      descripcion: "",
+      foto_url: "",
       duracion: Number(duracion),
       precio: Number(precio)
     })
@@ -684,8 +817,10 @@ export function GestionTratamientos() {
       id: subTratamientoEdicion.id,
       tratamiento_id: subTratamientoEdicion.tratamiento_id,
       nombre: nuevoNombre,
-      duracion: Number(duracion),
-      precio: Number(precio)
+      descripcion: subTratamientoEdicion.descripcion,
+      foto_url: subTratamientoEdicion.foto_url,
+      duracion: subTratamientoEdicion.duracion,
+      precio: subTratamientoEdicion.precio
     })
   }
 
@@ -766,7 +901,186 @@ export function GestionTratamientos() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={tipoDialogo === "tratamiento" ? guardarTratamiento : guardarSubTratamiento}>
-                  {/* ... existing form content ... */}
+                  {tipoDialogo === "tratamiento" ? (
+                    // Formulario de tratamiento
+                    <div className="space-y-4">
+                      <input type="hidden" name="id" value={tratamientoEdicion?.id || ""} />
+                      
+                      <div>
+                        <Label htmlFor="nombre">Nombre del Tratamiento</Label>
+                        <Input
+                          id="nombre"
+                          name="nombre"
+                          value={nuevoNombre}
+                          onChange={(e) => setNuevoNombre(e.target.value)}
+                          placeholder="Ej: Tratamiento Facial"
+                          required
+                        />
+                      </div>
+
+                      {/* TEMPORAL: Campo de descripción simplificado */}
+                      <div>
+                        <Label htmlFor="descripcion">Descripción (NUEVO)</Label>
+                        <textarea
+                          id="descripcion"
+                          value={descripcionTratamiento}
+                          onChange={(e) => setDescripcionTratamiento(e.target.value)}
+                          placeholder="Describe el tratamiento..."
+                          className="w-full min-h-[100px] p-3 border border-gray-300 rounded-md"
+                        />
+                      </div>
+
+                      {/* TEMPORAL: Campo de imagen simplificado */}
+                      <div>
+                        <Label>Foto del Tratamiento (NUEVO)</Label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUploadTratamiento}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                          aria-label="Subir imagen del tratamiento"
+                        />
+                        {imagePreviewTratamiento && (
+                          <div className="mt-2">
+                            <img 
+                              src={imagePreviewTratamiento} 
+                              alt="Preview" 
+                              className="w-16 h-16 object-cover rounded-lg border"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <Label htmlFor="max_clientes_por_turno">Máximo de Clientes por Turno</Label>
+                        <Input
+                          id="max_clientes_por_turno"
+                          name="max_clientes_por_turno"
+                          type="number"
+                          min="1"
+                          value={maxClientesPorTurno}
+                          onChange={(e) => setMaxClientesPorTurno(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="es_compartido"
+                          name="es_compartido"
+                          checked={esCompartido}
+                          onCheckedChange={(checked) => setEsCompartido(checked as boolean)}
+                        />
+                        <Label htmlFor="es_compartido">Es un tratamiento compartido</Label>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button type="submit">
+                          {tratamientoEdicion ? "Actualizar" : "Crear"} Tratamiento
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setDialogoAbierto(false)}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    // Formulario de subtratamiento
+                    <div className="space-y-4">
+                      <input type="hidden" name="tratamiento_id" value={tratamientoEdicion?.id || ""} />
+                      <input type="hidden" name="subtratamiento_id" value={subTratamientoEdicion?.id || ""} />
+                      
+                      <div>
+                        <Label htmlFor="nombre">Nombre del Sub-tratamiento</Label>
+                        <Input
+                          id="nombre"
+                          name="nombre"
+                          value={nuevoNombre}
+                          onChange={(e) => setNuevoNombre(e.target.value)}
+                          placeholder="Ej: Limpieza Profunda"
+                          required
+                        />
+                      </div>
+
+                      {/* TEMPORAL: Campo de descripción simplificado */}
+                      <div>
+                        <Label htmlFor="descripcion">Descripción (NUEVO)</Label>
+                        <textarea
+                          id="descripcion"
+                          value={descripcionSubTratamiento}
+                          onChange={(e) => setDescripcionSubTratamiento(e.target.value)}
+                          placeholder="Describe el subtratamiento..."
+                          className="w-full min-h-[100px] p-3 border border-gray-300 rounded-md"
+                        />
+                      </div>
+
+                      {/* TEMPORAL: Campo de imagen simplificado */}
+                      <div>
+                        <Label>Foto del Subtratamiento (NUEVO)</Label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUploadSubTratamiento}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                          aria-label="Subir imagen del subtratamiento"
+                        />
+                        {imagePreviewSubTratamiento && (
+                          <div className="mt-2">
+                            <img 
+                              src={imagePreviewSubTratamiento} 
+                              alt="Preview" 
+                              className="w-16 h-16 object-cover rounded-lg border"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="duracion">Duración (minutos)</Label>
+                          <Input
+                            id="duracion"
+                            name="duracion"
+                            type="number"
+                            min="1"
+                            value={duracion}
+                            onChange={(e) => setDuracion(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="precio">Precio</Label>
+                          <Input
+                            id="precio"
+                            name="precio"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={precio}
+                            onChange={(e) => setPrecio(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button type="submit">
+                          {subTratamientoEdicion ? "Actualizar" : "Crear"} Sub-tratamiento
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setDialogoAbierto(false)}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                 </form>
 
                 {/* Sección de disponibilidad */}

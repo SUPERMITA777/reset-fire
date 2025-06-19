@@ -9,6 +9,8 @@ import { FechaHora } from "@/components/fecha-hora"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Header } from "@/components/header"
+import { BackgroundWrapper } from "@/components/background-wrapper"
+import { Toaster } from "@/components/ui/toaster"
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -40,12 +42,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           enableSystem
           disableTransitionOnChange
         >
-          <div className="relative flex min-h-screen flex-col" suppressHydrationWarning>
-            <Header />
-            <main className="flex-1" suppressHydrationWarning>
-              {children}
-            </main>
-          </div>
+          <BackgroundWrapper>
+            <div className="relative flex min-h-screen flex-col" suppressHydrationWarning>
+              <Header />
+              <main className="flex-1" suppressHydrationWarning>
+                {children}
+              </main>
+            </div>
+          </BackgroundWrapper>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

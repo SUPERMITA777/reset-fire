@@ -73,6 +73,7 @@ export interface Tratamiento {
   id: string
   nombre_tratamiento: string
   descripcion?: string | null
+  foto_url?: string | null
   max_clientes_por_turno: number
   es_compartido: boolean
   boxes_disponibles?: number[]
@@ -86,6 +87,8 @@ export interface SubTratamiento {
   id: string
   tratamiento_id: string
   nombre_subtratamiento: string
+  descripcion?: string | null
+  foto_url?: string | null
   precio: number
   duracion: number
   created_at?: string

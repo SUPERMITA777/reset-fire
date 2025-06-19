@@ -985,8 +985,8 @@ export function CitaModal({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="space-y-2">
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
                     <Label htmlFor="precio" className="mb-1.5 block text-xs">PRECIO</Label>
                     <Input
                       id="precio"
@@ -998,7 +998,7 @@ export function CitaModal({
                       required
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="flex-1">
                     <Label htmlFor="sena" className="mb-1.5 block text-xs">SEÑA</Label>
                     <Input
                       id="sena"
@@ -1010,36 +1010,23 @@ export function CitaModal({
                       required
                     />
                   </div>
-                  {cita && (
-                    <div className="space-y-2">
-                      <Label className="mb-1.5 block text-xs">ESTADO</Label>
-                      <Select
-                        value={form.watch('estado')}
-                        onValueChange={(value: EstadoCita) => form.setValue('estado', value)}
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="Seleccionar estado" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ESTADOS.map((estado) => (
-                            <SelectItem 
-                              key={estado.value} 
-                              value={estado.value}
-                              className="flex items-center gap-2 text-sm"
-                            >
-                              <div className="flex items-center gap-2">
-                                <div 
-                                  className="w-2 h-2 rounded-full" 
-                                  style={{ backgroundColor: getEstadoColor(estado.value) }}
-                                />
-                                {estado.label}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                  <div className="flex-1">
+                    <Label htmlFor="estado" className="mb-1.5 block text-xs">ESTADO</Label>
+                    <Select
+                      value={form.watch('estado')}
+                      onValueChange={(value: "reservado" | "confirmado" | "cancelado" | "completado") => form.setValue('estado', value)}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Seleccione estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="reservado">Reservado</SelectItem>
+                        <SelectItem value="confirmado">Confirmado</SelectItem>
+                        <SelectItem value="completado">Completado</SelectItem>
+                        <SelectItem value="cancelado">Cancelado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div>

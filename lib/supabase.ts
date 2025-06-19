@@ -295,15 +295,16 @@ export async function crearTratamientoDB(params: {
   max_clientes_por_turno: number
   es_compartido: boolean
   descripcion?: string
+  foto_url?: string
 }): Promise<Tratamiento> {
   try {
     const { data, error } = await supabase
-      .from('tratamientos')
+      .from('rf_tratamientos')
       .insert([{
-        nombre: params.nombre,
-        max_clientes_por_turno: params.max_clientes_por_turno,
-        es_compartido: params.es_compartido,
-        descripcion: params.descripcion || ''
+        nombre_tratamiento: params.nombre,
+        box: 1, // Valor por defecto
+        descripcion: params.descripcion || null,
+        foto_url: params.foto_url || null
       }])
       .select()
       .single()
@@ -331,15 +332,15 @@ export async function actualizarTratamientoDB(params: {
   max_clientes_por_turno: number
   es_compartido: boolean
   descripcion?: string
+  foto_url?: string
 }): Promise<Tratamiento> {
   try {
     const { data, error } = await supabase
-      .from('tratamientos')
+      .from('rf_tratamientos')
       .update({
-        nombre: params.nombre,
-        max_clientes_por_turno: params.max_clientes_por_turno,
-        es_compartido: params.es_compartido,
-        descripcion: params.descripcion || ''
+        nombre_tratamiento: params.nombre,
+        descripcion: params.descripcion || null,
+        foto_url: params.foto_url || null
       })
       .eq('id', params.id)
       .select()
@@ -365,7 +366,7 @@ export async function actualizarTratamientoDB(params: {
 export async function eliminarTratamientoDB(id: string): Promise<void> {
   try {
     const { error } = await supabase
-      .from('tratamientos')
+      .from('rf_tratamientos')
       .delete()
       .eq('id', id)
 
@@ -382,15 +383,19 @@ export async function crearSubTratamientoDB(params: {
   nombre: string
   duracion: number
   precio: number
+  descripcion?: string
+  foto_url?: string
 }): Promise<SubTratamiento> {
   try {
     const { data, error } = await supabase
-      .from('sub_tratamientos')
+      .from('rf_subtratamientos')
       .insert([{
         tratamiento_id: params.tratamiento_id,
-        nombre: params.nombre,
+        nombre_subtratamiento: params.nombre,
         duracion: params.duracion,
-        precio: params.precio
+        precio: params.precio,
+        descripcion: params.descripcion || null,
+        foto_url: params.foto_url || null
       }])
       .select()
       .single()
@@ -412,10 +417,16 @@ export async function crearSubTratamientoDB(params: {
 }
 
 // Función para editar un sub-tratamiento
-export async function editarSubTratamientoDB(id: string, nombre: string, duracion: number, precio: number): Promise<SubTratamiento> {
+export async function editarSubTratamientoDB(id: string, nombre: string, duracion: number, precio: number, descripcion?: string, foto_url?: string): Promise<SubTratamiento> {
   const { data, error } = await supabase
-    .from('sub_tratamientos')
-    .update({ nombre, duracion, precio })
+    .from('rf_subtratamientos')
+    .update({ 
+      nombre_subtratamiento: nombre, 
+      duracion, 
+      precio,
+      descripcion: descripcion || null,
+      foto_url: foto_url || null
+    })
     .eq('id', id)
     .select()
     .single()
@@ -428,7 +439,7 @@ export async function editarSubTratamientoDB(id: string, nombre: string, duracio
 export async function eliminarSubTratamientoDB(id: string): Promise<void> {
   try {
     const { error } = await supabase
-      .from('sub_tratamientos')
+      .from('rf_subtratamientos')
       .delete()
       .eq('id', id)
 
@@ -1008,14 +1019,18 @@ export async function actualizarSubTratamientoDB(params: {
   nombre: string
   duracion: number
   precio: number
+  descripcion?: string
+  foto_url?: string
 }): Promise<SubTratamiento> {
   try {
     const { data, error } = await supabase
-      .from('sub_tratamientos')
+      .from('rf_subtratamientos')
       .update({
-        nombre: params.nombre,
+        nombre_subtratamiento: params.nombre,
         duracion: params.duracion,
-        precio: params.precio
+        precio: params.precio,
+        descripcion: params.descripcion || null,
+        foto_url: params.foto_url || null
       })
       .eq('id', params.id)
       .eq('tratamiento_id', params.tratamiento_id)

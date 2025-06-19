@@ -92,6 +92,8 @@ export interface Database {
         Row: {
           id: string
           nombre_tratamiento: string
+          descripcion: string | null
+          foto_url: string | null
           box: number
           created_at: string
           updated_at: string
@@ -99,6 +101,8 @@ export interface Database {
         Insert: {
           id?: string
           nombre_tratamiento: string
+          descripcion?: string | null
+          foto_url?: string | null
           box: number
           created_at?: string
           updated_at?: string
@@ -106,6 +110,8 @@ export interface Database {
         Update: {
           id?: string
           nombre_tratamiento?: string
+          descripcion?: string | null
+          foto_url?: string | null
           box?: number
           created_at?: string
           updated_at?: string
@@ -115,6 +121,8 @@ export interface Database {
         Row: {
           id: string
           nombre_subtratamiento: string
+          descripcion: string | null
+          foto_url: string | null
           duracion: number
           precio: number
           tratamiento_id: string
@@ -124,6 +132,8 @@ export interface Database {
         Insert: {
           id?: string
           nombre_subtratamiento: string
+          descripcion?: string | null
+          foto_url?: string | null
           duracion: number
           precio: number
           tratamiento_id: string
@@ -133,6 +143,8 @@ export interface Database {
         Update: {
           id?: string
           nombre_subtratamiento?: string
+          descripcion?: string | null
+          foto_url?: string | null
           duracion?: number
           precio?: number
           tratamiento_id?: string

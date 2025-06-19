@@ -17,6 +17,11 @@ export function Header() {
           <div className="flex flex-col items-end gap-2">
             <FechaHora />
             <div className="flex flex-row gap-2">
+              <Link href="/institucional">
+                <Button variant="default" className="bg-green-600 hover:bg-green-700">
+                  🏥 INSTITUCIONAL
+                </Button>
+              </Link>
               <Link href="/gestion-tratamientos">
                 <Button variant="outline">GESTIÓN DE TRATAMIENTOS</Button>
               </Link>
@@ -26,8 +31,14 @@ export function Header() {
               <Link href="/clientes">
                 <Button variant="outline">CLIENTES</Button>
               </Link>
+              <Link href="/productos">
+                <Button variant="outline">PRODUCTOS</Button>
+              </Link>
               <Link href="/disponibilidad">
                 <Button variant="outline">DISPONIBILIDAD</Button>
+              </Link>
+              <Link href="/configuracion">
+                <Button variant="outline">CONFIGURACIÓN</Button>
               </Link>
             </div>
           </div>

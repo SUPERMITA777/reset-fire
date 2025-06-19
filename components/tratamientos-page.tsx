@@ -44,9 +44,33 @@ export function TratamientosPage() {
   const [fechasDisponibles, setFechasDisponibles] = useState<{fecha: string, turnos: string[]}[]>([])
   const [mostrarTurnos, setMostrarTurnos] = useState(false)
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string | null>(null)
+  const [buttonBgColor, setButtonBgColor] = useState("#eab308")
 
   useEffect(() => {
     cargarTratamientos()
+  }, [])
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      let color = localStorage.getItem("buttonBgColor") || "#eab308";
+      // Si el color es vacío, nulo o transparente, usar el color por defecto
+      if (!color || color === "transparent" || color === "#00000000") {
+        color = "#eab308";
+      }
+      setButtonBgColor(color);
+      // Escuchar cambios en localStorage desde otras pestañas
+      const onStorage = (e: StorageEvent) => {
+        if (e.key === "buttonBgColor") {
+          let newColor = e.newValue || "#eab308";
+          if (!newColor || newColor === "transparent" || newColor === "#00000000") {
+            newColor = "#eab308";
+          }
+          setButtonBgColor(newColor);
+        }
+      };
+      window.addEventListener("storage", onStorage);
+      return () => window.removeEventListener("storage", onStorage);
+    }
   }, [])
 
   useEffect(() => {
@@ -134,23 +158,36 @@ export function TratamientosPage() {
     <div className="container mx-auto py-8">
       {!tratamientoSeleccionado && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {tratamientos.map((tratamiento) => (
-            <Card
-              key={tratamiento.id}
-              className="cursor-pointer hover:border-primary transition-colors"
-              onClick={() => setTratamientoSeleccionado(tratamiento)}
-            >
-              <CardHeader>
-                <CardTitle>{tratamiento.nombre}</CardTitle>
-                <CardDescription>
-                  {tratamiento.sub_tratamientos.length} subtratamientos disponibles
-                </CardDescription>
-              </CardHeader>
-              <CardFooter className="flex justify-end">
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </CardFooter>
-            </Card>
-          ))}
+          {tratamientos.map((tratamiento) => {
+            // Calcular el ancho basado en 20 caracteres (aprox. 12px por caracter + padding)
+            const ancho = Math.max(tratamiento.nombre.length, 20) * 12 + 32;
+            return (
+              <Card
+                key={tratamiento.id}
+                className="cursor-pointer hover:border-primary transition-colors flex items-center justify-between"
+                onClick={() => setTratamientoSeleccionado(tratamiento)}
+                style={{
+                  backgroundColor: buttonBgColor,
+                  minWidth: ancho,
+                  maxWidth: ancho,
+                  width: ancho,
+                  padding: "0.5rem 1rem",
+                  borderRadius: 8,
+                  boxSizing: "border-box",
+                }}
+              >
+                <CardHeader className="p-2">
+                  <CardTitle className="text-base truncate" style={{ maxWidth: ancho - 32 }}>{tratamiento.nombre}</CardTitle>
+                  <CardDescription>
+                    {tratamiento.sub_tratamientos.length} subtratamientos disponibles
+                  </CardDescription>
+                </CardHeader>
+                <CardFooter className="flex justify-end p-2">
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </CardFooter>
+              </Card>
+            );
+          })}
         </div>
       )}
 

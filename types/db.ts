@@ -90,6 +90,8 @@ export interface Database {
           id: string
           nombre_tratamiento: string
           box: number
+          foto_url: string | null
+          descripcion: string | null
           created_at: string
           updated_at: string
         }
@@ -97,6 +99,8 @@ export interface Database {
           id?: string
           nombre_tratamiento: string
           box: number
+          foto_url?: string | null
+          descripcion?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -104,6 +108,8 @@ export interface Database {
           id?: string
           nombre_tratamiento?: string
           box?: number
+          foto_url?: string | null
+          descripcion?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -115,6 +121,8 @@ export interface Database {
           nombre_subtratamiento: string
           duracion: number
           precio: number
+          foto_url: string | null
+          descripcion: string | null
           created_at: string
           updated_at: string
         }
@@ -124,6 +132,8 @@ export interface Database {
           nombre_subtratamiento: string
           duracion: number
           precio: number
+          foto_url?: string | null
+          descripcion?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -133,6 +143,8 @@ export interface Database {
           nombre_subtratamiento?: string
           duracion?: number
           precio?: number
+          foto_url?: string | null
+          descripcion?: string | null
           created_at?: string
           updated_at?: string
         }
