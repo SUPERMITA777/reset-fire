@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server'
 import {
   getCitasPorFecha,
-  crearCita,
-  actualizarCita,
-  eliminarCita
+  crearCita
+  // actualizarCita and eliminarCita are no longer used here
 } from '@/lib/supabase'
 import { format, parseISO } from 'date-fns'
 
@@ -78,46 +77,4 @@ export async function POST(request: Request) {
   }
 }
 
-// PUT /api/citas/[id]
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params
-  if (!id) {
-    return NextResponse.json({ error: 'ID de cita es requerido' }, { status: 400 })
-  }
-
-  try {
-    const citaData = await request.json()
-    // Adaptar citaData a la estructura esperada por actualizarCita
-    // Los campos como created_at, updated_at usualmente son manejados por la DB
-    // cliente_id, tratamiento_id, etc. deben ser pasados si se pueden actualizar
-    const citaActualizada = await actualizarCita(id, citaData)
-    return NextResponse.json(citaActualizada)
-  } catch (error) {
-    console.error(`Error al actualizar cita ${id}:`, error)
-    const errorMessage = error instanceof Error ? error.message : 'Error desconocido al actualizar cita'
-    return NextResponse.json(
-      { error: `Error al actualizar cita: ${errorMessage}` },
-      { status: 500 }
-    )
-  }
-}
-
-// DELETE /api/citas/[id]
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params
-  if (!id) {
-    return NextResponse.json({ error: 'ID de cita es requerido' }, { status: 400 })
-  }
-
-  try {
-    await eliminarCita(id)
-    return NextResponse.json({ message: `Cita ${id} eliminada correctamente` })
-  } catch (error) {
-    console.error(`Error al eliminar cita ${id}:`, error)
-    const errorMessage = error instanceof Error ? error.message : 'Error desconocido al eliminar cita'
-    return NextResponse.json(
-      { error: `Error al eliminar cita: ${errorMessage}` },
-      { status: 500 }
-    )
-  }
-}
+// PUT and DELETE handlers have been moved to app/api/citas/[id]/route.ts

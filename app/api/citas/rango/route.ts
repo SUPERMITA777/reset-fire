@@ -4,31 +4,34 @@ import { format, parseISO } from 'date-fns'
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 
 // Interfaces para tipar la respuesta de Supabase
-interface Tratamiento {
-  nombre: string
+interface TratamientoRef { // Renamed for clarity, represents the nested object
+  id: string; // Assuming id is selected, if not, remove
+  nombre: string;
 }
 
-interface SubTratamiento {
-  nombre: string
+interface SubTratamientoRef { // Renamed for clarity
+  id: string; // Assuming id is selected
+  nombre: string;
+  duracion: number; // Added based on query
+  precio: number;   // Added based on query
 }
 
 interface CitaSupabase {
-  id: string
-  fecha: string
-  hora_inicio: string
-  hora_fin: string
-  box_id: number
-  color: string
-  nombre_completo: string
-  dni: string | null
-  whatsapp: string | null
-  tratamiento_id: string
-  sub_tratamiento_id: string
-  observaciones: string | null
-  created_at: string | null
-  updated_at: string | null
-  tratamiento: Tratamiento
-  sub_tratamiento: SubTratamiento
+  id: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  box_id: number;
+  color: string;
+  nombre_completo: string;
+  // dni and whatsapp are not selected in the main query for CitaSupabase
+  tratamiento_id: string;
+  sub_tratamiento_id: string;
+  observaciones: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  tratamiento: TratamientoRef; // Use updated interface
+  sub_tratamiento: SubTratamientoRef; // Use updated interface
 }
 
 export async function GET(request: Request) {
@@ -107,7 +110,7 @@ export async function GET(request: Request) {
     }
 
     // Transformar las citas al formato esperado por el frontend
-    const citasFormateadas = citas.map((cita: any) => ({
+    const citasFormateadas = citas.map((cita: CitaSupabase) => ({
       id: cita.id,
       fecha: cita.fecha,
       horaInicio: cita.hora_inicio,

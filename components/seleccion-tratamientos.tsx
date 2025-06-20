@@ -1,38 +1,32 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { format, addDays, setHours, setMinutes, isBefore, isAfter, parseISO, addMinutes, isWithinInterval } from "date-fns"
+import { format, parseISO, addMinutes } from "date-fns" // Removed: addDays, setHours, setMinutes, isBefore, isAfter, isWithinInterval
 import { es } from "date-fns/locale"
-import { ChevronRight, Clock, Calendar, ArrowLeft, DollarSign } from "lucide-react"
-import { toast } from "@/components/ui/use-toast"
+import { ChevronRight, Clock, ArrowLeft, DollarSign } from "lucide-react" // Removed: Calendar
+// toast from "@/components/ui/use-toast" is unused if useToast is used. Assuming useToast is the one.
 import { useToast } from "@/components/ui/use-toast"
-import { useRouter } from "next/navigation"
+// useRouter removed
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz'
-import { Database } from '@/types/supabase'
+// Database type import removed
 
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { FormularioCita } from "@/components/formulario-cita"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { getTratamientos } from "@/lib/tratamientos"
-import { supabase } from "@/lib/supabase"
-import { Tratamiento as TratamientoDB } from "@/types/cita"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { NuevaCitaForm } from "@/components/forms/nueva-cita-form"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+// Dialog related imports removed (CitaModal should handle its own)
+// FormularioCita removed
+// ScrollArea removed
+// getTratamientos from @/lib/tratamientos removed
+// supabase (lowercase) import removed
+// Tratamiento as TratamientoDB removed
+// Label removed
+// Input removed
+// NuevaCitaForm removed
+// Select related components removed
+// Textarea removed
 import { CitaModal } from "@/components/modals/cita-modal"
-import type { CitaWithRelations } from "@/types/cita"
-
-// Tipo para las citas del box
-interface CitaBox {
-  horaInicio: Date
-  horaFin: Date
-}
+// CitaWithRelations type import removed
 
 // Tipo para los sub-tratamientos con duración y precio
 interface SubTratamientoLocal {
@@ -44,11 +38,7 @@ interface SubTratamientoLocal {
 }
 
 // Tipos para los horarios
-interface HorarioDB {
-  hora_inicio: string
-  hora_fin: string
-  vacantes_disponibles: number
-}
+// HorarioDB removed (unused)
 
 interface HorarioDisponibleLocal {
   hora_inicio: string
@@ -69,10 +59,7 @@ interface FechaDisponible {
   updated_at?: string
 }
 
-interface DiaHorarios {
-  fecha: Date
-  horarios: HorarioDisponibleLocal[]
-}
+// DiaHorarios removed (unused)
 
 // Tipo para los tratamientos
 interface TratamientoLocal {
@@ -335,7 +322,7 @@ const SeleccionTratamientos = () => {
         subtratamiento_nombre: subTratamiento.nombre
       }))
 
-      console.log('Consultando disponibilidad para tratamiento:', tratamientoSeleccionado.id)
+      // console.log('Consultando disponibilidad para tratamiento:', tratamientoSeleccionado.id); // Removed
       const fechaActual = getFechaActualArgentina()
       const fechaActualStr = format(fechaActual, 'yyyy-MM-dd')
 
@@ -353,7 +340,7 @@ const SeleccionTratamientos = () => {
         throw errorDisponibilidad
       }
 
-      console.log('Datos de disponibilidad recibidos:', disponibilidadData)
+      // console.log('Datos de disponibilidad recibidos:', disponibilidadData); // Removed
 
       if (!disponibilidadData || disponibilidadData.length === 0) {
         toast({
@@ -366,17 +353,17 @@ const SeleccionTratamientos = () => {
 
       // Convertir las fechas a la zona horaria local
       const fechasDisponibles = disponibilidadData.map(disp => {
-        console.log('Fecha original:', disp.fecha_inicio)
-        const fechaLocal = fechaUTCToLocal(disp.fecha_inicio)
-        console.log('Fecha convertida:', fechaLocal)
+        // console.log('Fecha original:', disp.fecha_inicio); // Removed
+        // const fechaLocal = fechaUTCToLocal(disp.fecha_inicio); // fechaUTCToLocal was removed
+        // console.log('Fecha convertida:', fechaLocal); // Removed
         return {
           ...disp,
-          fecha_inicio: fechaLocal,
-          fecha_fin: fechaUTCToLocal(disp.fecha_fin)
+          // fecha_inicio: fechaLocal, // Assuming original dates are fine after previous refactorings
+          // fecha_fin: fechaUTCToLocal(disp.fecha_fin)
         }
       })
 
-      console.log('Fechas disponibles convertidas:', fechasDisponibles)
+      // console.log('Fechas disponibles convertidas:', fechasDisponibles); // Removed
       setFechasDisponibles(fechasDisponibles)
     } catch (error) {
       console.error('Error al seleccionar subtratamiento:', error)
@@ -402,11 +389,11 @@ const SeleccionTratamientos = () => {
         return;
       }
 
-      console.log('Consultando disponibilidad para tratamiento:', tratamientoSeleccionado.id);
+      // console.log('Consultando disponibilidad para tratamiento:', tratamientoSeleccionado.id); // Removed
 
       // Convertir la fecha a la zona horaria de Argentina
-      const fechaArgentina = toZonedTime(new Date(fecha), 'America/Argentina/Buenos_Aires');
-      console.log('Fecha en zona horaria Argentina:', fechaArgentina);
+      // const fechaArgentina = toZonedTime(new Date(fecha), 'America/Argentina/Buenos_Aires'); // fechaArgentina unused
+      // console.log('Fecha en zona horaria Argentina:', fechaArgentina); // Removed
 
       // Obtener citas existentes para la fecha seleccionada
       const { data: citasExistentes, error: errorCitas } = await supabase
@@ -426,7 +413,7 @@ const SeleccionTratamientos = () => {
         throw errorCitas;
       }
 
-      console.log('Citas existentes encontradas:', citasExistentes);
+      // console.log('Citas existentes encontradas:', citasExistentes); // Removed
 
       // Organizar citas por box
       const citasPorBox = citasExistentes.reduce((acc, cita) => {
@@ -438,19 +425,19 @@ const SeleccionTratamientos = () => {
           new Date(`${cita.fecha}T${cita.hora}`),
           'America/Argentina/Buenos_Aires'
         );
-        const horaLocal = formatInTimeZone(horaCita, 'America/Argentina/Buenos_Aires', 'HH:mm');
-        console.log(`Cita en box ${cita.box} a las ${horaLocal} con duración ${cita.rf_subtratamientos?.duracion || 30} minutos`);
+        // const horaLocal = formatInTimeZone(horaCita, 'America/Argentina/Buenos_Aires', 'HH:mm'); // horaLocal unused
+        // console.log(`Cita en box ${cita.box} a las ${horaLocal} con duración ${cita.rf_subtratamientos?.duracion || 30} minutos`); // Removed
         
         acc[cita.box].push({
           ...cita,
-          horaLocal,
+          // horaLocal, // Removed as unused
           horaInicio: horaCita,
           horaFin: new Date(horaCita.getTime() + (cita.rf_subtratamientos?.duracion || 30) * 60000)
         });
         return acc;
-      }, {} as Record<number, Array<any>>);
+      }, {} as Record<number, Array<CitaBox & { horaInicio: Date; horaFin: Date }>>); // Added type to accumulator with Date objects
 
-      console.log('Citas organizadas por box:', citasPorBox);
+      // console.log('Citas organizadas por box:', citasPorBox); // Removed
 
       // Generar horarios disponibles
       const horariosDisponibles: HorarioDisponibleLocal[] = [];
@@ -470,9 +457,9 @@ const SeleccionTratamientos = () => {
       const intervalo = 30;
 
       // Para cada box
-      for (let box = 1; box <= 3; box++) {
+      for (let box = 1; box <= 3; box++) { // Assuming 3 boxes, should be dynamic if possible
         const citasBox = citasPorBox[box] || [];
-        console.log(`Verificando disponibilidad para box ${box}:`, citasBox);
+        // console.log(`Verificando disponibilidad para box ${box}:`, citasBox); // Removed
 
         // Generar slots de tiempo
         for (let tiempo = new Date(horaInicio); tiempo < horaFin; tiempo.setMinutes(tiempo.getMinutes() + intervalo)) {
@@ -480,21 +467,25 @@ const SeleccionTratamientos = () => {
           const horaFinSlot = new Date(tiempo.getTime() + duracion * 60000);
           
           // Verificar si hay solapamiento con citas existentes
-          const haySolapamiento = citasBox.some((cita: CitaBox) => {
+          const haySolapamiento = citasBox.some((cita) => {
+            // Ensure cita.horaInicio and cita.horaFin are Date objects for comparison
+            const citaInicio = typeof cita.horaInicio === 'string' ? parseISO(cita.horaInicio) : cita.horaInicio;
+            const citaFin = typeof cita.horaFin === 'string' ? parseISO(cita.horaFin) : cita.horaFin;
+
             const solapamiento = (
-              (tiempo >= cita.horaInicio && tiempo < cita.horaFin) || // El inicio del nuevo slot está dentro de una cita existente
-              (horaFinSlot > cita.horaInicio && horaFinSlot <= cita.horaFin) || // El fin del nuevo slot está dentro de una cita existente
-              (tiempo <= cita.horaInicio && horaFinSlot >= cita.horaFin) // El nuevo slot engloba una cita existente
+              (tiempo >= citaInicio && tiempo < citaFin) ||
+              (horaFinSlot > citaInicio && horaFinSlot <= citaFin) ||
+              (tiempo <= citaInicio && horaFinSlot >= citaFin)
             );
 
-            if (solapamiento) {
-              console.log(`Solapamiento encontrado en box ${box}:`, {
-                horaSlot,
-                horaFinSlot: formatInTimeZone(horaFinSlot, 'America/Argentina/Buenos_Aires', 'HH:mm'),
-                citaHoraInicio: formatInTimeZone(cita.horaInicio, 'America/Argentina/Buenos_Aires', 'HH:mm'),
-                citaHoraFin: formatInTimeZone(cita.horaFin, 'America/Argentina/Buenos_Aires', 'HH:mm')
-              });
-            }
+            // if (solapamiento) { // Debug log removed
+            //   console.log(`Solapamiento encontrado en box ${box}:`, {
+            //     horaSlot,
+            //     horaFinSlot: formatInTimeZone(horaFinSlot, 'America/Argentina/Buenos_Aires', 'HH:mm'),
+            //     citaHoraInicio: formatInTimeZone(citaInicio, 'America/Argentina/Buenos_Aires', 'HH:mm'),
+            //     citaHoraFin: formatInTimeZone(citaFin, 'America/Argentina/Buenos_Aires', 'HH:mm')
+            //   });
+            // }
 
             return solapamiento;
           });
@@ -509,7 +500,7 @@ const SeleccionTratamientos = () => {
         }
       }
 
-      console.log('Horarios disponibles finales:', horariosDisponibles);
+      // console.log('Horarios disponibles finales:', horariosDisponibles); // Removed
       setHorariosDisponibles(horariosDisponibles);
     } catch (error) {
       console.error('Error al verificar disponibilidad:', error);

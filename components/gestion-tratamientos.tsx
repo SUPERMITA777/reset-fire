@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Pencil, Trash2, Calendar as CalendarIcon, Settings2, Upload, X } from "lucide-react"
+import { Plus, Calendar as CalendarIcon, Settings2 } from "lucide-react" // Removed Pencil, Trash2, Upload, X
 import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog" // DialogTrigger removed
+// ScrollArea removed
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -31,16 +31,20 @@ import {
   eliminarFechaDisponible,
   actualizarFechaDisponibleDB
 } from "@/lib/supabase"
-import { toZonedTime } from 'date-fns-tz'
+// toZonedTime removed
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-import { Separator } from "@/components/ui/separator"
+// Separator removed
 import { Badge } from "@/components/ui/badge"
 import type { Tratamiento, SubTratamiento, FechaDisponible } from "@/types/cita"
-import { getTratamientos as getTratamientosApi } from "@/utils/api"
-import { crearFechaDisponible as crearFechaDisponibleApi } from "@/lib/supabase"
+// getTratamientosApi removed
+// crearFechaDisponibleApi removed
 
 // Tipos locales
+// Extend Tratamiento to include fechas_disponibles for type safety
+interface TratamientoConFechas extends Tratamiento {
+  fechas_disponibles?: FechaDisponible[];
+}
 interface DisponibilidadForm {
   id?: string
   tratamiento_id: string
@@ -52,25 +56,18 @@ interface DisponibilidadForm {
   cantidad_clientes: number
 }
 
-interface DisponibilidadTratamiento {
-  id: string
-  tratamiento_id: string
-  fecha_inicio: Date
-  fecha_fin: Date
-  dias_disponibles: string[]
-  horarios: string[]
-}
+// DisponibilidadTratamiento interface removed as it was unused
 
 export function GestionTratamientos() {
   const { toast } = useToast()
-  const [tratamientos, setTratamientos] = useState<Tratamiento[]>([])
+  const [tratamientos, setTratamientos] = useState<TratamientoConFechas[]>([])
   const [loading, setLoading] = useState(true)
   const [tratamientoEdicion, setTratamientoEdicion] = useState<Tratamiento | null>(null)
   const [subTratamientoEdicion, setSubTratamientoEdicion] = useState<SubTratamiento | null>(null)
   const [dialogoAbierto, setDialogoAbierto] = useState(false)
   const [tipoDialogo, setTipoDialogo] = useState<"tratamiento" | "subTratamiento" | "fechaDisponible">("tratamiento")
   const [dialogoDisponibilidad, setDialogoDisponibilidad] = useState(false)
-  const [tratamientoSeleccionado, setTratamientoSeleccionado] = useState<Tratamiento | null>(null)
+  const [tratamientoSeleccionado, setTratamientoSeleccionado] = useState<TratamientoConFechas | null>(null)
   const [nuevoNombre, setNuevoNombre] = useState("")
   const [duracion, setDuracion] = useState("")
   const [precio, setPrecio] = useState("")
@@ -391,7 +388,7 @@ export function GestionTratamientos() {
 
   async function crearTratamiento(nombre: string, descripcion: string, foto_url: string, max_clientes_por_turno: number, es_compartido: boolean) {
     try {
-      console.log('Iniciando creación de tratamiento:', { nombre, max_clientes_por_turno, es_compartido })
+      // console.log('Iniciando creación de tratamiento:', { nombre, max_clientes_por_turno, es_compartido }); // Debug log removed
 
       if (!nombre?.trim()) {
         toast({ 
@@ -402,14 +399,14 @@ export function GestionTratamientos() {
         return
       }
 
-      const tratamiento = await crearTratamientoDB({
+      await crearTratamientoDB({ // const tratamiento = removed as it's not used if not logged
         nombre,
         descripcion,
         foto_url,
         max_clientes_por_turno,
         es_compartido
       })
-      console.log('Tratamiento creado:', tratamiento)
+      // console.log('Tratamiento creado:', tratamiento); // Debug log removed
       
       await cargarTratamientos()
       toast({ 
@@ -942,9 +939,10 @@ export function GestionTratamientos() {
                         />
                         {imagePreviewTratamiento && (
                           <div className="mt-2">
+                            {/* TODO: Replace with next/image. Requires width & height, or layout="fill" and appropriate parent styling. Also ensure Supabase storage domain is configured in next.config.mjs for next/image. */}
                             <img 
                               src={imagePreviewTratamiento} 
-                              alt="Preview" 
+                              alt="Preview del Tratamiento"
                               className="w-16 h-16 object-cover rounded-lg border"
                             />
                           </div>
@@ -1029,9 +1027,10 @@ export function GestionTratamientos() {
                         />
                         {imagePreviewSubTratamiento && (
                           <div className="mt-2">
+                            {/* TODO: Replace with next/image. Requires width & height, or layout="fill" and appropriate parent styling. Also ensure Supabase storage domain is configured in next.config.mjs for next/image. */}
                             <img 
                               src={imagePreviewSubTratamiento} 
-                              alt="Preview" 
+                              alt="Preview del Subtratamiento"
                               className="w-16 h-16 object-cover rounded-lg border"
                             />
                           </div>
@@ -1099,9 +1098,9 @@ export function GestionTratamientos() {
                     </div>
 
                     {/* Mostrar disponibilidad actual */}
-                    {(tratamientoSeleccionado as any).fechas_disponibles && (tratamientoSeleccionado as any).fechas_disponibles.length > 0 && (
+                    {tratamientoSeleccionado?.fechas_disponibles && tratamientoSeleccionado.fechas_disponibles.length > 0 && (
                       <div className="space-y-4">
-                        {(tratamientoSeleccionado as any).fechas_disponibles.map((fecha: any) => (
+                        {tratamientoSeleccionado.fechas_disponibles.map((fecha: FechaDisponible) => (
                           <div key={fecha.id} className="space-y-4 border rounded-lg p-4">
                             <div className="grid grid-cols-2 gap-4">
                               <div>
@@ -1309,7 +1308,7 @@ export function GestionTratamientos() {
             <div>
               <Label>Boxes Disponibles</Label>
               <div className="flex flex-wrap gap-2 mt-2">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((box) => (
+                {availableBoxes.map((box) => (
                   <Badge
                     key={box}
                     variant={disponibilidad.boxes_disponibles.includes(box) ? "default" : "outline"}

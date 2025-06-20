@@ -1,6 +1,6 @@
 // app/api/citas/route.test.ts
-import { GET, POST, PUT, DELETE } from './route' // Assuming PUT & DELETE are in the same file
-import { getCitasPorFecha, crearCita, actualizarCita, eliminarCita } from '@/lib/supabase'
+import { GET, POST } from './route' // PUT & DELETE are now in [id]/route.ts
+import { getCitasPorFecha, crearCita } from '@/lib/supabase' // Only import mocks needed for GET & POST
 import { NextRequest } from 'next/server'
 import { jest } from '@jest/globals' // Or import { vi } from 'vitest'; if using Vitest
 
@@ -8,11 +8,13 @@ import { jest } from '@jest/globals' // Or import { vi } from 'vitest'; if using
 jest.mock('@/lib/supabase', () => ({
   getCitasPorFecha: jest.fn(),
   crearCita: jest.fn(),
-  actualizarCita: jest.fn(),
-  eliminarCita: jest.fn(),
+  // actualizarCita and eliminarCita are mocked in [id]/route.test.ts
+  // If this shared mock causes issues, consider more targeted mocking or jest.requireActual
+  actualizarCita: jest.fn(), // Keep if other tests in this file might somehow trigger it, otherwise remove
+  eliminarCita: jest.fn(),   // Keep if other tests in this file might somehow trigger it, otherwise remove
 }))
 
-describe('API Routes for Citas', () => {
+describe('API Routes for Citas (/api/citas)', () => {
   afterEach(() => {
     jest.clearAllMocks()
   })
@@ -99,43 +101,5 @@ describe('API Routes for Citas', () => {
     })
   })
 
-  describe('PUT /api/citas/[id]', () => {
-    it('should update an existing cita', async () => {
-        const citaId = '1';
-        const updatePayload = { notas: 'Updated notes' };
-        const updatedCita = { id: citaId, notas: 'Updated notes', fecha: '2023-01-01' };
-        (actualizarCita as jest.Mock).mockResolvedValue(updatedCita);
-
-        const req = new NextRequest(`http://localhost/api/citas/${citaId}`, {
-            method: 'PUT',
-            body: JSON.stringify(updatePayload)
-        });
-
-        // The params object needs to be passed to the handler for route segments
-        const response = await PUT(req, { params: { id: citaId } });
-        const body = await response.json();
-
-        expect(response.status).toBe(200);
-        expect(body).toEqual(updatedCita);
-        expect(actualizarCita).toHaveBeenCalledWith(citaId, updatePayload);
-    });
-  });
-
-  describe('DELETE /api/citas/[id]', () => {
-    it('should delete an existing cita', async () => {
-        const citaId = '1';
-        (eliminarCita as jest.Mock).mockResolvedValue(undefined); // Supabase delete might not return content
-
-        const req = new NextRequest(`http://localhost/api/citas/${citaId}`, {
-            method: 'DELETE'
-        });
-
-        const response = await DELETE(req, { params: { id: citaId } });
-        const body = await response.json();
-
-        expect(response.status).toBe(200);
-        expect(body.message).toEqual(`Cita ${citaId} eliminada correctamente`);
-        expect(eliminarCita).toHaveBeenCalledWith(citaId);
-    });
-  });
+  // PUT and DELETE describe blocks have been moved to app/api/citas/[id]/route.test.ts
 })
