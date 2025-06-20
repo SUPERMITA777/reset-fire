@@ -9,39 +9,61 @@ import esLocale from "@fullcalendar/core/locales/es";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react"; // Plus removed
 import { supabase } from "@/lib/supabase";
 import resourceTimeGridPlugin from "@fullcalendar/resource-timegrid";
-import { EventInput, EventDropArg, EventChangeArg } from '@fullcalendar/core';
+import { EventInput, EventClickArg, DateSelectArg, EventDropArg, EventApi } from '@fullcalendar/core'; // Re-added EventDropArg, Added EventApi
 import { toast } from "@/components/ui/use-toast";
 import { CitaModal } from "@/components/modals/cita-modal";
 import { format, parseISO } from "date-fns";
-import resourceTimelinePlugin from "@fullcalendar/resource-timeline";
+// resourceTimelinePlugin removed
 import { es } from "date-fns/locale";
 import type { Cita, CitaWithRelations, Tratamiento, SubTratamiento } from "@/types/cita";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarEvent } from "@/components/ui/calendar-event";
+// Select components removed
+// CalendarEvent (from ui) removed
 
 const BOXES = Array.from({ length: 8 }, (_, i) => ({ id: (i + 1).toString(), title: `BOX ${i + 1}` }));
 
 type ViewType = "resourceTimeGridDay" | "resourceTimeGridWeek" | "resourceTimeGridMonth";
 
-interface DisponibilidadFromDB {
-  id: string;
+// Interface for data coming from CitaModal
+interface CitaFormInput {
+  id?: string; // Optional for new citas
+  cliente_id: string; // Changed from paciente_id
   tratamiento_id: string;
-  fecha_inicio: string;
-  fecha_fin: string;
-  hora_inicio: string;
-  hora_fin: string;
-  boxes_disponibles: number[];
-  cantidad_clientes: number;
-  created_at: string;
-  updated_at: string;
-  rf_tratamientos: {
-    id: string;
-    nombre_tratamiento: string;
-  } | null;
+  subtratamiento_id: string;
+  fecha: string; // Expecting 'yyyy-MM-dd'
+  hora: string; // Expecting 'HH:mm'
+  box: number;
+  estado: string;
+  precio: number;
+  sena: number;
+  notas: string | null;
+  es_multiple: boolean;
+  duracion: number;
 }
+
+interface CustomEventExtendedProps {
+  tipo?: string;
+  estado?: string;
+  es_multiple?: boolean;
+  subtratamiento?: string;
+  clienteInfo?: string;
+  boxes?: number[];
+  cita?: CitaWithRelations; // Include the full cita if it's passed
+  duracion?: number; // If passed separately
+  cantidad?: number; // If passed separately
+}
+
+interface CustomEventArg {
+  event: EventApi | EventInput; // EventApi is often what you get in render hooks, EventInput for adding events
+  // It's better to use the specific type from FullCalendar's event render hooks if available, e.g., EventContentArg
+  // For simplicity, we'll ensure extendedProps matches CustomEventExtendedProps.
+  // extendedProps should conform to CustomEventExtendedProps
+}
+
+
+// DisponibilidadFromDB removed (unused)
 
 interface Disponibilidad {
   id: string;
@@ -67,50 +89,19 @@ interface EventColors {
   textColor: string;
 }
 
-interface EventDropInfo {
-  event: {
-    id: string;
-    start: Date;
-    getResources: () => Array<{ id: string }>;
-    extendedProps: {
-      tipo: string;
-      duracion?: number;
-    };
-  };
-  revert: () => void;
-}
-
-interface EventAllowInfo {
-  start: Date;
-  draggedEvent: {
-    extendedProps: {
-      tipo: string;
-    };
-  };
-}
-
-interface EventExtendedProps {
-  tipo?: string;
-  estado?: string;
-  es_multiple?: boolean;
-  subtratamiento?: string;
-  clienteInfo?: string;
-  boxes?: number[];
-}
-
-interface CalendarEvent {
-  title: string;
-  extendedProps: EventExtendedProps;
-}
+// EventDropInfo removed (unused, will use EventDropArg from FullCalendar directly if needed for handleEventDrop)
+// EventAllowInfo removed (unused)
+// EventExtendedProps removed (unused, event.extendedProps is used directly)
+// Internal CalendarEvent interface (shadowing imported one) removed, will use arg.event.title directly or define specific type for arg if needed.
 
 export default function CalendarioPage() {
   const [citas, setCitas] = useState<CitaWithRelations[]>([]);
   const [tratamientos, setTratamientos] = useState<Tratamiento[]>([]);
   const [disponibilidad, setDisponibilidad] = useState<Disponibilidad[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); // Keep for now, might become unused
   const [currentView, setCurrentView] = useState<ViewType>("resourceTimeGridDay");
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date()); // Add type for clarity: const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [showModal, setShowModal] = useState(false);
   const [selectedCita, setSelectedCita] = useState<CitaWithRelations | null>(null);
   const [showModalEditar, setShowModalEditar] = useState(false);
@@ -332,8 +323,9 @@ export default function CalendarioPage() {
   const allEvents = [...disponibilidadEvents, ...getCitaEvents()];
 
   // Renderizar contenido de eventos
-  const eventContent = (arg: { event: CalendarEvent }) => {
+  const eventContent = (arg: { event: EventInput & { extendedProps: CustomEventExtendedProps } }) => {
     const { event } = arg;
+    // Now extendedProps are strongly typed
     const tipo = event.extendedProps.tipo;
     const estado = event.extendedProps.estado;
     const es_multiple = event.extendedProps.es_multiple;
@@ -356,7 +348,7 @@ export default function CalendarioPage() {
               <div class="fc-event-title fc-sticky text-sm font-medium">
                 ${event.title}
                 <br/>
-                <span class="text-xs">Boxes: ${event.extendedProps.boxes?.join(", ") || ""}</span>
+                <span class="text-xs">Boxes: ${event.extendedProps?.boxes?.join(", ") || ""}</span>
               </div>
             </div>
           </div>
@@ -383,12 +375,30 @@ export default function CalendarioPage() {
     return null;
   };
 
-  const handleEventDrop = async (info: any) => {
-    const cita = info.event.extendedProps.cita;
-    if (!cita) return;
-    const nuevaFecha = info.event.startStr.split('T')[0];
-    const nuevaHora = info.event.startStr.split('T')[1]?.slice(0,5);
-    const nuevoBox = parseInt(info.event.getResources?.()[0]?.id || info.event.getResources?.()[0] || cita.box);
+  const handleEventDrop = async (eventDropInfo: EventDropArg) => {
+    const cita = eventDropInfo.event.extendedProps.cita as CitaWithRelations; // Assuming 'cita' is always there for draggable events
+    if (!cita) {
+      // This might happen if non-cita events are somehow made draggable and don't have 'cita' in extendedProps
+      console.warn("Dropped event has no 'cita' in extendedProps", eventDropInfo.event);
+      eventDropInfo.revert(); // Revert the drop if it's not a valid cita event
+      return;
+    }
+    const nuevaFecha = eventDropInfo.event.startStr.split('T')[0];
+    const nuevaHora = eventDropInfo.event.startStr.split('T')[1]?.slice(0,5); // Ensure time is part of startStr
+
+    let nuevoBoxIdStr: string | undefined;
+    const resources = eventDropInfo.event.getResources();
+    if (resources && resources.length > 0) {
+      nuevoBoxIdStr = resources[0].id;
+    } else if (eventDropInfo.oldEvent?.getResources) { // Fallback to old event's resources if new ones aren't immediately available
+        const oldResources = eventDropInfo.oldEvent.getResources();
+        if (oldResources && oldResources.length > 0) {
+            nuevoBoxIdStr = oldResources[0].id;
+        }
+    }
+
+    // If still no resource ID, try from the original cita object (less reliable for new box)
+    const nuevoBox = parseInt(nuevoBoxIdStr || cita.box.toString());
     try {
       const { error } = await supabase
         .from('rf_citas')
@@ -404,8 +414,8 @@ export default function CalendarioPage() {
   };
 
   // Manejador para clic en una cita
-  const handleEventClick = (info: any) => {
-    const { event } = info;
+  const handleEventClick = (clickInfo: EventClickArg) => {
+    const { event } = clickInfo;
     const cita = event.extendedProps.cita as CitaWithRelations;
     if (cita) {
       setCitaAEditar(cita);
@@ -414,7 +424,7 @@ export default function CalendarioPage() {
   };
 
   // Manejador para clic en una celda del calendario
-  const handleDateSelect = (selectInfo: any) => {
+  const handleDateSelect = (selectInfo: DateSelectArg) => {
     const fecha = selectInfo.start;
     const hora = format(fecha, 'HH:mm');
     const box = parseInt(selectInfo.resource?.id || '1');
@@ -442,14 +452,15 @@ export default function CalendarioPage() {
     setShowModal(true);
   };
 
-  const handleSubmitCita = async (formData: any) => {
+  const handleSubmitCita = async (formData: CitaFormInput) => {
     try {
       // Crear o actualizar la cita en la base de datos
       if (formData.id) {
         // Actualizar cita existente
         const { error: updateError } = await supabase
           .from("rf_citas")
-          .update({
+          .update({ // Ensure these fields match your Supabase table columns for rf_citas
+            cliente_id: formData.cliente_id, // Corrected from paciente_id
             tratamiento_id: formData.tratamiento_id,
             subtratamiento_id: formData.subtratamiento_id,
             fecha: formData.fecha,
@@ -458,8 +469,8 @@ export default function CalendarioPage() {
             estado: formData.estado,
             precio: formData.precio,
             sena: formData.sena,
-            notas: formData.notas,
-            paciente_id: formData.paciente_id
+            notas: formData.notas
+            // es_multiple and duracion might not be directly updatable here if they are derived or set differently
           })
           .eq("id", formData.id);
 
@@ -470,7 +481,8 @@ export default function CalendarioPage() {
         // Crear nueva cita
         const { error: createError } = await supabase
           .from("rf_citas")
-          .insert({
+          .insert({ // Ensure these fields match your Supabase table columns for rf_citas
+            cliente_id: formData.cliente_id, // Corrected from paciente_id
             tratamiento_id: formData.tratamiento_id,
             subtratamiento_id: formData.subtratamiento_id,
             fecha: formData.fecha,
@@ -480,9 +492,8 @@ export default function CalendarioPage() {
             precio: formData.precio,
             sena: formData.sena,
             notas: formData.notas,
-            paciente_id: formData.paciente_id,
-            es_multiple: false,
-            duracion: formData.duracion
+            es_multiple: formData.es_multiple, // Make sure this is intended for direct insert
+            duracion: formData.duracion     // Make sure this is intended for direct insert
           });
 
         if (createError) {
@@ -513,9 +524,12 @@ export default function CalendarioPage() {
     }
   };
 
-  const handleGuardarCita = async (citaData: any) => {
+  const handleGuardarCita = async (citaData: CitaFormInput) => { // Typed citaData
     try {
       // Recargar las citas después de guardar
+      // This function is called by CitaModal's onSubmit, which itself calls handleSubmitCita.
+      // handleSubmitCita already reloads citas. So, this might be redundant.
+      // However, it ensures data consistency if used independently.
       await recargarCitas();
       
       // Cerrar el modal
@@ -536,9 +550,7 @@ export default function CalendarioPage() {
     }
   };
 
-  const handleViewChange = (newView: ViewType) => {
-    setCurrentView(newView);
-  };
+  // handleViewChange removed as it was unused
 
   const goToPrevDay = () => {
     const newDate = new Date(currentDate);
