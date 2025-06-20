@@ -197,30 +197,14 @@ export async function verificarDisponibilidadBox(
   box: number,
   tratamientoId?: string
 ): Promise<boolean> {
-  console.log('Verificando disponibilidad con parámetros:', {
-    fecha,
-    horaInicio,
-    horaFin,
-    box,
-    tratamientoId
-  })
-
   try {
     // Primero verificar si el tratamiento está disponible en esa fecha/hora/box
     if (tratamientoId) {
       // Verificar que el ID sea un UUID válido
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tratamientoId)) {
-        console.error('ID de tratamiento inválido:', tratamientoId)
+        // console.error('ID de tratamiento inválido:', tratamientoId); // Keep this if strict format adherence is critical and needs logging.
         return false
       }
-
-      console.log('Llamando a verificar_disponibilidad_tratamiento con:', {
-        p_tratamiento_id: tratamientoId,
-        p_fecha: fecha,
-        p_hora_inicio: horaInicio,
-        p_hora_fin: horaFin,
-        p_box_id: box
-      })
 
       const { data: disponibleTratamiento, error: errorTratamiento } = await supabase
         .rpc('verificar_disponibilidad_tratamiento', {
@@ -232,25 +216,18 @@ export async function verificarDisponibilidadBox(
         })
 
       if (errorTratamiento) {
-        console.error('Error verificando disponibilidad del tratamiento:', {
-          error: errorTratamiento,
+        console.error(`Error RPC verificar_disponibilidad_tratamiento: ${errorTratamiento.message}`, {
           params: { tratamientoId, fecha, horaInicio, horaFin, box }
         })
         return false
       }
 
-      console.log('Resultado de verificar_disponibilidad_tratamiento:', disponibleTratamiento)
-
       if (disponibleTratamiento === null || disponibleTratamiento === false) {
-        console.log('El tratamiento no está disponible en este horario/box')
         return false
       }
     }
 
     // Luego verificar si hay citas existentes que se superponen
-    console.log('Verificando citas existentes...')
-    
-    // Convertir las horas a minutos para una comparación más precisa
     const [horaInicioHora, horaInicioMinuto] = horaInicio.split(':').map(Number)
     const [horaFinHora, horaFinMinuto] = horaFin.split(':').map(Number)
     const minutosInicio = horaInicioHora * 60 + horaInicioMinuto
@@ -265,26 +242,15 @@ export async function verificarDisponibilidadBox(
       .or(`and(hora_inicio.lte.${horaFin},hora_fin.gt.${horaInicio}),and(hora_inicio.lt.${horaFin},hora_fin.gte.${horaInicio})`)
 
     if (error) {
-      console.error('Error verificando disponibilidad:', error)
+      console.error('Error verificando superposición de citas:', error.message)
       return false
     }
 
-    console.log('Citas existentes encontradas:', {
-      total: citasExistentes?.length || 0,
-      citas: citasExistentes?.map((c: { id: string, hora_inicio: string, hora_fin: string }) => ({
-        id: c.id,
-        horaInicio: c.hora_inicio,
-        horaFin: c.hora_fin
-      }))
-    })
-
     // Si no hay citas existentes, el box está disponible
     const hayDisponibilidad = !citasExistentes || citasExistentes.length === 0
-    console.log('¿Hay disponibilidad?:', hayDisponibilidad)
-
     return hayDisponibilidad
   } catch (error) {
-    console.error('Error al verificar disponibilidad:', error)
+    console.error(`Excepción en verificarDisponibilidadBox: ${error instanceof Error ? error.message : String(error)}`)
     return false
   }
 }
@@ -416,25 +382,6 @@ export async function crearSubTratamientoDB(params: {
   }
 }
 
-// Función para editar un sub-tratamiento
-export async function editarSubTratamientoDB(id: string, nombre: string, duracion: number, precio: number, descripcion?: string, foto_url?: string): Promise<SubTratamiento> {
-  const { data, error } = await supabase
-    .from('rf_subtratamientos')
-    .update({ 
-      nombre_subtratamiento: nombre, 
-      duracion, 
-      precio,
-      descripcion: descripcion || null,
-      foto_url: foto_url || null
-    })
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
-}
-
 // Función para eliminar un sub-tratamiento
 export async function eliminarSubTratamientoDB(id: string): Promise<void> {
   try {
@@ -468,11 +415,11 @@ export async function getCitasPorFecha(fecha: Date, obtenerMesCompleto: boolean 
     const fechaInicioStr = format(fechaInicio, "yyyy-MM-dd")
     const fechaFinStr = format(fechaFin, "yyyy-MM-dd")
     
-    console.log('Consultando citas en rango:', {
-      fechaInicio: fechaInicioStr,
-      fechaFin: fechaFinStr,
-      obtenerMesCompleto
-    })
+    // console.log('Consultando citas en rango:', { // Debug log, can be removed
+    //   fechaInicio: fechaInicioStr,
+    //   fechaFin: fechaFinStr,
+    //   obtenerMesCompleto
+    // })
 
     const { data: citasRaw, error } = await supabase
       .from('rf_citas')
@@ -523,7 +470,7 @@ export async function getCitasPorFecha(fecha: Date, obtenerMesCompleto: boolean 
       return {}
     }
 
-    console.log(`Se encontraron ${citasRaw.length} citas en el rango`)
+    // console.log(`Se encontraron ${citasRaw.length} citas en el rango`) // Debug log, can be removed
 
     const citasTransformadas: Cita[] = citasRaw.map((cita: any) => {
       // Obtener la cantidad de clientes para citas múltiples
@@ -769,16 +716,6 @@ export async function crearFechaDisponible(params: {
   cantidad_clientes: number
 }): Promise<void> {
   try {
-    // Log detallado de los parámetros recibidos
-    console.log('Parámetros recibidos en crearFechaDisponible:', {
-      ...params,
-      boxes_disponibles_type: typeof params.boxes_disponibles,
-      boxes_disponibles_isArray: Array.isArray(params.boxes_disponibles),
-      boxes_disponibles_length: params.boxes_disponibles?.length,
-      boxes_disponibles_content: params.boxes_disponibles,
-      boxes_disponibles_stringified: JSON.stringify(params.boxes_disponibles)
-    })
-
     // Validar que la fecha de inicio no sea posterior a la fecha de fin
     const fechaInicio = new Date(params.fecha_inicio)
     const fechaFin = new Date(params.fecha_fin)
@@ -810,37 +747,26 @@ export async function crearFechaDisponible(params: {
 
     // Validar que boxes_disponibles sea un array válido
     if (!Array.isArray(params.boxes_disponibles)) {
-      console.error('boxes_disponibles no es un array:', params.boxes_disponibles)
+      // console.error('boxes_disponibles no es un array:', params.boxes_disponibles); // Error is thrown, sufficient
       throw new Error('boxes_disponibles debe ser un array')
     }
 
     if (params.boxes_disponibles.length === 0) {
-      console.error('boxes_disponibles está vacío')
+      // console.error('boxes_disponibles está vacío'); // Error is thrown
       throw new Error('Debe seleccionar al menos un box disponible')
     }
 
     // Validar que no haya valores null en boxes_disponibles
     if (params.boxes_disponibles.some(box => box === null || box === undefined)) {
-      console.error('boxes_disponibles contiene valores nulos:', params.boxes_disponibles)
+      // console.error('boxes_disponibles contiene valores nulos:', params.boxes_disponibles); // Error is thrown
       throw new Error('Los boxes disponibles no pueden contener valores nulos')
     }
 
     // Validar que todos los boxes sean números positivos
     if (params.boxes_disponibles.some(box => typeof box !== 'number' || box <= 0)) {
-      console.error('boxes_disponibles contiene valores inválidos:', params.boxes_disponibles)
+      // console.error('boxes_disponibles contiene valores inválidos:', params.boxes_disponibles); // Error is thrown
       throw new Error('Los boxes disponibles deben ser números positivos')
     }
-
-    // Log de los datos que se intentan insertar
-    console.log('Intentando crear fecha disponible con datos:', {
-      tratamiento_id: params.tratamiento_id,
-      fecha_inicio: params.fecha_inicio,
-      fecha_fin: params.fecha_fin,
-      hora_inicio: params.hora_inicio,
-      hora_fin: params.hora_fin,
-      boxes_disponibles: params.boxes_disponibles,
-      cantidad_clientes: params.cantidad_clientes
-    })
 
     // Verificar si ya existe un turno con los mismos datos
     const { data: turnosExistentes, error: errorVerificacion } = await supabase
@@ -854,29 +780,19 @@ export async function crearFechaDisponible(params: {
       .eq('cantidad_clientes', params.cantidad_clientes)
 
     if (errorVerificacion) {
-      console.error('Error al verificar turnos existentes:', errorVerificacion)
+      console.error('Error al verificar turnos existentes:', errorVerificacion.message)
     } else if (turnosExistentes && turnosExistentes.length > 0) {
-      console.log('Turnos existentes encontrados:', turnosExistentes)
+      // console.log('Turnos existentes encontrados:', turnosExistentes); // Debug log
       
       // Verificar si alguno de los turnos existentes tiene los mismos boxes
       const turnoDuplicado = turnosExistentes.find(turno => {
         if (!Array.isArray(turno.boxes_disponibles)) {
-          console.error('boxes_disponibles del turno existente no es un array:', turno.boxes_disponibles)
+          // console.error('boxes_disponibles del turno existente no es un array:', turno.boxes_disponibles);
           return false
         }
         
-        const boxesIguales = turno.boxes_disponibles.length === params.boxes_disponibles.length &&
-          turno.boxes_disponibles.every((box: number) => params.boxes_disponibles.includes(box))
-        
-        if (boxesIguales) {
-          console.log('Se encontró un turno duplicado:', {
-            turno_existente: turno,
-            boxes_existentes: turno.boxes_disponibles,
-            boxes_nuevos: params.boxes_disponibles
-          })
-        }
-        
-        return boxesIguales
+        return turno.boxes_disponibles.length === params.boxes_disponibles.length &&
+          turno.boxes_disponibles.every((box: number) => params.boxes_disponibles.includes(box));
       })
 
       if (turnoDuplicado) {
@@ -898,25 +814,10 @@ export async function crearFechaDisponible(params: {
       }])
 
     if (error) {
-      // Log detallado del error y los parámetros
-      console.error('Error al crear fecha disponible:', {
-        error: {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        },
-        params: {
-          tratamiento_id: params.tratamiento_id,
-          fecha_inicio: params.fecha_inicio,
-          fecha_fin: params.fecha_fin,
-          hora_inicio: params.hora_inicio,
-          hora_fin: params.hora_fin,
-          boxes_disponibles: params.boxes_disponibles,
-          cantidad_clientes: params.cantidad_clientes
-        }
-      })
-
+      // console.error('Error detallado Supabase al crear fecha disponible:', { // Keep relevant parts of the error
+      //   code: error.code, message: error.message, details: error.details, hint: error.hint
+      // });
+      console.error(`Error Supabase al crear fecha disponible (Code: ${error.code}): ${error.message}`);
       // Manejar diferentes tipos de errores con mensajes específicos
       if (error.code === '23505') {
         if (error.message?.includes('fechas_disponibles_tratamiento_fecha_key')) {
@@ -939,62 +840,19 @@ export async function crearFechaDisponible(params: {
       }
     }
 
-    console.log('Fecha disponible creada exitosamente')
+    // console.log('Fecha disponible creada exitosamente'); // Success log, can be removed
   } catch (error) {
-    // Log detallado del error capturado
-    console.error('Error al crear fecha disponible:', {
-      error: error instanceof Error ? {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      } : 'Error desconocido',
-      params: {
-        tratamiento_id: params.tratamiento_id,
-        fecha_inicio: params.fecha_inicio,
-        fecha_fin: params.fecha_fin,
-        hora_inicio: params.hora_inicio,
-        hora_fin: params.hora_fin,
-        boxes_disponibles: params.boxes_disponibles,
-        cantidad_clientes: params.cantidad_clientes
-      }
-    })
+    // console.error('Excepción en crearFechaDisponible:', { // More concise logging
+    //   message: error instanceof Error ? error.message : String(error),
+    //   params // Optionally log params if they are crucial for this specific error case and not logged elsewhere
+    // });
+    console.error(`Excepción en crearFechaDisponible: ${error instanceof Error ? error.message : String(error)}`);
     
     // Propagar el error con un mensaje más descriptivo
     if (error instanceof Error) {
       throw new Error(`Error al crear fecha disponible: ${error.message}`)
     }
     throw new Error('Error desconocido al crear fecha disponible')
-  }
-}
-
-// Función para actualizar una fecha disponible
-export async function actualizarFechaDisponible(
-  id: string,
-  data: {
-    fecha_inicio?: string
-    fecha_fin?: string
-    boxes_disponibles?: number[]
-    hora_inicio?: string
-    hora_fin?: string
-  }
-) {
-  try {
-    const { data: updatedData, error } = await supabase
-      .from('fechas_disponibles')
-      .update(data)
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error al actualizar fecha disponible:', error)
-      throw error
-    }
-
-    return updatedData
-  } catch (error) {
-    console.error('Error al actualizar fecha disponible:', error)
-    throw error
   }
 }
 
