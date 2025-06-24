@@ -860,19 +860,19 @@ export function GestionTratamientos() {
                         </Button>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1">
                       {tratamiento.rf_subtratamientos?.map((subTrat: SubTratamiento) => (
                         <Badge
                           key={subTrat.id}
                           variant="secondary"
-                          className="cursor-pointer"
+                          className="cursor-pointer text-xs px-2 py-0.5 h-5"
                           onClick={() => abrirDialogoEditarSubTratamiento(tratamiento, subTrat)}
                         >
                           {subTrat.nombre_subtratamiento}
                         </Badge>
                       ))}
                     </div>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs px-2 py-0.5 h-5">
                       {tratamiento.max_clientes_por_turno} clientes por turno
                     </Badge>
                   </div>
@@ -1119,7 +1119,7 @@ export function GestionTratamientos() {
                                   <span className="text-sm">
                                     {fecha.hora_inicio} - {fecha.hora_fin}
                                   </span>
-                                  <Badge variant="outline" className="text-xs">
+                                  <Badge variant="outline" className="text-xs px-2 py-0.5 h-5">
                                     {fecha.cantidad_clientes} {fecha.cantidad_clientes === 1 ? 'cliente' : 'clientes'}
                                   </Badge>
                                 </div>
@@ -1130,7 +1130,7 @@ export function GestionTratamientos() {
                               <Label>Boxes Disponibles</Label>
                               <div className="flex flex-wrap gap-2 mt-2">
                                 {fecha.boxes_disponibles.map((box: number) => (
-                                  <Badge key={box} variant="secondary" className="text-xs">
+                                  <Badge key={box} variant="secondary" className="text-xs px-2 py-0.5 h-5">
                                     Box {box}
                                   </Badge>
                                 ))}

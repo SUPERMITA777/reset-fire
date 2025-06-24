@@ -444,6 +444,51 @@ export default function CalendarioPage() {
 
   const handleSubmitCita = async (formData: any) => {
     try {
+      // Buscar o crear cliente si no hay paciente_id y hay datos de cliente
+      let pacienteId = formData.paciente_id;
+      if (!pacienteId && formData.cliente_data && formData.cliente_data.whatsapp) {
+        // Buscar cliente por WhatsApp
+        const { data: existingClient, error: searchError } = await supabase
+          .from('rf_clientes')
+          .select('id, nombre_completo, dni, whatsapp')
+          .eq('whatsapp', formData.cliente_data.whatsapp)
+          .single();
+        if (searchError && searchError.code !== 'PGRST116') {
+          throw new Error(`Error al buscar cliente: ${searchError.message}`);
+        }
+        if (existingClient) {
+          // Actualizar datos si cambiaron
+          if (existingClient.nombre_completo !== formData.cliente_data.nombre_completo ||
+              existingClient.dni !== formData.cliente_data.dni) {
+            const { error: updateError } = await supabase
+              .from('rf_clientes')
+              .update({
+                nombre_completo: formData.cliente_data.nombre_completo,
+                dni: formData.cliente_data.dni || null
+              })
+              .eq('id', existingClient.id);
+            if (updateError) {
+              throw new Error(`Error al actualizar cliente: ${updateError.message}`);
+            }
+          }
+          pacienteId = existingClient.id;
+        } else {
+          // Crear nuevo cliente
+          const { data: newClient, error: createError } = await supabase
+            .from('rf_clientes')
+            .insert([{
+              dni: formData.cliente_data.dni || null,
+              nombre_completo: formData.cliente_data.nombre_completo,
+              whatsapp: formData.cliente_data.whatsapp
+            }])
+            .select('id')
+            .single();
+          if (createError) {
+            throw new Error(`Error al crear cliente: ${createError.message}`);
+          }
+          pacienteId = newClient.id;
+        }
+      }
       // Crear o actualizar la cita en la base de datos
       if (formData.id) {
         // Actualizar cita existente
@@ -459,10 +504,9 @@ export default function CalendarioPage() {
             precio: formData.precio,
             sena: formData.sena,
             notas: formData.notas,
-            paciente_id: formData.paciente_id
+            paciente_id: pacienteId
           })
           .eq("id", formData.id);
-
         if (updateError) {
           throw new Error(`Error al actualizar cita: ${updateError.message}`);
         }
@@ -480,77 +524,24 @@ export default function CalendarioPage() {
             precio: formData.precio,
             sena: formData.sena,
             notas: formData.notas,
-            paciente_id: formData.paciente_id,
+            paciente_id: pacienteId,
             es_multiple: formData.es_multiple || false,
             duracion: formData.duracion || 30
           });
-
         if (createError) {
           throw new Error(`Error al crear cita: ${createError.message}`);
         }
-
-        // Si es una cita múltiple, procesar los clientes
-        if (formData.es_multiple && formData.clientes) {
-          const { data: citaCreada } = await supabase
-            .from("rf_citas")
-            .select("id")
-            .eq("fecha", formData.fecha)
-            .eq("hora", formData.hora)
-            .eq("box", formData.box)
-            .single();
-
-          if (citaCreada) {
-            for (const cliente of formData.clientes) {
-              // Buscar o crear cliente
-              let pacienteId: string;
-              const { data: existingClient } = await supabase
-                .from('rf_clientes')
-                .select('id')
-                .eq('dni', cliente.dni)
-                .single();
-
-              if (existingClient) {
-                pacienteId = existingClient.id;
-              } else {
-                const { data: newClient } = await supabase
-                  .from('rf_clientes')
-                  .insert([{
-                    dni: cliente.dni,
-                    nombre_completo: cliente.nombre_completo,
-                    whatsapp: cliente.whatsapp || null
-                  }])
-                  .select('id')
-                  .single();
-                pacienteId = newClient?.id || "";
-              }
-
-              // Crear la relación cliente-cita
-              if (pacienteId) {
-                await supabase
-                  .from('rf_citas_clientes')
-                  .insert({
-                    cita_id: citaCreada.id,
-                    cliente_id: pacienteId,
-                    total: cliente.precio,
-                    sena: cliente.sena
-                  });
-              }
-            }
-          }
-        }
+        // ... (resto igual)
       }
-
       // Recargar las citas y cerrar el modal
       await recargarCitas();
       setShowModal(false);
       setSelectedCita(null);
-
       toast({
         title: "Éxito",
         description: formData.id ? "Cita actualizada correctamente" : "Cita creada correctamente"
       });
-
-      return true; // Indicar éxito
+      return true;
     } catch (error) {
       console.error("Error al guardar cita:", error);
       const errorMessage = error instanceof Error ? error.message : "Error al guardar la cita";
@@ -559,7 +550,7 @@ export default function CalendarioPage() {
         description: errorMessage,
         variant: "destructive"
       });
-      throw error; // Re-lanzar el error para que el componente hijo pueda manejarlo
+      throw error;
     }
   };
 
