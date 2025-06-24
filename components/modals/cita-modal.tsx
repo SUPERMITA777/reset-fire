@@ -48,7 +48,7 @@ interface FormData {
   box: number
   tratamiento_id: string
   subtratamiento_id: string
-  dni: string
+  dni?: string
   nombre_completo: string
   whatsapp: string
   precio: number
@@ -69,7 +69,7 @@ interface Cita {
   estado: EstadoCita
   notas?: string
   es_multiple: boolean
-  dni: string
+  dni?: string
   nombre_completo: string
   whatsapp: string
   precio: number
@@ -78,7 +78,7 @@ interface Cita {
 
 interface Cliente {
   id: string
-  dni: string
+  dni?: string
   nombre_completo: string
   whatsapp: string
 }
@@ -98,7 +98,7 @@ interface SubTratamiento {
 
 interface ClienteMultiple {
   paciente_id?: string;
-  dni: string;
+  dni?: string;
   nombre_completo: string;
   whatsapp: string;
   precio: number;
@@ -123,7 +123,7 @@ interface ClienteCitaDB {
   sena: number;
   rf_clientes: {
     id: string;
-    dni: string;
+    dni?: string;
     nombre_completo: string;
     whatsapp: string | null;
   } | null;
@@ -136,7 +136,7 @@ interface HorarioDisponible {
 }
 
 interface ClienteFormData {
-  dni: string;
+  dni?: string;
   nombre_completo: string;
   whatsapp: string;
 }
@@ -223,12 +223,14 @@ export function CitaModal({
   const supabase = createClientComponentClient<Database>()
 
   // Memoizar la función de búsqueda de clientes
-  const buscarCliente = useCallback(async (dni: string) => {
+  const buscarCliente = useCallback(async (whatsapp: string) => {
+    if (!whatsapp || whatsapp.length < 9) return;
+    
     try {
       const { data: cliente, error } = await supabase
         .from('rf_clientes')
         .select('*')
-        .eq('dni', dni)
+        .eq('whatsapp', whatsapp)
         .single()
 
         if (error) {
@@ -240,6 +242,7 @@ export function CitaModal({
       }
 
       if (cliente) {
+        form.setValue('dni', cliente.dni || '')
         form.setValue('nombre_completo', cliente.nombre_completo)
         form.setValue('whatsapp', cliente.whatsapp || '')
         form.setValue('paciente_id', cliente.id)
@@ -283,12 +286,14 @@ export function CitaModal({
   }, [formMultiple])
 
   // Memoizar la función de búsqueda de clientes múltiples
-  const buscarClienteMultiple = useCallback(async (dni: string, index: number) => {
+  const buscarClienteMultiple = useCallback(async (whatsapp: string, index: number) => {
+    if (!whatsapp || whatsapp.length < 9) return;
+    
     try {
       const { data: cliente, error } = await supabase
         .from('rf_clientes')
         .select('*')
-        .eq('dni', dni)
+        .eq('whatsapp', whatsapp)
         .single()
 
       if (error) {
@@ -303,6 +308,7 @@ export function CitaModal({
         formMultiple.setValue('clientes', formMultiple.watch('clientes').map((c, i) => 
               i === index ? {
             ...c,
+            dni: cliente.dni || '',
             nombre_completo: cliente.nombre_completo,
             whatsapp: cliente.whatsapp || '',
             paciente_id: cliente.id
@@ -894,29 +900,29 @@ export function CitaModal({
 
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
-                    <Label htmlFor="dni" className="mb-1.5 block">DNI</Label>
+                    <Label htmlFor="whatsapp" className="mb-1.5 block">WHATSAPP *</Label>
                     <Input
-                      id="dni"
-                      value={form.watch('dni')}
+                      id="whatsapp"
+                      value={form.watch('whatsapp')}
                       onChange={(e) => {
-                        const dni = e.target.value
-                        form.setValue('dni', dni)
-                        if (dni.length >= 3) {
-                          buscarCliente(dni)
+                        const whatsapp = e.target.value
+                        form.setValue('whatsapp', whatsapp)
+                        if (whatsapp.length >= 9) {
+                          buscarCliente(whatsapp)
                         }
                       }}
-                      placeholder="8 dígitos"
+                      placeholder="9 dígitos"
                       className="h-8"
                       required
                     />
                   </div>
                   <div className="flex-1">
-                    <Label htmlFor="whatsapp" className="mb-1.5 block">WHATSAPP</Label>
+                    <Label htmlFor="dni" className="mb-1.5 block">DNI (Opcional)</Label>
                     <Input
-                      id="whatsapp"
-                      value={form.watch('whatsapp')}
-                      onChange={(e) => form.setValue('whatsapp', e.target.value)}
-                      placeholder="9 dígitos"
+                      id="dni"
+                      value={form.watch('dni')}
+                      onChange={(e) => form.setValue('dni', e.target.value)}
+                      placeholder="8 dígitos"
                       className="h-8"
                     />
                   </div>
@@ -1160,35 +1166,37 @@ export function CitaModal({
                       <div key={index} className="p-2 border rounded-lg bg-gray-50">
                         <div className="flex items-center gap-2">
                           <div className="flex-1">
-                            <Label className="text-xs">DNI</Label>
+                            <Label className="text-xs">WHATSAPP *</Label>
                             <Input
-                              value={cliente.dni}
+                              value={cliente.whatsapp}
                               onChange={(e) => {
-                                const newDni = e.target.value
-                                handleClienteChange(index, "dni", newDni)
-                                buscarClienteMultiple(newDni, index)
+                                const newWhatsapp = e.target.value
+                                handleClienteChange(index, "whatsapp", newWhatsapp)
+                                buscarClienteMultiple(newWhatsapp, index)
                               }}
-                              placeholder="DNI"
+                              placeholder="WhatsApp"
                               className="h-7 text-sm"
+                              required
                             />
                           </div>
                           
                           <div className="flex-1">
-                            <Label className="text-xs">NOMBRE</Label>
+                            <Label className="text-xs">NOMBRE *</Label>
                             <Input
                               value={cliente.nombre_completo}
                               onChange={(e) => handleClienteChange(index, "nombre_completo", e.target.value)}
                               placeholder="Nombre"
                               className="h-7 text-sm"
+                              required
                             />
                           </div>
                           
                           <div className="flex-1">
-                            <Label className="text-xs">WHATSAPP</Label>
+                            <Label className="text-xs">DNI (Opcional)</Label>
                             <Input
-                              value={cliente.whatsapp}
-                              onChange={(e) => handleClienteChange(index, "whatsapp", e.target.value)}
-                              placeholder="WhatsApp"
+                              value={cliente.dni}
+                              onChange={(e) => handleClienteChange(index, "dni", e.target.value)}
+                              placeholder="DNI"
                               className="h-7 text-sm"
                             />
                           </div>

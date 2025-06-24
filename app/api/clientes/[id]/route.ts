@@ -97,34 +97,59 @@ export async function PUT(
     const { nombre_completo, dni, whatsapp } = body
 
     // Validaciones básicas
-    if (!nombre_completo || !dni) {
+    if (!nombre_completo || !whatsapp) {
       return NextResponse.json(
-        { error: 'Nombre completo y DNI son obligatorios' },
+        { error: 'Nombre completo y WhatsApp son obligatorios' },
         { status: 400 }
       )
     }
 
-    // Verificar si el DNI ya existe en otro cliente
-    const { data: dniExistente, error: dniError } = await supabase
+    // Verificar si el WhatsApp ya existe en otro cliente
+    const { data: whatsappExistente, error: whatsappError } = await supabase
       .from('rf_clientes')
       .select('id')
-      .eq('dni', dni)
+      .eq('whatsapp', whatsapp)
       .neq('id', id)
       .single()
 
-    if (dniError && dniError.code !== 'PGRST116') {
-      console.error('Error al verificar DNI:', dniError)
+    if (whatsappError && whatsappError.code !== 'PGRST116') {
+      console.error('Error al verificar WhatsApp:', whatsappError)
       return NextResponse.json(
-        { error: 'Error al verificar DNI existente' },
+        { error: 'Error al verificar WhatsApp existente' },
         { status: 500 }
       )
     }
 
-    if (dniExistente) {
+    if (whatsappExistente) {
       return NextResponse.json(
-        { error: 'Ya existe otro cliente con este DNI' },
+        { error: 'Ya existe otro cliente con este WhatsApp' },
         { status: 400 }
       )
+    }
+
+    // Si se proporciona DNI, verificar que no esté duplicado en otro cliente
+    if (dni) {
+      const { data: dniExistente, error: dniError } = await supabase
+        .from('rf_clientes')
+        .select('id')
+        .eq('dni', dni)
+        .neq('id', id)
+        .single()
+
+      if (dniError && dniError.code !== 'PGRST116') {
+        console.error('Error al verificar DNI:', dniError)
+        return NextResponse.json(
+          { error: 'Error al verificar DNI existente' },
+          { status: 500 }
+        )
+      }
+
+      if (dniExistente) {
+        return NextResponse.json(
+          { error: 'Ya existe otro cliente con este DNI' },
+          { status: 400 }
+        )
+      }
     }
 
     // Actualizar el cliente
@@ -132,8 +157,8 @@ export async function PUT(
       .from('rf_clientes')
       .update({
         nombre_completo,
-        dni,
-        whatsapp: whatsapp || null,
+        dni: dni || null,
+        whatsapp: whatsapp,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
