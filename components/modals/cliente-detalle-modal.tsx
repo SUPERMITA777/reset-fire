@@ -220,7 +220,7 @@ export function ClienteDetalleModal({
                                   <h4 className="font-semibold text-lg">{cita.tratamiento_nombre}</h4>
                                   <p className="text-sm text-gray-600">{cita.subtratamiento_nombre}</p>
                                 </div>
-                                <Badge className={getEstadoColor(cita.estado)}>{getEstadoText(cita.estado)}</Badge>
+                                <Badge className={`${getEstadoColor(cita.estado)} text-xs`}>{getEstadoText(cita.estado)}</Badge>
                               </div>
                               <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div className="space-y-1">

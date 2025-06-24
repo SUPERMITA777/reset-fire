@@ -221,7 +221,7 @@ export default function ProductosPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{producto.marca}</Badge>
+                        <Badge variant="outline" className="text-xs">{producto.marca}</Badge>
                       </TableCell>
                       <TableCell>${producto.costo.toFixed(2)}</TableCell>
                       <TableCell>${producto.precio_venta.toFixed(2)}</TableCell>

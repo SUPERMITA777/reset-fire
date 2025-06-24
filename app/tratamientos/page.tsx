@@ -174,11 +174,11 @@ export default function TratamientosPage() {
                 <CardHeader>
                   <CardTitle>{subTratamiento.nombre}</CardTitle>
                   <div className="flex gap-2 mt-2">
-                    <Badge variant="outline" className="flex items-center gap-1">
+                    <Badge variant="outline" className="flex items-center gap-1 text-xs">
                       <Clock className="h-3 w-3" />
                       {formatearDuracion(subTratamiento.duracion)}
                     </Badge>
-                    <Badge variant="outline" className="flex items-center gap-1">
+                    <Badge variant="outline" className="flex items-center gap-1 text-xs">
                       <DollarSign className="h-3 w-3" />
                       ${subTratamiento.precio.toLocaleString()}
                     </Badge>
@@ -224,12 +224,12 @@ export default function TratamientosPage() {
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {turnos.slice(0, 3).map((turno, index) => (
-                      <Badge key={index} variant="secondary">
+                      <Badge key={index} variant="secondary" className="text-xs">
                         {turno}
                       </Badge>
                     ))}
                     {turnos.length > 3 && (
-                      <Badge variant="outline">+{turnos.length - 3} más</Badge>
+                      <Badge variant="outline" className="text-xs">+{turnos.length - 3} más</Badge>
                     )}
                   </div>
                 </CardContent>

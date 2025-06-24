@@ -872,6 +872,9 @@ export function GestionTratamientos() {
                         </Badge>
                       ))}
                     </div>
+                    <Badge variant="outline" className="text-xs">
+                      {tratamiento.max_clientes_por_turno} clientes por turno
+                    </Badge>
                   </div>
                 ))}
               </div>
@@ -1127,7 +1130,7 @@ export function GestionTratamientos() {
                               <Label>Boxes Disponibles</Label>
                               <div className="flex flex-wrap gap-2 mt-2">
                                 {fecha.boxes_disponibles.map((box: number) => (
-                                  <Badge key={box} variant="secondary">
+                                  <Badge key={box} variant="secondary" className="text-xs">
                                     Box {box}
                                   </Badge>
                                 ))}

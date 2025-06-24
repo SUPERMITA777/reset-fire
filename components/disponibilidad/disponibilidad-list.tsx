@@ -49,7 +49,7 @@ export function DisponibilidadList({ disponibilidades, onEdit, onDelete }: Dispo
           <CardContent>
             <div className="flex flex-wrap gap-2">
               {disp.boxes_disponibles.map((box) => (
-                <Badge key={box} variant="secondary">
+                <Badge key={box} variant="secondary" className="text-xs">
                   Box {box}
                 </Badge>
               ))}

@@ -530,7 +530,7 @@ export function CitaModal({
       // Validar campos requeridos
       if (!formData.fecha || !formData.hora || !formData.box || 
           !formData.tratamiento_id || !formData.subtratamiento_id || 
-          !formData.nombre_completo) {
+          !formData.nombre_completo || !formData.whatsapp) {
         toast({
           title: "Error",
           description: "Por favor complete todos los campos requeridos",
@@ -567,45 +567,65 @@ export function CitaModal({
 
       // Buscar o crear cliente primero
       let pacienteId = formData.paciente_id
-      if (!pacienteId && formData.dni) {
+      if (!pacienteId) {
         try {
-          const { data: cliente, error: clienteError } = await supabase
+          // Primero buscar si existe un cliente con ese WhatsApp
+          const { data: existingClient, error: searchError } = await supabase
             .from('rf_clientes')
-            .upsert({
-              dni: formData.dni,
-              nombre_completo: formData.nombre_completo,
-              whatsapp: formData.whatsapp || null
-            })
-            .select()
+            .select('id, dni, nombre_completo, whatsapp')
+            .eq('whatsapp', formData.whatsapp)
             .single()
 
-          if (clienteError) {
-            console.error('Error al crear/actualizar cliente:', clienteError)
-            throw new Error(`Error al procesar cliente: ${clienteError.message}`)
+          if (searchError && searchError.code !== 'PGRST116') {
+            throw new Error(`Error al buscar cliente: ${searchError.message}`)
           }
 
-          pacienteId = cliente.id
+          if (existingClient) {
+            // Si existe, actualizar datos del cliente solo si han cambiado
+            if (existingClient.nombre_completo !== formData.nombre_completo || 
+                existingClient.dni !== formData.dni) {
+              const { error: updateError } = await supabase
+                .from("rf_clientes")
+                .update({
+                  nombre_completo: formData.nombre_completo,
+                  dni: formData.dni || null
+                })
+                .eq("id", existingClient.id)
+
+              if (updateError) {
+                throw new Error(`Error al actualizar cliente: ${updateError.message}`)
+              }
+            }
+            pacienteId = existingClient.id
+          } else {
+            // Si no existe, crear nuevo cliente
+            const { data: newClient, error: createError } = await supabase
+              .from('rf_clientes')
+              .insert([{
+                dni: formData.dni || null,
+                nombre_completo: formData.nombre_completo,
+                whatsapp: formData.whatsapp
+              }])
+              .select('id')
+              .single()
+
+            if (createError) {
+              throw new Error(`Error al crear cliente: ${createError.message}`)
+            }
+
+            if (!newClient) {
+              throw new Error("No se pudo crear el cliente")
+            }
+
+            pacienteId = newClient.id
+          }
         } catch (error) {
-          console.error('Error al procesar cliente:', error)
-          toast({
-            title: "Error",
-            description: "No se pudo procesar la información del cliente",
-            variant: "destructive"
-          })
-          return
+          console.error("Error en el proceso de cliente:", error)
+          throw error
         }
       }
 
-      if (!pacienteId) {
-        toast({
-          title: "Error",
-          description: "No se pudo obtener el ID del paciente",
-          variant: "destructive"
-        })
-        return
-      }
-
-      // Preparar datos de la cita
+      // Preparar datos de la cita para pasar al componente padre
       const citaData: CitaData = {
         tratamiento_id: formData.tratamiento_id,
         subtratamiento_id: formData.subtratamiento_id,
@@ -616,56 +636,24 @@ export function CitaModal({
         precio: formData.precio,
         sena: formData.sena,
         notas: formData.notas || null,
-        paciente_id: pacienteId,
+        paciente_id: pacienteId || "",
         es_multiple: false
       }
 
-      let success = false
-      try {
-        if (cita?.id) {
-          // Actualizar cita existente
-          const { error: updateError } = await supabase
-            .from('rf_citas')
-            .update(citaData)
-            .eq('id', cita.id)
+      // Cerrar el modal y limpiar el formulario
+      onOpenChange(false)
+      resetForm()
 
-          if (updateError) throw updateError
-          success = true
-        } else {
-          // Crear nueva cita - Modificado para evitar duplicación
-          const { data, error: createError } = await supabase
-            .from('rf_citas')
-            .insert(citaData)
-            .select()
-            .limit(1)
-            .single()
-
-          if (createError) throw createError
-          if (!data) throw new Error('No se pudo crear la cita')
-          success = true
-        }
-
-        if (success) {
-          onOpenChange(false)
-          // Esperar a que el modal se cierre antes de notificar
-          await new Promise(resolve => setTimeout(resolve, 100))
-          if (onSubmit) onSubmit(citaData)
-        }
-
-      } catch (error) {
-        console.error('Error al guardar cita:', error)
-        toast({
-          title: "Error",
-          description: error instanceof Error ? error.message : "No se pudo guardar la cita",
-          variant: "destructive"
-        })
+      // Notificar al componente padre con los datos preparados
+      if (onSubmit) {
+        await onSubmit(citaData)
       }
 
     } catch (error) {
-      console.error('Error general:', error)
+      console.error('Error al preparar datos de cita:', error)
       toast({
         title: "Error",
-        description: "Ocurrió un error inesperado",
+        description: error instanceof Error ? error.message : "Error al preparar los datos de la cita",
         variant: "destructive"
       })
     } finally {

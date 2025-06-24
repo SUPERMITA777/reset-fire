@@ -273,7 +273,7 @@ export function ListaClientes() {
                     <TableCell>${cita.precio}</TableCell>
                     <TableCell>${cita.senia}</TableCell>
                     <TableCell>
-                      <Badge variant={cita.estado === 'completada' ? 'default' : 'secondary'}>
+                      <Badge variant={cita.estado === 'completada' ? 'default' : 'secondary'} className="text-xs">
                         {cita.estado === 'completada' ? 'Completada' : 'Pendiente'}
                       </Badge>
                     </TableCell>

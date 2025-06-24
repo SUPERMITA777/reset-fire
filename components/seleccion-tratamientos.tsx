@@ -906,24 +906,50 @@ const SeleccionTratamientos = () => {
       <CitaModal
         open={showNuevaCitaModal}
         onOpenChange={setShowNuevaCitaModal}
-        onSubmit={() => {
-          setShowNuevaCitaModal(false)
-          setTratamientoSeleccionado(null)
-          setSubTratamientoSeleccionado(null)
-          setFechaSeleccionada(null)
-          setFechasDisponibles([])
-          setHorariosDisponibles([])
-          setDatosCita({
-            tratamiento_id: "",
-            subtratamiento_id: "",
-            fecha: "",
-            hora: "",
-            box: 0,
-            precio: 0,
-            duracion: 0,
-            tratamiento_nombre: "",
-            subtratamiento_nombre: ""
-          })
+        onSubmit={async (citaData) => {
+          try {
+            // Crear la cita en la base de datos
+            const { data, error } = await supabaseClient
+              .from('rf_citas')
+              .insert(citaData)
+              .select()
+              .single()
+
+            if (error) {
+              throw error
+            }
+
+            toast({
+              title: "Éxito",
+              description: "Cita creada correctamente",
+            })
+
+            // Limpiar el estado
+            setShowNuevaCitaModal(false)
+            setTratamientoSeleccionado(null)
+            setSubTratamientoSeleccionado(null)
+            setFechaSeleccionada(null)
+            setFechasDisponibles([])
+            setHorariosDisponibles([])
+            setDatosCita({
+              tratamiento_id: "",
+              subtratamiento_id: "",
+              fecha: "",
+              hora: "",
+              box: 0,
+              precio: 0,
+              duracion: 0,
+              tratamiento_nombre: "",
+              subtratamiento_nombre: ""
+            })
+          } catch (error) {
+            console.error('Error al crear cita:', error)
+            toast({
+              title: "Error",
+              description: "No se pudo crear la cita",
+              variant: "destructive"
+            })
+          }
         }}
         tratamientos={tratamientosParaModal}
         cita={{
