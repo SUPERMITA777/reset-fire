@@ -225,37 +225,44 @@ export function CitaModal({
 
   // Memoizar la función de búsqueda de clientes
   const buscarCliente = useCallback(async (whatsapp: string) => {
-    if (!whatsapp || whatsapp.length < 9) return;
+    console.log('🔍 Buscando cliente con WhatsApp:', whatsapp);
+    if (!whatsapp || whatsapp.length < 9) {
+      console.log('❌ WhatsApp muy corto, no se busca');
+      return;
+    }
     
     try {
+      console.log('📡 Consultando base de datos...');
       const { data: cliente, error } = await supabase
         .from('rf_clientes')
         .select('*')
         .eq('whatsapp', whatsapp)
         .single()
 
-        if (error) {
-          if (error.code === 'PGRST116') {
-          // Cliente no encontrado, no es un error
+      if (error) {
+        if (error.code === 'PGRST116') {
+          console.log('❌ Cliente no encontrado');
           return
         }
         throw error
       }
 
       if (cliente) {
+        console.log('✅ Cliente encontrado:', cliente);
         form.setValue('dni', cliente.dni || '')
         form.setValue('nombre_completo', cliente.nombre_completo)
         form.setValue('whatsapp', cliente.whatsapp || '')
         form.setValue('paciente_id', cliente.id)
-        }
-      } catch (error) {
-      console.error('Error al buscar cliente:', error)
-        toast({
-          title: "Error",
-        description: "No se pudo buscar el cliente",
-          variant: "destructive"
-      })
+        console.log('✅ Datos del cliente cargados en el formulario');
       }
+    } catch (error) {
+      console.error('❌ Error al buscar cliente:', error)
+      toast({
+        title: "Error",
+        description: "No se pudo buscar el cliente",
+        variant: "destructive"
+      })
+    }
   }, [form, supabase])
 
   // Actualizar el manejador de cambios de cliente
