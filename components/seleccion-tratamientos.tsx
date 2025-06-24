@@ -554,12 +554,99 @@ const SeleccionTratamientos = () => {
 
   // Función para volver a la vista anterior
   const volverAtras = () => {
-    if (subTratamientoSeleccionado) {
-      setSubTratamientoSeleccionado(null)
+    if (fechaSeleccionada) {
+      setFechaSeleccionada(null)
       setHorariosDisponibles([])
+    } else if (subTratamientoSeleccionado) {
+      setSubTratamientoSeleccionado(null)
+      setFechasDisponibles([])
     } else if (tratamientoSeleccionado) {
       setTratamientoSeleccionado(null)
     }
+  }
+
+  // Función para procesar una cita (buscar/crear cliente y crear cita)
+  const procesarCita = async (citaData: any) => {
+    let pacienteId = citaData.paciente_id
+
+    // Si no hay paciente_id pero hay datos del cliente, buscar o crear cliente
+    if (!pacienteId && citaData.cliente_data) {
+      try {
+        // Primero buscar si existe un cliente con ese WhatsApp
+        const { data: existingClient, error: searchError } = await supabaseClient
+          .from('rf_clientes')
+          .select('id, dni, nombre_completo, whatsapp')
+          .eq('whatsapp', citaData.cliente_data.whatsapp)
+          .single()
+
+        if (searchError && searchError.code !== 'PGRST116') {
+          throw new Error(`Error al buscar cliente: ${searchError.message}`)
+        }
+
+        if (existingClient) {
+          // Si existe, actualizar datos del cliente solo si han cambiado
+          if (existingClient.nombre_completo !== citaData.cliente_data.nombre_completo || 
+              existingClient.dni !== citaData.cliente_data.dni) {
+            const { error: updateError } = await supabaseClient
+              .from("rf_clientes")
+              .update({
+                nombre_completo: citaData.cliente_data.nombre_completo,
+                dni: citaData.cliente_data.dni || null
+              })
+              .eq("id", existingClient.id)
+
+            if (updateError) {
+              throw new Error(`Error al actualizar cliente: ${updateError.message}`)
+            }
+          }
+          pacienteId = existingClient.id
+        } else {
+          // Si no existe, crear nuevo cliente
+          const { data: newClient, error: createError } = await supabaseClient
+            .from('rf_clientes')
+            .insert([{
+              dni: citaData.cliente_data.dni || null,
+              nombre_completo: citaData.cliente_data.nombre_completo,
+              whatsapp: citaData.cliente_data.whatsapp
+            }])
+            .select('id')
+            .single()
+
+          if (createError) {
+            throw new Error(`Error al crear cliente: ${createError.message}`)
+          }
+
+          if (!newClient) {
+            throw new Error("No se pudo crear el cliente")
+          }
+
+          pacienteId = newClient.id
+        }
+      } catch (error) {
+        console.error("Error en el proceso de cliente:", error)
+        throw error
+      }
+    }
+
+    // Crear la cita con el paciente_id obtenido
+    const citaParaInsertar = {
+      ...citaData,
+      cliente_id: pacienteId,
+      paciente_id: undefined, // Remover este campo si existe
+      cliente_data: undefined // Remover este campo
+    }
+
+    const { data, error } = await supabaseClient
+      .from('rf_citas')
+      .insert(citaParaInsertar)
+      .select()
+      .single()
+
+    if (error) {
+      throw error
+    }
+
+    return data
   }
 
   // Función para obtener horarios disponibles
@@ -908,15 +995,14 @@ const SeleccionTratamientos = () => {
         onOpenChange={setShowNuevaCitaModal}
         onSubmit={async (citaData) => {
           try {
-            // Crear la cita en la base de datos
-            const { data, error } = await supabaseClient
-              .from('rf_citas')
-              .insert(citaData)
-              .select()
-              .single()
-
-            if (error) {
-              throw error
+            // Si es un array (citas múltiples), procesar cada una
+            if (Array.isArray(citaData)) {
+              for (const cita of citaData) {
+                await procesarCita(cita)
+              }
+            } else {
+              // Si es una sola cita
+              await procesarCita(citaData)
             }
 
             toast({

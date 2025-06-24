@@ -1119,7 +1119,7 @@ export function GestionTratamientos() {
                                   <span className="text-sm">
                                     {fecha.hora_inicio} - {fecha.hora_fin}
                                   </span>
-                                  <Badge variant="outline">
+                                  <Badge variant="outline" className="text-xs">
                                     {fecha.cantidad_clientes} {fecha.cantidad_clientes === 1 ? 'cliente' : 'clientes'}
                                   </Badge>
                                 </div>

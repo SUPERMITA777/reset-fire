@@ -153,6 +153,7 @@ interface CitaData {
   notas: string | null
   paciente_id: string
   es_multiple: boolean
+  cliente_data?: ClienteFormData
 }
 
 const getEstadoColor = (estado: FormData['estado']) => {
@@ -565,66 +566,6 @@ export function CitaModal({
         return
       }
 
-      // Buscar o crear cliente primero
-      let pacienteId = formData.paciente_id
-      if (!pacienteId) {
-        try {
-          // Primero buscar si existe un cliente con ese WhatsApp
-          const { data: existingClient, error: searchError } = await supabase
-            .from('rf_clientes')
-            .select('id, dni, nombre_completo, whatsapp')
-            .eq('whatsapp', formData.whatsapp)
-            .single()
-
-          if (searchError && searchError.code !== 'PGRST116') {
-            throw new Error(`Error al buscar cliente: ${searchError.message}`)
-          }
-
-          if (existingClient) {
-            // Si existe, actualizar datos del cliente solo si han cambiado
-            if (existingClient.nombre_completo !== formData.nombre_completo || 
-                existingClient.dni !== formData.dni) {
-              const { error: updateError } = await supabase
-                .from("rf_clientes")
-                .update({
-                  nombre_completo: formData.nombre_completo,
-                  dni: formData.dni || null
-                })
-                .eq("id", existingClient.id)
-
-              if (updateError) {
-                throw new Error(`Error al actualizar cliente: ${updateError.message}`)
-              }
-            }
-            pacienteId = existingClient.id
-          } else {
-            // Si no existe, crear nuevo cliente
-            const { data: newClient, error: createError } = await supabase
-              .from('rf_clientes')
-              .insert([{
-                dni: formData.dni || null,
-                nombre_completo: formData.nombre_completo,
-                whatsapp: formData.whatsapp
-              }])
-              .select('id')
-              .single()
-
-            if (createError) {
-              throw new Error(`Error al crear cliente: ${createError.message}`)
-            }
-
-            if (!newClient) {
-              throw new Error("No se pudo crear el cliente")
-            }
-
-            pacienteId = newClient.id
-          }
-        } catch (error) {
-          console.error("Error en el proceso de cliente:", error)
-          throw error
-        }
-      }
-
       // Preparar datos de la cita para pasar al componente padre
       const citaData: CitaData = {
         tratamiento_id: formData.tratamiento_id,
@@ -636,8 +577,14 @@ export function CitaModal({
         precio: formData.precio,
         sena: formData.sena,
         notas: formData.notas || null,
-        paciente_id: pacienteId || "",
-        es_multiple: false
+        paciente_id: formData.paciente_id || "",
+        es_multiple: false,
+        // Agregar datos del cliente para que el componente padre los maneje
+        cliente_data: {
+          dni: formData.dni || "",
+          nombre_completo: formData.nombre_completo,
+          whatsapp: formData.whatsapp
+        }
       }
 
       // Cerrar el modal y limpiar el formulario
@@ -760,7 +707,12 @@ export function CitaModal({
           sena: cliente.sena,
           notas: formMultiple.watch('notas') || null,
           paciente_id: pacienteId,
-          es_multiple: true
+          es_multiple: true,
+          cliente_data: {
+            dni: cliente.dni || "",
+            nombre_completo: cliente.nombre_completo,
+            whatsapp: cliente.whatsapp || ""
+          }
         })
       }
 
