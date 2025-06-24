@@ -545,9 +545,11 @@ export function CitaModal({
         }
       }
 
-      // Preparar datos de la cita
-      const citaData = {
-        paciente_id: pacienteId,
+      // Preparar datos de la cita para pasar al componente padre
+      const citaData: FormData = {
+        dni: formData.dni,
+        nombre_completo: formData.nombre_completo,
+        whatsapp: formData.whatsapp || "",
         tratamiento_id: formData.tratamiento_id,
         subtratamiento_id: formData.subtratamiento_id,
         precio: formData.precio,
@@ -556,59 +558,24 @@ export function CitaModal({
         hora: formData.hora,
         box: formData.box,
         estado: formData.estado,
-        notas: formData.notas || null,
-        es_multiple: false
+        notas: formData.notas || undefined,
+        paciente_id: pacienteId || undefined
       };
-
-      // Crear o actualizar la cita
-      let citaGuardada;
-      if (cita?.id) {
-        const { data, error: updateError } = await supabase
-          .from("rf_citas")
-          .update(citaData)
-          .eq("id", cita.id)
-          .select()
-          .single();
-
-        if (updateError) {
-          throw new Error(`Error al actualizar cita: ${updateError.message}`);
-        }
-
-        citaGuardada = data;
-      } else {
-        const { data, error: createError } = await supabase
-          .from("rf_citas")
-          .insert(citaData)
-        .select()
-        .single();
-
-        if (createError) {
-          throw new Error(`Error al crear cita: ${createError.message}`);
-      }
-
-        citaGuardada = data;
-      }
-
-      // Éxito
-      toast({
-        title: "Éxito",
-        description: cita?.id ? "Cita actualizada correctamente" : "Cita creada correctamente"
-      });
 
       // Cerrar el modal y limpiar el formulario
       onOpenChange(false);
       resetForm();
 
-      // Notificar al componente padre
+      // Notificar al componente padre con los datos preparados
       if (onSubmit) {
-        await onSubmit(citaGuardada);
+        await onSubmit(citaData);
       }
 
     } catch (error) {
-      console.error('Error al guardar cita:', error)
+      console.error('Error al preparar datos de cita:', error)
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Error al guardar la cita",
+        description: error instanceof Error ? error.message : "Error al preparar los datos de la cita",
         variant: "destructive"
       })
     } finally {
@@ -619,7 +586,7 @@ export function CitaModal({
   const handleSubmitMultiple = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      console.log("Iniciando guardado de cita múltiple");
+      console.log("Iniciando preparación de datos para cita múltiple");
       console.log("Datos del formulario:", formMultiple);
       console.log("Tratamientos disponibles:", tratamientos);
 
@@ -742,171 +709,35 @@ export function CitaModal({
         throw new Error(`No se encontró el subtratamiento seleccionado (ID: ${formMultiple.subtratamiento_id})`);
       }
 
-      let citaGuardada;
-
-      if (cita?.id) {
-        // Actualizar cita existente
-        const { data, error: updateError } = await supabase
-          .from("rf_citas")
-          .update({
-            tratamiento_id: formMultiple.tratamiento_id,
-            subtratamiento_id: formMultiple.subtratamiento_id,
-            fecha: formMultiple.fecha,
-            hora: formMultiple.hora,
-            box: formMultiple.box,
-            estado: "reservado",
-            notas: formMultiple.notas || null,
-            es_multiple: true,
-            precio: subtratamientoSeleccionado.precio
-          })
-          .eq("id", cita.id)
-          .select()
-          .single();
-
-        if (updateError) {
-          throw new Error(`Error al actualizar la cita: ${updateError.message}`);
-        }
-
-        if (!data) {
-          throw new Error("No se pudo actualizar la cita");
-        }
-
-        citaGuardada = data;
-
-        // Eliminar relaciones cliente-cita existentes
-        const { error: deleteError } = await supabase
-          .from("rf_citas_clientes")
-          .delete()
-          .eq("cita_id", cita.id);
-
-        if (deleteError) {
-          throw new Error(`Error al eliminar relaciones cliente-cita: ${deleteError.message}`);
-        }
-      } else {
-        // Crear nueva cita
-        const { data, error: citaError } = await supabase
-        .from("rf_citas")
-        .insert({
-          tratamiento_id: formMultiple.tratamiento_id,
-          subtratamiento_id: formMultiple.subtratamiento_id,
-          fecha: formMultiple.fecha,
-          hora: formMultiple.hora,
-          box: formMultiple.box,
-          estado: "reservado",
-            notas: formMultiple.notas || null,
-            es_multiple: true,
-            precio: subtratamientoSeleccionado.precio
-        })
-        .select()
-        .single();
-
-        if (citaError) {
-          throw new Error(`Error al crear la cita: ${citaError.message}`);
-        }
-
-        if (!data) {
-          throw new Error("No se pudo crear la cita");
-        }
-
-        citaGuardada = data;
-      }
-
-      // Procesar cada cliente
-      for (const cliente of formMultiple.clientes) {
-        try {
-          // Buscar o crear cliente
-          let pacienteId: string;
-
-          const { data: existingClient, error: searchError } = await supabase
-            .from('rf_clientes')
-            .select('id, nombre_completo, whatsapp')
-            .eq('dni', cliente.dni)
-            .single();
-
-          if (searchError && searchError.code !== 'PGRST116') {
-            throw new Error(`Error al buscar cliente ${cliente.dni}: ${searchError.message}`);
-          }
-
-          if (existingClient) {
-            // Actualizar datos del cliente si han cambiado
-            if (existingClient.nombre_completo !== cliente.nombre_completo || 
-                existingClient.whatsapp !== cliente.whatsapp) {
-              const { error: updateError } = await supabase
-              .from("rf_clientes")
-                .update({
-                nombre_completo: cliente.nombre_completo,
-                  whatsapp: cliente.whatsapp || null
-                })
-                .eq("id", existingClient.id);
-
-              if (updateError) {
-                throw new Error(`Error al actualizar cliente ${cliente.dni}: ${updateError.message}`);
-              }
-            }
-            pacienteId = existingClient.id;
-          } else {
-            // Crear nuevo cliente
-            const { data: newClient, error: createError } = await supabase
-              .from('rf_clientes')
-              .insert([{
-                dni: cliente.dni,
-                nombre_completo: cliente.nombre_completo,
-                whatsapp: cliente.whatsapp || null
-              }])
-              .select('id')
-              .single();
-
-            if (createError) {
-              throw new Error(`Error al crear cliente ${cliente.dni}: ${createError.message}`);
-            }
-
-            if (!newClient) {
-              throw new Error(`No se pudo crear el cliente ${cliente.dni}`);
-            }
-
-            pacienteId = newClient.id;
-          }
-
-          // Crear la relación cliente-cita
-          const { error: relacionError } = await supabase
-            .from('rf_citas_clientes')
-            .insert({
-              cita_id: citaGuardada.id,
-              cliente_id: pacienteId,
-              total: cliente.precio,
-              sena: cliente.sena
-            });
-
-          if (relacionError) {
-            throw new Error(`Error al relacionar cliente ${cliente.dni} con la cita: ${relacionError.message}`);
-          }
-
-        } catch (error) {
-          console.error(`Error procesando cliente ${cliente.dni}:`, error);
-          throw error;
-        }
-      }
-
-      // Éxito
-      toast({
-        title: "Éxito",
-        description: cita?.id ? "Cita múltiple actualizada correctamente" : "Cita múltiple creada correctamente"
-      });
+      // Preparar datos de la cita múltiple para pasar al componente padre
+      const citaMultipleData = {
+        id: cita?.id || "",
+        tratamiento_id: formMultiple.tratamiento_id,
+        subtratamiento_id: formMultiple.subtratamiento_id,
+        fecha: formMultiple.fecha,
+        hora: formMultiple.hora,
+        box: formMultiple.box,
+        estado: "reservado" as const,
+        notas: formMultiple.notas || undefined,
+        es_multiple: true,
+        precio: subtratamientoSeleccionado.precio,
+        clientes: formMultiple.clientes
+      };
 
       // Cerrar el modal y limpiar el formulario
       onOpenChange(false);
       resetForm();
 
-      // Notificar al componente padre
+      // Notificar al componente padre con los datos preparados
       if (onSubmit) {
-        await onSubmit(citaGuardada);
+        await onSubmit(citaMultipleData as any);
       }
 
     } catch (error) {
-      console.error("Error al guardar cita múltiple:", error);
+      console.error("Error al preparar datos de cita múltiple:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Error inesperado al guardar la cita múltiple",
+        description: error instanceof Error ? error.message : "Error inesperado al preparar los datos de la cita múltiple",
         variant: "destructive"
       });
     }

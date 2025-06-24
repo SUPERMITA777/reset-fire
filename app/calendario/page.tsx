@@ -481,12 +481,62 @@ export default function CalendarioPage() {
             sena: formData.sena,
             notas: formData.notas,
             paciente_id: formData.paciente_id,
-            es_multiple: false,
-            duracion: formData.duracion
+            es_multiple: formData.es_multiple || false,
+            duracion: formData.duracion || 30
           });
 
         if (createError) {
           throw new Error(`Error al crear cita: ${createError.message}`);
+        }
+
+        // Si es una cita múltiple, procesar los clientes
+        if (formData.es_multiple && formData.clientes) {
+          const { data: citaCreada } = await supabase
+            .from("rf_citas")
+            .select("id")
+            .eq("fecha", formData.fecha)
+            .eq("hora", formData.hora)
+            .eq("box", formData.box)
+            .single();
+
+          if (citaCreada) {
+            for (const cliente of formData.clientes) {
+              // Buscar o crear cliente
+              let pacienteId: string;
+              const { data: existingClient } = await supabase
+                .from('rf_clientes')
+                .select('id')
+                .eq('dni', cliente.dni)
+                .single();
+
+              if (existingClient) {
+                pacienteId = existingClient.id;
+              } else {
+                const { data: newClient } = await supabase
+                  .from('rf_clientes')
+                  .insert([{
+                    dni: cliente.dni,
+                    nombre_completo: cliente.nombre_completo,
+                    whatsapp: cliente.whatsapp || null
+                  }])
+                  .select('id')
+                  .single();
+                pacienteId = newClient?.id || "";
+              }
+
+              // Crear la relación cliente-cita
+              if (pacienteId) {
+                await supabase
+                  .from('rf_citas_clientes')
+                  .insert({
+                    cita_id: citaCreada.id,
+                    cliente_id: pacienteId,
+                    total: cliente.precio,
+                    sena: cliente.sena
+                  });
+              }
+            }
+          }
         }
       }
 
@@ -513,8 +563,104 @@ export default function CalendarioPage() {
     }
   };
 
-  const handleGuardarCita = async (citaData: any) => {
+  const handleGuardarCita = async (formData: any) => {
     try {
+      // Crear o actualizar la cita en la base de datos
+      if (formData.id) {
+        // Actualizar cita existente
+        const { error: updateError } = await supabase
+          .from("rf_citas")
+          .update({
+            tratamiento_id: formData.tratamiento_id,
+            subtratamiento_id: formData.subtratamiento_id,
+            fecha: formData.fecha,
+            hora: formData.hora,
+            box: formData.box,
+            estado: formData.estado,
+            precio: formData.precio,
+            sena: formData.sena,
+            notas: formData.notas,
+            paciente_id: formData.paciente_id
+          })
+          .eq("id", formData.id);
+
+        if (updateError) {
+          throw new Error(`Error al actualizar cita: ${updateError.message}`);
+        }
+      } else {
+        // Crear nueva cita
+        const { error: createError } = await supabase
+          .from("rf_citas")
+          .insert({
+            tratamiento_id: formData.tratamiento_id,
+            subtratamiento_id: formData.subtratamiento_id,
+            fecha: formData.fecha,
+            hora: formData.hora,
+            box: formData.box,
+            estado: formData.estado,
+            precio: formData.precio,
+            sena: formData.sena,
+            notas: formData.notas,
+            paciente_id: formData.paciente_id,
+            es_multiple: formData.es_multiple || false,
+            duracion: formData.duracion || 30
+          });
+
+        if (createError) {
+          throw new Error(`Error al crear cita: ${createError.message}`);
+        }
+
+        // Si es una cita múltiple, procesar los clientes
+        if (formData.es_multiple && formData.clientes) {
+          const { data: citaCreada } = await supabase
+            .from("rf_citas")
+            .select("id")
+            .eq("fecha", formData.fecha)
+            .eq("hora", formData.hora)
+            .eq("box", formData.box)
+            .single();
+
+          if (citaCreada) {
+            for (const cliente of formData.clientes) {
+              // Buscar o crear cliente
+              let pacienteId: string;
+              const { data: existingClient } = await supabase
+                .from('rf_clientes')
+                .select('id')
+                .eq('dni', cliente.dni)
+                .single();
+
+              if (existingClient) {
+                pacienteId = existingClient.id;
+              } else {
+                const { data: newClient } = await supabase
+                  .from('rf_clientes')
+                  .insert([{
+                    dni: cliente.dni,
+                    nombre_completo: cliente.nombre_completo,
+                    whatsapp: cliente.whatsapp || null
+                  }])
+                  .select('id')
+                  .single();
+                pacienteId = newClient?.id || "";
+              }
+
+              // Crear la relación cliente-cita
+              if (pacienteId) {
+                await supabase
+                  .from('rf_citas_clientes')
+                  .insert({
+                    cita_id: citaCreada.id,
+                    cliente_id: pacienteId,
+                    total: cliente.precio,
+                    sena: cliente.sena
+                  });
+              }
+            }
+          }
+        }
+      }
+
       // Recargar las citas después de guardar
       await recargarCitas();
       
@@ -524,7 +670,7 @@ export default function CalendarioPage() {
       
       toast({
         title: "Éxito",
-        description: citaData.id ? "Cita actualizada correctamente" : "Cita creada correctamente"
+        description: formData.id ? "Cita actualizada correctamente" : "Cita creada correctamente"
       });
     } catch (error) {
       console.error("Error al guardar cita:", error);
