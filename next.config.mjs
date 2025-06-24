@@ -7,8 +7,19 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   images: {
-    unoptimized: false,
-    domains: [],
+    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '3000',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.placeholder.com',
+      },
+    ],
   },
   reactStrictMode: true,
   // Configuración para usar src/app como directorio de rutas

@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react"
 import { format, addDays, setHours, setMinutes, isBefore, isAfter, parseISO, addMinutes, isWithinInterval } from "date-fns"
 import { es } from "date-fns/locale"
-import { ChevronRight, Clock, Calendar, ArrowLeft, DollarSign } from "lucide-react"
+import { ChevronRight, Clock, Calendar, ArrowLeft, DollarSign, Sparkles } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz'
 import { Database } from '@/types/supabase'
+import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -712,6 +713,18 @@ const SeleccionTratamientos = () => {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Volver
         </Button>
+      )}
+
+      {/* Enlace a la página de clientes */}
+      {!tratamientoSeleccionado && (
+        <div className="flex justify-end mb-6">
+          <Link href="/clientes-landing">
+            <Button variant="outline" className="bg-gold hover:bg-gold/90 text-white border-gold">
+              <Sparkles className="mr-2 h-4 w-4" />
+              Ver Página de Clientes
+            </Button>
+          </Link>
+        </div>
       )}
 
       {/* Vista de selección de tratamiento */}

@@ -697,23 +697,14 @@ export function GestionTratamientos() {
   }
 
   const handleEditarTratamiento = async () => {
-    if (!tratamientoEdicion) return
-
-    if (!nuevoNombre?.trim()) {
-      toast({
-        title: "Error",
-        description: "El nombre del tratamiento es requerido",
-        variant: "destructive"
-      })
-      return
-    }
+    if (!tratamientoEdicion || !nuevoNombre?.trim()) return
 
     try {
       await editarTratamiento(
         tratamientoEdicion.id,
         nuevoNombre,
-        tratamientoEdicion.descripcion,
-        tratamientoEdicion.foto_url,
+        tratamientoEdicion.descripcion || "",
+        tratamientoEdicion.foto_url || "",
         Number(maxClientesPorTurno),
         esCompartido
       )
@@ -817,8 +808,8 @@ export function GestionTratamientos() {
       id: subTratamientoEdicion.id,
       tratamiento_id: subTratamientoEdicion.tratamiento_id,
       nombre: nuevoNombre,
-      descripcion: subTratamientoEdicion.descripcion,
-      foto_url: subTratamientoEdicion.foto_url,
+      descripcion: subTratamientoEdicion.descripcion || "",
+      foto_url: subTratamientoEdicion.foto_url || "",
       duracion: subTratamientoEdicion.duracion,
       precio: subTratamientoEdicion.precio
     })
