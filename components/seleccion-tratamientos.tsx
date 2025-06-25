@@ -594,6 +594,18 @@ const SeleccionTratamientos = () => {
     // Si no hay paciente_id pero hay datos del cliente, buscar o crear cliente
     if (!pacienteId && citaData.cliente_data) {
       try {
+        // Diagnóstico: verificar estructura de la tabla rf_clientes
+        console.log('🔍 Verificando estructura de rf_clientes...');
+        try {
+          const { data: estructuraTest, error: estructuraError } = await supabaseClient
+            .from('rf_clientes')
+            .select('*')
+            .limit(1);
+          console.log('🧪 Estructura de rf_clientes:', { data: estructuraTest, error: estructuraError });
+        } catch (e) {
+          console.log('🧪 Error al verificar estructura de rf_clientes:', e);
+        }
+
         // Primero buscar si existe un cliente con ese WhatsApp
         const { data: existingClient, error: searchError } = await supabaseClient
           .from('rf_clientes')
