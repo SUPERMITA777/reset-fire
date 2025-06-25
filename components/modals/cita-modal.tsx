@@ -352,81 +352,51 @@ export function CitaModal({
     }
     
     try {
-      console.log('📡 Consultando base de datos...');
-      console.log('🔧 URL de consulta:', `rf_clientes?select=id,dni,nombre_completo,whatsapp&whatsapp=eq.${whatsapp}`);
+      console.log('📡 Iniciando consulta simple...');
       
-      // Verificar que supabase esté disponible
-      console.log('🔧 Verificando cliente Supabase:', !!supabase);
-      
-      // Verificar qué tablas están disponibles
-      console.log('🧪 Verificando tablas disponibles...');
-      try {
-        const { data: tratamientosData, error: tratamientosError } = await supabase
-          .from('rf_tratamientos')
-          .select('id')
-          .limit(1);
-        console.log('🧪 Tabla rf_tratamientos:', { data: tratamientosData, error: tratamientosError });
-      } catch (e) {
-        console.log('🧪 Error al verificar rf_tratamientos:', e);
-      }
-      
-      try {
-        const { data: citasData, error: citasError } = await supabase
-          .from('rf_citas')
-          .select('id')
-          .limit(1);
-        console.log('🧪 Tabla rf_citas:', { data: citasData, error: citasError });
-      } catch (e) {
-        console.log('🧪 Error al verificar rf_citas:', e);
-      }
-      
-      // Hacer una consulta simple primero
-      console.log('🧪 Haciendo consulta simple...');
-      const { data: simpleData, error: simpleError } = await supabase
+      // Consulta más simple posible
+      const result = await supabase
         .from('rf_clientes')
         .select('*')
         .limit(1);
       
-      console.log('🧪 Resultado de consulta simple:', { simpleData, simpleError });
-
-      if (simpleError) {
-        console.error('❌ Error en consulta simple:', simpleError);
-        console.error('❌ Código de error:', simpleError.code);
-        console.error('❌ Mensaje de error:', simpleError.message);
-        throw new Error(`Error de conexión: ${simpleError.message}`);
+      console.log('📊 Resultado de consulta simple:', result);
+      
+      if (result.error) {
+        console.error('❌ Error en consulta simple:', result.error);
+        throw result.error;
       }
       
-      // Ahora hacer la consulta específica
-      console.log('🔍 Haciendo consulta específica...');
-      const { data: cliente, error } = await supabase
+      console.log('✅ Consulta simple exitosa, datos:', result.data);
+      
+      // Si la consulta simple funciona, intentar la específica
+      console.log('🔍 Intentando consulta específica...');
+      const specificResult = await supabase
         .from('rf_clientes')
-        .select('id, dni, nombre, apellido, whatsapp')
+        .select('*')
         .eq('whatsapp', whatsapp)
-        .maybeSingle()
-
-      console.log('📊 Respuesta de la consulta específica:', { data: cliente, error });
-
-      if (error) {
-        console.error('❌ Error en consulta específica:', error);
-        console.error('❌ Detalles del error:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        });
-        throw error
+        .limit(1);
+      
+      console.log('📊 Resultado de consulta específica:', specificResult);
+      
+      if (specificResult.error) {
+        console.error('❌ Error en consulta específica:', specificResult.error);
+        throw specificResult.error;
       }
-
-      if (cliente) {
+      
+      if (specificResult.data && specificResult.data.length > 0) {
+        const cliente = specificResult.data[0];
         console.log('✅ Cliente encontrado:', cliente);
+        
         form.setValue('dni', cliente.dni || '')
-        form.setValue('nombre_completo', `${cliente.nombre} ${cliente.apellido}`.trim())
+        form.setValue('nombre_completo', `${cliente.nombre || ''} ${cliente.apellido || ''}`.trim())
         form.setValue('whatsapp', cliente.whatsapp || '')
         form.setValue('paciente_id', cliente.id)
         console.log('✅ Datos del cliente cargados en el formulario');
       } else {
         console.log('❌ Cliente no encontrado');
       }
+      
     } catch (error) {
       console.error('❌ Error al buscar cliente:', error)
       console.error('❌ Tipo de error:', typeof error);
