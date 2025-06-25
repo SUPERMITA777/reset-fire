@@ -853,8 +853,10 @@ export function CitaModal({
                       value={form.watch('whatsapp')}
                       onChange={(e) => {
                         const whatsapp = e.target.value
+                        console.log('📱 Campo WhatsApp cambiado:', whatsapp);
                         form.setValue('whatsapp', whatsapp)
                         if (whatsapp.length >= 9) {
+                          console.log('🚀 Llamando a buscarCliente con:', whatsapp);
                           buscarCliente(whatsapp)
                         }
                       }}

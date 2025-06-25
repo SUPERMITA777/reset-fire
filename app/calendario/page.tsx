@@ -477,7 +477,7 @@ export default function CalendarioPage() {
           const { data: newClient, error: createError } = await supabase
             .from('rf_clientes')
             .insert([{
-              dni: formData.cliente_data.dni || null,
+              dni: formData.cliente_data.dni || "00000000", // Valor por defecto si no hay DNI
               nombre_completo: formData.cliente_data.nombre_completo,
               whatsapp: formData.cliente_data.whatsapp
             }])
