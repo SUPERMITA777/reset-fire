@@ -357,13 +357,10 @@ export function CitaModal({
         .from('rf_clientes')
         .select('id, dni, nombre_completo, whatsapp')
         .eq('whatsapp', whatsapp)
-        .single()
+        .maybeSingle()
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          console.log('❌ Cliente no encontrado');
-          return
-        }
+        console.error('❌ Error en consulta:', error);
         throw error
       }
 
@@ -374,6 +371,8 @@ export function CitaModal({
         form.setValue('whatsapp', cliente.whatsapp || '')
         form.setValue('paciente_id', cliente.id)
         console.log('✅ Datos del cliente cargados en el formulario');
+      } else {
+        console.log('❌ Cliente no encontrado');
       }
     } catch (error) {
       console.error('❌ Error al buscar cliente:', error)
@@ -422,13 +421,10 @@ export function CitaModal({
         .from('rf_clientes')
         .select('id, dni, nombre_completo, whatsapp')
         .eq('whatsapp', whatsapp)
-        .single()
+        .maybeSingle()
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          // Cliente no encontrado, no es un error
-          return
-        }
+        console.error('Error en consulta múltiple:', error);
         throw error
       }
 

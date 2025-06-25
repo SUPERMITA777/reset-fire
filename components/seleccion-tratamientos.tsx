@@ -587,12 +587,19 @@ const SeleccionTratamientos = () => {
           // Si existe, actualizar datos del cliente solo si han cambiado
           if (existingClient.nombre_completo !== citaData.cliente_data.nombre_completo || 
               existingClient.dni !== citaData.cliente_data.dni) {
+            
+            const updateData: any = {
+              nombre_completo: citaData.cliente_data.nombre_completo
+            };
+            
+            // Solo actualizar DNI si existe y no está vacío
+            if (citaData.cliente_data.dni && citaData.cliente_data.dni.trim() !== '') {
+              updateData.dni = citaData.cliente_data.dni;
+            }
+            
             const { error: updateError } = await supabaseClient
               .from("rf_clientes")
-              .update({
-                nombre_completo: citaData.cliente_data.nombre_completo,
-                dni: citaData.cliente_data.dni || null
-              })
+              .update(updateData)
               .eq("id", existingClient.id)
 
             if (updateError) {
@@ -602,13 +609,19 @@ const SeleccionTratamientos = () => {
           pacienteId = existingClient.id
         } else {
           // Si no existe, crear nuevo cliente
+          const clienteData: any = {
+            nombre_completo: citaData.cliente_data.nombre_completo,
+            whatsapp: citaData.cliente_data.whatsapp
+          };
+          
+          // Solo agregar DNI si existe y no está vacío
+          if (citaData.cliente_data.dni && citaData.cliente_data.dni.trim() !== '') {
+            clienteData.dni = citaData.cliente_data.dni;
+          }
+          
           const { data: newClient, error: createError } = await supabaseClient
             .from('rf_clientes')
-            .insert([{
-              dni: citaData.cliente_data.dni || null,
-              nombre_completo: citaData.cliente_data.nombre_completo,
-              whatsapp: citaData.cliente_data.whatsapp
-            }])
+            .insert([clienteData])
             .select('id')
             .single()
 
