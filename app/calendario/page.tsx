@@ -525,13 +525,11 @@ export default function CalendarioPage() {
             sena: formData.sena,
             notas: formData.notas,
             paciente_id: pacienteId,
-            es_multiple: formData.es_multiple || false,
-            duracion: formData.duracion || 30
+            es_multiple: formData.es_multiple || false
           });
         if (createError) {
           throw new Error(`Error al crear cita: ${createError.message}`);
         }
-        // ... (resto igual)
       }
       // Recargar las citas y cerrar el modal
       await recargarCitas();
@@ -593,8 +591,7 @@ export default function CalendarioPage() {
             sena: formData.sena,
             notas: formData.notas,
             paciente_id: formData.paciente_id,
-            es_multiple: formData.es_multiple || false,
-            duracion: formData.duracion || 30
+            es_multiple: formData.es_multiple || false
           });
 
         if (createError) {

@@ -235,7 +235,7 @@ export function CitaModal({
       console.log('📡 Consultando base de datos...');
       const { data: cliente, error } = await supabase
         .from('rf_clientes')
-        .select('*')
+        .select('id, dni, nombre_completo, whatsapp')
         .eq('whatsapp', whatsapp)
         .single()
 
@@ -300,7 +300,7 @@ export function CitaModal({
     try {
       const { data: cliente, error } = await supabase
         .from('rf_clientes')
-        .select('*')
+        .select('id, dni, nombre_completo, whatsapp')
         .eq('whatsapp', whatsapp)
         .single()
 
