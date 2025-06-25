@@ -223,6 +223,126 @@ export function CitaModal({
   const [loading, setLoading] = useState(false)
   const supabase = createClientComponentClient<Database>()
 
+  const fetchSubtratamientos = useCallback(async (tratamientoId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('rf_subtratamientos')
+        .select('*')
+        .eq('tratamiento_id', tratamientoId)
+
+      if (error) throw error
+
+      setSubtratamientos(data || [])
+    } catch (error) {
+      console.error('Error al cargar subtratamientos:', error)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los subtratamientos",
+        variant: "destructive"
+      })
+    }
+  }, [supabase])
+
+  // Asegurar que se hereden los datos seleccionados
+  useEffect(() => {
+    if (fechaSeleccionada) {
+      form.setValue('fecha', fechaSeleccionada)
+    }
+  }, [fechaSeleccionada, form])
+
+  useEffect(() => {
+    if (horaSeleccionada) {
+      form.setValue('hora', horaSeleccionada)
+    }
+  }, [horaSeleccionada, form])
+
+  useEffect(() => {
+    if (boxSeleccionado) {
+      form.setValue('box', boxSeleccionado)
+    }
+  }, [boxSeleccionado, form])
+
+  // Efecto para cargar subtratamientos cuando se selecciona un tratamiento
+  useEffect(() => {
+    const tratamientoId = form.watch('tratamiento_id')
+    if (tratamientoId) {
+      fetchSubtratamientos(tratamientoId)
+    }
+  }, [form.watch('tratamiento_id'), fetchSubtratamientos])
+
+  // Efecto para cargar subtratamientos en el formulario múltiple
+  useEffect(() => {
+    const tratamientoId = formMultiple.watch('tratamiento_id')
+    if (tratamientoId) {
+      fetchSubtratamientos(tratamientoId)
+    }
+  }, [formMultiple.watch('tratamiento_id'), fetchSubtratamientos])
+
+  // Efecto para inicializar el formulario cuando se abre el modal
+  useEffect(() => {
+    if (open) {
+      if (cita) {
+        // Si es una cita existente, cargar sus datos
+        form.setValue('fecha', cita.fecha)
+        form.setValue('hora', cita.hora)
+        form.setValue('box', cita.box)
+        form.setValue('tratamiento_id', cita.tratamiento_id)
+        form.setValue('subtratamiento_id', cita.subtratamiento_id)
+        form.setValue('dni', cita.rf_clientes?.dni || '')
+        form.setValue('nombre_completo', cita.rf_clientes?.nombre_completo || '')
+        form.setValue('whatsapp', cita.rf_clientes?.whatsapp || '')
+        form.setValue('precio', cita.precio || 0)
+        form.setValue('sena', cita.sena || 0)
+        form.setValue('notas', cita.notas || '')
+        form.setValue('paciente_id', cita.cliente_id)
+        form.setValue('estado', cita.estado)
+      } else {
+        // Si es una nueva cita, inicializar con los datos seleccionados
+        form.setValue('fecha', fechaSeleccionada || '')
+        form.setValue('hora', horaSeleccionada || '')
+        form.setValue('box', boxSeleccionado || 1)
+        form.setValue('tratamiento_id', '')
+        form.setValue('subtratamiento_id', '')
+        form.setValue('dni', '')
+        form.setValue('nombre_completo', '')
+        form.setValue('whatsapp', '')
+        form.setValue('precio', 0)
+        form.setValue('sena', 0)
+        form.setValue('notas', '')
+        form.setValue('paciente_id', '')
+        form.setValue('estado', 'reservado')
+
+        // Inicializar el formulario múltiple también
+        formMultiple.setValue('fecha', fechaSeleccionada || '')
+        formMultiple.setValue('hora', horaSeleccionada || '')
+        formMultiple.setValue('box', boxSeleccionado || 1)
+        formMultiple.setValue('tratamiento_id', '')
+        formMultiple.setValue('subtratamiento_id', '')
+        formMultiple.setValue('clientes', [{
+          dni: '',
+          nombre_completo: '',
+          whatsapp: '',
+          precio: 0,
+          sena: 0,
+          paciente_id: ''
+        }])
+        formMultiple.setValue('notas', '')
+      }
+    }
+  }, [open, cita, fechaSeleccionada, horaSeleccionada, boxSeleccionado])
+
+  // En el componente CitaModal, actualizar el useEffect para limpiar el estado
+  useEffect(() => {
+    if (!open) {
+      // Limpiar el estado cuando se cierra el modal
+      form.reset()
+      formMultiple.reset()
+      setActiveTab('individual')
+      setSubtratamientos([])
+      setLoading(false) // Asegurarse de que el estado de carga se resetee
+    }
+  }, [open, form, formMultiple])
+
   // Memoizar la función de búsqueda de clientes
   const buscarCliente = async (whatsapp: string) => {
     console.log('🔍 Buscando cliente con WhatsApp:', whatsapp);
@@ -333,6 +453,37 @@ export function CitaModal({
     }
   }
 
+  // Funciones de manejo de citas
+  async function verificarDisponibilidad(fecha: string, hora: string, box: number, citaId?: string) {
+    try {
+      // Construir la consulta base
+      let query = supabase
+        .from('rf_citas')
+        .select('id')
+        .eq('fecha', fecha)
+        .eq('hora', hora)
+        .eq('box', box)
+        .eq('estado', 'reservado')
+
+      // Si es una actualización, excluir la cita actual
+      if (citaId) {
+        query = query.neq('id', citaId)
+      }
+
+      const { data: citasExistentes, error } = await query
+
+      if (error) {
+        console.error('Error en consulta de disponibilidad:', error)
+        throw new Error(`Error al verificar disponibilidad: ${error.message}`)
+      }
+
+      return !citasExistentes || citasExistentes.length === 0
+    } catch (error) {
+      console.error('Error al verificar disponibilidad:', error)
+      throw error
+    }
+  }
+
   // Memoizar la función de reset
   const resetForm = () => {
     const fechaInicial = fechaSeleccionada || ""
@@ -375,155 +526,6 @@ export function CitaModal({
 
     setClienteEncontrado(null)
     setSubtratamientos([])
-  }
-
-  const fetchSubtratamientos = async (tratamientoId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('rf_subtratamientos')
-        .select('*')
-        .eq('tratamiento_id', tratamientoId)
-
-      if (error) throw error
-
-      setSubtratamientos(data || [])
-    } catch (error) {
-      console.error('Error al cargar subtratamientos:', error)
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los subtratamientos",
-        variant: "destructive"
-      })
-    }
-  }
-
-  // Asegurar que se hereden los datos seleccionados
-  useEffect(() => {
-    if (fechaSeleccionada) {
-      form.setValue('fecha', fechaSeleccionada)
-    }
-  }, [fechaSeleccionada, form])
-
-  useEffect(() => {
-    if (horaSeleccionada) {
-      form.setValue('hora', horaSeleccionada)
-    }
-  }, [horaSeleccionada, form])
-
-  useEffect(() => {
-    if (boxSeleccionado) {
-      form.setValue('box', boxSeleccionado)
-    }
-  }, [boxSeleccionado, form])
-
-  // Efecto para cargar subtratamientos cuando se selecciona un tratamiento
-  useEffect(() => {
-    if (form.watch('tratamiento_id')) {
-      fetchSubtratamientos(form.watch('tratamiento_id'))
-    }
-  }, [form.watch('tratamiento_id')])
-
-  // Efecto para cargar subtratamientos en el formulario múltiple
-  useEffect(() => {
-    if (formMultiple.watch('tratamiento_id')) {
-      fetchSubtratamientos(formMultiple.watch('tratamiento_id'))
-    }
-  }, [formMultiple.watch('tratamiento_id')])
-
-  // Efecto para inicializar el formulario cuando se abre el modal
-  useEffect(() => {
-    if (open) {
-      if (cita) {
-        // Si es una cita existente, cargar sus datos
-        form.setValue('fecha', cita.fecha)
-        form.setValue('hora', cita.hora)
-        form.setValue('box', cita.box)
-        form.setValue('tratamiento_id', cita.tratamiento_id)
-        form.setValue('subtratamiento_id', cita.subtratamiento_id)
-        form.setValue('dni', cita.rf_clientes?.dni || '')
-        form.setValue('nombre_completo', cita.rf_clientes?.nombre_completo || '')
-        form.setValue('whatsapp', cita.rf_clientes?.whatsapp || '')
-        form.setValue('precio', cita.precio || 0)
-        form.setValue('sena', cita.sena || 0)
-        form.setValue('notas', cita.notas || '')
-        form.setValue('paciente_id', cita.cliente_id)
-        form.setValue('estado', cita.estado)
-      } else {
-        // Si es una nueva cita, inicializar con los datos seleccionados
-        form.setValue('fecha', fechaSeleccionada || '')
-        form.setValue('hora', horaSeleccionada || '')
-        form.setValue('box', boxSeleccionado || 1)
-        form.setValue('tratamiento_id', '')
-        form.setValue('subtratamiento_id', '')
-        form.setValue('dni', '')
-        form.setValue('nombre_completo', '')
-        form.setValue('whatsapp', '')
-        form.setValue('precio', 0)
-        form.setValue('sena', 0)
-        form.setValue('notas', '')
-        form.setValue('paciente_id', '')
-        form.setValue('estado', 'reservado')
-
-        // Inicializar el formulario múltiple también
-        formMultiple.setValue('fecha', fechaSeleccionada || '')
-        formMultiple.setValue('hora', horaSeleccionada || '')
-        formMultiple.setValue('box', boxSeleccionado || 1)
-        formMultiple.setValue('tratamiento_id', '')
-        formMultiple.setValue('subtratamiento_id', '')
-        formMultiple.setValue('clientes', [{
-          dni: '',
-          nombre_completo: '',
-          whatsapp: '',
-          precio: 0,
-          sena: 0,
-          paciente_id: ''
-        }])
-        formMultiple.setValue('notas', '')
-      }
-    }
-  }, [open, cita, fechaSeleccionada, horaSeleccionada, boxSeleccionado])
-
-  // En el componente CitaModal, actualizar el useEffect para limpiar el estado
-  useEffect(() => {
-    if (!open) {
-      // Limpiar el estado cuando se cierra el modal
-      form.reset()
-      formMultiple.reset()
-      setActiveTab('individual')
-      setSubtratamientos([])
-      setLoading(false) // Asegurarse de que el estado de carga se resetee
-    }
-  }, [open, form, formMultiple])
-
-  // Funciones de manejo de citas
-  async function verificarDisponibilidad(fecha: string, hora: string, box: number, citaId?: string) {
-    try {
-      // Construir la consulta base
-      let query = supabase
-        .from('rf_citas')
-        .select('id')
-        .eq('fecha', fecha)
-        .eq('hora', hora)
-        .eq('box', box)
-        .eq('estado', 'reservado')
-
-      // Si es una actualización, excluir la cita actual
-      if (citaId) {
-        query = query.neq('id', citaId)
-      }
-
-      const { data: citasExistentes, error } = await query
-
-      if (error) {
-        console.error('Error en consulta de disponibilidad:', error)
-        throw new Error(`Error al verificar disponibilidad: ${error.message}`)
-      }
-
-      return !citasExistentes || citasExistentes.length === 0
-    } catch (error) {
-      console.error('Error al verificar disponibilidad:', error)
-      throw error
-    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
