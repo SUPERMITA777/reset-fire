@@ -358,6 +358,28 @@ export function CitaModal({
       // Verificar que supabase esté disponible
       console.log('🔧 Verificando cliente Supabase:', !!supabase);
       
+      // Verificar qué tablas están disponibles
+      console.log('🧪 Verificando tablas disponibles...');
+      try {
+        const { data: tratamientosData, error: tratamientosError } = await supabase
+          .from('rf_tratamientos')
+          .select('id')
+          .limit(1);
+        console.log('🧪 Tabla rf_tratamientos:', { data: tratamientosData, error: tratamientosError });
+      } catch (e) {
+        console.log('🧪 Error al verificar rf_tratamientos:', e);
+      }
+      
+      try {
+        const { data: citasData, error: citasError } = await supabase
+          .from('rf_citas')
+          .select('id')
+          .limit(1);
+        console.log('🧪 Tabla rf_citas:', { data: citasData, error: citasError });
+      } catch (e) {
+        console.log('🧪 Error al verificar rf_citas:', e);
+      }
+      
       // Hacer una consulta simple primero
       console.log('🧪 Haciendo consulta simple...');
       const { data: simpleData, error: simpleError } = await supabase
@@ -366,9 +388,11 @@ export function CitaModal({
         .limit(1);
       
       console.log('🧪 Resultado de consulta simple:', { simpleData, simpleError });
-      
+
       if (simpleError) {
         console.error('❌ Error en consulta simple:', simpleError);
+        console.error('❌ Código de error:', simpleError.code);
+        console.error('❌ Mensaje de error:', simpleError.message);
         throw new Error(`Error de conexión: ${simpleError.message}`);
       }
       
