@@ -224,7 +224,7 @@ export function CitaModal({
   const supabase = createClientComponentClient<Database>()
 
   // Memoizar la función de búsqueda de clientes
-  const buscarCliente = useCallback(async (whatsapp: string) => {
+  const buscarCliente = async (whatsapp: string) => {
     console.log('🔍 Buscando cliente con WhatsApp:', whatsapp);
     if (!whatsapp || whatsapp.length < 9) {
       console.log('❌ WhatsApp muy corto, no se busca');
@@ -263,18 +263,18 @@ export function CitaModal({
         variant: "destructive"
       })
     }
-  }, [form, supabase])
+  }
 
   // Actualizar el manejador de cambios de cliente
-  const handleClienteChange = useCallback((index: number, field: keyof ClienteMultiple, value: string | number) => {
+  const handleClienteChange = (index: number, field: keyof ClienteMultiple, value: string | number) => {
     const clientes = formMultiple.watch('clientes')
     const updatedClientes = clientes.map((cliente, i) => 
         i === index ? { ...cliente, [field]: value } : cliente
       )
     formMultiple.setValue(`clientes.${index}.${field}`, value)
-  }, [formMultiple])
+  }
 
-  const handleAddCliente = useCallback(() => {
+  const handleAddCliente = () => {
     const subtratamiento = subtratamientos.find(st => st.id === formMultiple.watch('subtratamiento_id'))
     const precio = subtratamiento?.precio || 0
     formMultiple.setValue('clientes', [
@@ -287,14 +287,14 @@ export function CitaModal({
           sena: 0 
         }
     ])
-  }, [formMultiple, subtratamientos])
+  }
 
-  const handleRemoveCliente = useCallback((index: number) => {
+  const handleRemoveCliente = (index: number) => {
     formMultiple.setValue('clientes', formMultiple.watch('clientes').filter((_, i) => i !== index))
-  }, [formMultiple])
+  }
 
   // Memoizar la función de búsqueda de clientes múltiples
-  const buscarClienteMultiple = useCallback(async (whatsapp: string, index: number) => {
+  const buscarClienteMultiple = async (whatsapp: string, index: number) => {
     if (!whatsapp || whatsapp.length < 9) return;
     
     try {
@@ -331,10 +331,10 @@ export function CitaModal({
         variant: "destructive"
       })
     }
-  }, [formMultiple, supabase])
+  }
 
   // Memoizar la función de reset
-  const resetForm = useCallback(() => {
+  const resetForm = () => {
     const fechaInicial = fechaSeleccionada || ""
     const horaInicial = horaSeleccionada || ""
     const boxInicial = boxSeleccionado || 1
@@ -375,9 +375,9 @@ export function CitaModal({
 
     setClienteEncontrado(null)
     setSubtratamientos([])
-  }, [fechaSeleccionada, horaSeleccionada, boxSeleccionado])
+  }
 
-  const fetchSubtratamientos = useCallback(async (tratamientoId: string) => {
+  const fetchSubtratamientos = async (tratamientoId: string) => {
     try {
       const { data, error } = await supabase
         .from('rf_subtratamientos')
@@ -395,7 +395,7 @@ export function CitaModal({
         variant: "destructive"
       })
     }
-  }, [supabase])
+  }
 
   // Asegurar que se hereden los datos seleccionados
   useEffect(() => {
@@ -421,14 +421,14 @@ export function CitaModal({
     if (form.watch('tratamiento_id')) {
       fetchSubtratamientos(form.watch('tratamiento_id'))
     }
-  }, [form.watch('tratamiento_id'), fetchSubtratamientos])
+  }, [form.watch('tratamiento_id')])
 
   // Efecto para cargar subtratamientos en el formulario múltiple
   useEffect(() => {
     if (formMultiple.watch('tratamiento_id')) {
       fetchSubtratamientos(formMultiple.watch('tratamiento_id'))
     }
-  }, [formMultiple.watch('tratamiento_id'), fetchSubtratamientos])
+  }, [formMultiple.watch('tratamiento_id')])
 
   // Efecto para inicializar el formulario cuando se abre el modal
   useEffect(() => {
@@ -481,7 +481,7 @@ export function CitaModal({
         formMultiple.setValue('notas', '')
       }
     }
-  }, [open, cita, fechaSeleccionada, horaSeleccionada, boxSeleccionado, fetchSubtratamientos])
+  }, [open, cita, fechaSeleccionada, horaSeleccionada, boxSeleccionado])
 
   // En el componente CitaModal, actualizar el useEffect para limpiar el estado
   useEffect(() => {

@@ -452,8 +452,9 @@ export default function CalendarioPage() {
           .from('rf_clientes')
           .select('id, nombre_completo, dni, whatsapp')
           .eq('whatsapp', formData.cliente_data.whatsapp)
-          .single();
-        if (searchError && searchError.code !== 'PGRST116') {
+          .maybeSingle();
+        if (searchError) {
+          console.error("Error al buscar cliente:", searchError);
           throw new Error(`Error al buscar cliente: ${searchError.message}`);
         }
         if (existingClient) {
@@ -474,13 +475,19 @@ export default function CalendarioPage() {
           pacienteId = existingClient.id;
         } else {
           // Crear nuevo cliente
+          const clienteData: any = {
+            nombre_completo: formData.cliente_data.nombre_completo,
+            whatsapp: formData.cliente_data.whatsapp
+          };
+          
+          // Solo agregar DNI si existe y no está vacío
+          if (formData.cliente_data.dni && formData.cliente_data.dni.trim() !== '') {
+            clienteData.dni = formData.cliente_data.dni;
+          }
+          
           const { data: newClient, error: createError } = await supabase
             .from('rf_clientes')
-            .insert([{
-              dni: formData.cliente_data.dni || "00000000", // Valor por defecto si no hay DNI
-              nombre_completo: formData.cliente_data.nombre_completo,
-              whatsapp: formData.cliente_data.whatsapp
-            }])
+            .insert([clienteData])
             .select('id')
             .single();
           if (createError) {
@@ -621,13 +628,19 @@ export default function CalendarioPage() {
               if (existingClient) {
                 pacienteId = existingClient.id;
               } else {
+                const clienteData: any = {
+                  nombre_completo: cliente.nombre_completo,
+                  whatsapp: cliente.whatsapp || null
+                };
+                
+                // Solo agregar DNI si existe y no está vacío
+                if (cliente.dni && cliente.dni.trim() !== '') {
+                  clienteData.dni = cliente.dni;
+                }
+                
                 const { data: newClient } = await supabase
                   .from('rf_clientes')
-                  .insert([{
-                    dni: cliente.dni,
-                    nombre_completo: cliente.nombre_completo,
-                    whatsapp: cliente.whatsapp || null
-                  }])
+                  .insert([clienteData])
                   .select('id')
                   .single();
                 pacienteId = newClient?.id || "";
