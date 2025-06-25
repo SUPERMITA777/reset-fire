@@ -569,6 +569,28 @@ const SeleccionTratamientos = () => {
   const procesarCita = async (citaData: any) => {
     let pacienteId = citaData.paciente_id
 
+    // Verificar qué tablas de citas existen
+    console.log('🔍 Verificando tablas disponibles...');
+    try {
+      const { data: rfCitasTest, error: rfCitasError } = await supabaseClient
+        .from('rf_citas')
+        .select('id')
+        .limit(1);
+      console.log('🧪 Tabla rf_citas:', { data: rfCitasTest, error: rfCitasError });
+    } catch (e) {
+      console.log('🧪 Error al verificar rf_citas:', e);
+    }
+
+    try {
+      const { data: citasTest, error: citasError } = await supabaseClient
+        .from('citas')
+        .select('id')
+        .limit(1);
+      console.log('🧪 Tabla citas:', { data: citasTest, error: citasError });
+    } catch (e) {
+      console.log('🧪 Error al verificar citas:', e);
+    }
+
     // Si no hay paciente_id pero hay datos del cliente, buscar o crear cliente
     if (!pacienteId && citaData.cliente_data) {
       try {
