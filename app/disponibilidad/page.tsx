@@ -227,7 +227,20 @@ export default function DisponibilidadPage() {
       });
 
       if (haySolapamiento) {
-        throw new Error("Ya existe una disponibilidad para este tratamiento en el rango de fechas seleccionado");
+        // Encontrar las disponibilidades que se solapan
+        const disponibilidadesSolapadas = disponibilidadesExistentes?.filter(disp => {
+          const inicioExistente = new Date(disp.fecha_inicio);
+          const finExistente = new Date(disp.fecha_fin);
+          const inicioNueva = new Date(formData.fecha_inicio);
+          const finNueva = new Date(formData.fecha_fin);
+          return (inicioNueva <= finExistente && finNueva >= inicioExistente);
+        });
+
+        const fechasSolapadas = disponibilidadesSolapadas?.map(disp => 
+          `${disp.fecha_inicio} - ${disp.fecha_fin}`
+        ).join(', ');
+
+        throw new Error(`Ya existe una disponibilidad para este tratamiento en el rango de fechas seleccionado. Fechas existentes: ${fechasSolapadas}`);
       }
 
       const disponibilidadData = {
