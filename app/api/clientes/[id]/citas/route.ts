@@ -6,37 +6,36 @@ import type { NextRequest } from 'next/server'
 type Cita = {
   id: string
   fecha: Date
-  hora_inicio: string
-  hora_fin: string
-  box_id: number
+  hora: string
+  box: number
   color: string
-  observaciones: string | null
+  notas: string | null
   created_at: Date
   updated_at: Date
   tratamiento_nombre: string
   subtratamiento_nombre: string
   duracion: number
   precio: number
-  senia: number
+  sena: number
   estado: 'completada' | 'pendiente'
 }
 
 type CitaRaw = {
   id: string
   fecha: string
-  hora_inicio: string
-  hora_fin: string
-  box_id: number
-  color: string
-  observaciones: string | null
+  hora: string
+  box: number
+  notas: string | null
   created_at: string
   updated_at: string
-  senia: number
-  tratamiento: {
-    nombre: string
+  sena: number
+  precio: number
+  estado: string
+  rf_tratamientos: {
+    nombre_tratamiento: string
   }[]
-  sub_tratamiento: {
-    nombre: string
+  rf_subtratamientos: {
+    nombre_subtratamiento: string
     duracion: number
     precio: number
   }[]
@@ -49,30 +48,30 @@ export async function GET(
   try {
     const { id } = await params
     const { data: citas, error: citasError } = await supabase
-      .from('citas')
+      .from('rf_citas')
       .select(`
         id,
         fecha,
-        hora_inicio,
-        hora_fin,
-        box_id,
-        color,
-        observaciones,
+        hora,
+        box,
+        notas,
         created_at,
         updated_at,
-        tratamiento:tratamientos!inner (
-          nombre
+        precio,
+        sena,
+        estado,
+        rf_tratamientos!inner (
+          nombre_tratamiento
         ),
-        sub_tratamiento:sub_tratamientos!inner (
-          nombre,
+        rf_subtratamientos!inner (
+          nombre_subtratamiento,
           duracion,
           precio
-        ),
-        senia
+        )
       `)
-      .eq('cliente_id', id)
+      .eq('paciente_id', id)
       .order('fecha', { ascending: false })
-      .order('hora_inicio', { ascending: false })
+      .order('hora', { ascending: false })
 
     if (citasError) {
       console.error('Error al obtener citas del cliente:', citasError)
@@ -91,17 +90,16 @@ export async function GET(
       return {
         ...cita,
         fecha: format(fecha, 'yyyy-MM-dd'),
-        hora_inicio: format(new Date(`2000-01-01T${cita.hora_inicio}`), 'HH:mm'),
-        hora_fin: format(new Date(`2000-01-01T${cita.hora_fin}`), 'HH:mm'),
+        hora: format(new Date(`2000-01-01T${cita.hora}`), 'HH:mm'),
         created_at: format(new Date(cita.created_at), "yyyy-MM-dd'T'HH:mm:ssXXX"),
         updated_at: format(new Date(cita.updated_at), "yyyy-MM-dd'T'HH:mm:ssXXX"),
-        tratamiento_nombre: cita.tratamiento[0]?.nombre || '',
-        subtratamiento_nombre: cita.sub_tratamiento[0]?.nombre || '',
-        duracion: cita.sub_tratamiento[0]?.duracion || 0,
-        precio: cita.sub_tratamiento[0]?.precio || 0,
+        tratamiento_nombre: cita.rf_tratamientos[0]?.nombre_tratamiento || '',
+        subtratamiento_nombre: cita.rf_subtratamientos[0]?.nombre_subtratamiento || '',
+        duracion: cita.rf_subtratamientos[0]?.duracion || 0,
+        precio: cita.rf_subtratamientos[0]?.precio || 0,
         estado,
-        tratamiento: undefined, // Eliminar objetos anidados
-        sub_tratamiento: undefined
+        rf_tratamientos: undefined, // Eliminar objetos anidados
+        rf_subtratamientos: undefined
       }
     })
 

@@ -86,12 +86,12 @@ export async function verificarBaseDatos() {
 
     // Verificar tabla citas
     const { error: citasError } = await supabase
-      .from('citas')
+      .from('rf_citas')
       .select('id')
       .limit(1)
     
     if (citasError?.code === '42P01') {
-      return { ok: false, error: 'Tabla citas no existe', missingTables: ['citas'] }
+      return { ok: false, error: 'Tabla rf_citas no existe', missingTables: ['rf_citas'] }
     }
 
     return { ok: true }
@@ -258,11 +258,11 @@ export async function verificarDisponibilidadBox(
 
     // Buscar citas que se superpongan con el horario solicitado
     const { data: citasExistentes, error } = await supabase
-      .from('citas')
-      .select('id, hora_inicio, hora_fin')
+      .from('rf_citas')
+      .select('id, hora')
       .eq('fecha', fecha)
-      .eq('box_id', box)
-      .or(`and(hora_inicio.lte.${horaFin},hora_fin.gt.${horaInicio}),and(hora_inicio.lt.${horaFin},hora_fin.gte.${horaInicio})`)
+      .eq('box', box)
+      .eq('hora', horaInicio)
 
     if (error) {
       console.error('Error verificando disponibilidad:', error)
@@ -271,10 +271,9 @@ export async function verificarDisponibilidadBox(
 
     console.log('Citas existentes encontradas:', {
       total: citasExistentes?.length || 0,
-      citas: citasExistentes?.map((c: { id: string, hora_inicio: string, hora_fin: string }) => ({
+      citas: citasExistentes?.map((c: { id: string, hora: string }) => ({
         id: c.id,
-        horaInicio: c.hora_inicio,
-        horaFin: c.hora_fin
+        hora: c.hora
       }))
     })
 
@@ -570,7 +569,7 @@ export async function getCitasPorFecha(fecha: Date, obtenerMesCompleto: boolean 
 
 export async function crearCita(cita: Omit<Cita, 'id' | 'created_at' | 'updated_at'>) {
   const { data, error } = await supabase
-    .from('citas')
+    .from('rf_citas')
     .insert(cita)
     .select()
     .single()
@@ -581,7 +580,7 @@ export async function crearCita(cita: Omit<Cita, 'id' | 'created_at' | 'updated_
 
 export async function actualizarCita(id: string, cita: Partial<Cita>) {
   const { data, error } = await supabase
-    .from('citas')
+    .from('rf_citas')
     .update(cita)
     .eq('id', id)
     .select()
@@ -593,7 +592,7 @@ export async function actualizarCita(id: string, cita: Partial<Cita>) {
 
 export async function eliminarCita(id: string) {
   const { error } = await supabase
-    .from('citas')
+    .from('rf_citas')
     .delete()
     .eq('id', id)
   
@@ -611,7 +610,7 @@ export function suscribirACitas(fecha: Date, callback: (citas: { [key: string]: 
       {
         event: '*',
         schema: 'public',
-        table: 'citas',
+        table: 'rf_citas',
         filter: `fecha=eq.${fechaStr}`
       },
       async () => {

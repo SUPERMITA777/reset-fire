@@ -672,19 +672,16 @@ const SeleccionTratamientos = () => {
 
     // Crear la cita con el paciente_id obtenido
     const citaParaInsertar = {
-      nombre_completo: citaData.cliente_data?.nombre_completo || 'Cliente sin nombre',
-      dni: citaData.cliente_data?.dni || null,
-      whatsapp: citaData.cliente_data?.whatsapp || null,
-      fecha: citaData.fecha,
-      hora_inicio: citaData.hora,
-      hora_fin: citaData.hora, // Por ahora usar la misma hora
-      box_id: citaData.box,
+      paciente_id: pacienteId,
       tratamiento_id: citaData.tratamiento_id,
-      sub_tratamiento_id: citaData.subtratamiento_id,
-      duracion: citaData.duracion || 30,
+      subtratamiento_id: citaData.subtratamiento_id,
+      fecha: citaData.fecha,
+      hora: citaData.hora,
+      box: citaData.box,
       precio: citaData.precio || 0,
-      senia: citaData.sena || 0,
-      observaciones: citaData.notas || null
+      sena: citaData.sena || 0,
+      estado: citaData.estado || 'reservado',
+      notas: citaData.notas || null
     }
 
     console.log('📊 Datos de cita para insertar:', citaParaInsertar);
@@ -692,7 +689,7 @@ const SeleccionTratamientos = () => {
     console.log('📊 Cliente ID:', pacienteId);
 
     const { data, error } = await supabaseClient
-      .from('citas')
+      .from('rf_citas')
       .insert(citaParaInsertar)
       .select()
       .single()

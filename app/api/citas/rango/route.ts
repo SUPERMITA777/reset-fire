@@ -5,30 +5,28 @@ import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth 
 
 // Interfaces para tipar la respuesta de Supabase
 interface Tratamiento {
-  nombre: string
+  nombre_tratamiento: string
 }
 
 interface SubTratamiento {
-  nombre: string
+  nombre_subtratamiento: string
 }
 
 interface CitaSupabase {
   id: string
   fecha: string
-  hora_inicio: string
-  hora_fin: string
-  box_id: number
-  color: string
+  hora: string
+  box: number
   nombre_completo: string
   dni: string | null
   whatsapp: string | null
   tratamiento_id: string
-  sub_tratamiento_id: string
-  observaciones: string | null
+  subtratamiento_id: string
+  notas: string | null
   created_at: string | null
   updated_at: string | null
-  tratamiento: Tratamiento
-  sub_tratamiento: SubTratamiento
+  rf_tratamientos: Tratamiento
+  rf_subtratamientos: SubTratamiento
 }
 
 export async function GET(request: Request) {
@@ -68,35 +66,35 @@ export async function GET(request: Request) {
 
     // Consultar las citas
     const { data: citas, error: citasError } = await supabase
-      .from('citas')
+      .from('rf_citas')
       .select(`
         id,
         fecha,
-        hora_inicio,
-        hora_fin,
-        box_id,
-        color,
-        nombre_completo,
-        tratamiento_id,
-        sub_tratamiento_id,
-        observaciones,
+        hora,
+        box,
+        notas,
         created_at,
         updated_at,
-        tratamiento:tratamiento_id (
+        rf_tratamientos!inner (
           id,
-          nombre
+          nombre_tratamiento
         ),
-        sub_tratamiento:sub_tratamiento_id (
+        rf_subtratamientos!inner (
           id,
-          nombre,
+          nombre_subtratamiento,
           duracion,
           precio
+        ),
+        rf_clientes!inner (
+          nombre_completo,
+          dni,
+          whatsapp
         )
       `)
       .gte('fecha', format(fechaInicio, 'yyyy-MM-dd'))
       .lte('fecha', format(fechaFin, 'yyyy-MM-dd'))
       .order('fecha', { ascending: true })
-      .order('hora_inicio', { ascending: true })
+      .order('hora', { ascending: true })
 
     if (citasError) {
       return NextResponse.json({ error: 'Error al obtener citas' }, { status: 500 })
@@ -110,18 +108,18 @@ export async function GET(request: Request) {
     const citasFormateadas = citas.map((cita: any) => ({
       id: cita.id,
       fecha: cita.fecha,
-      horaInicio: cita.hora_inicio,
-      horaFin: cita.hora_fin,
-      box: `Box ${cita.box_id}`,
-      box_id: cita.box_id,
-      nombreTratamiento: cita.tratamiento.nombre,
-      nombreSubTratamiento: cita.sub_tratamiento.nombre,
-      nombreCompleto: cita.nombre_completo,
+      horaInicio: cita.hora,
+      horaFin: cita.hora,
+      box: `Box ${cita.box}`,
+      box_id: cita.box,
+      nombreTratamiento: cita.rf_tratamientos.nombre_tratamiento,
+      nombreSubTratamiento: cita.rf_subtratamientos.nombre_subtratamiento,
+      nombreCompleto: cita.rf_clientes.nombre_completo,
       tratamiento: cita.tratamiento_id,
-      subTratamiento: cita.sub_tratamiento_id,
-      notas: cita.observaciones || undefined,
+      subTratamiento: cita.subtratamiento_id,
+      notas: cita.notas || undefined,
       estado: 'reservado' as const,
-      color: cita.color || '#808080',
+      color: '#808080',
       created_at: cita.created_at,
       updated_at: cita.updated_at
     }))
