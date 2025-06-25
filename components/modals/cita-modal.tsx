@@ -355,30 +355,35 @@ export function CitaModal({
       console.log('📡 Consultando base de datos...');
       console.log('🔧 URL de consulta:', `rf_clientes?select=id,dni,nombre_completo,whatsapp&whatsapp=eq.${whatsapp}`);
       
-      // Primero hacer una consulta de prueba para verificar que la tabla existe
-      console.log('🧪 Haciendo consulta de prueba...');
-      const { data: testData, error: testError } = await supabase
+      // Verificar que supabase esté disponible
+      console.log('🔧 Verificando cliente Supabase:', !!supabase);
+      
+      // Hacer una consulta simple primero
+      console.log('🧪 Haciendo consulta simple...');
+      const { data: simpleData, error: simpleError } = await supabase
         .from('rf_clientes')
-        .select('count')
+        .select('*')
         .limit(1);
       
-      console.log('🧪 Resultado de prueba:', { testData, testError });
+      console.log('🧪 Resultado de consulta simple:', { simpleData, simpleError });
       
-      if (testError) {
-        console.error('❌ Error en consulta de prueba:', testError);
-        throw new Error(`Error de conexión: ${testError.message}`);
+      if (simpleError) {
+        console.error('❌ Error en consulta simple:', simpleError);
+        throw new Error(`Error de conexión: ${simpleError.message}`);
       }
       
+      // Ahora hacer la consulta específica
+      console.log('🔍 Haciendo consulta específica...');
       const { data: cliente, error } = await supabase
         .from('rf_clientes')
         .select('id, dni, nombre_completo, whatsapp')
         .eq('whatsapp', whatsapp)
         .maybeSingle()
 
-      console.log('📊 Respuesta de la consulta:', { data: cliente, error });
+      console.log('📊 Respuesta de la consulta específica:', { data: cliente, error });
 
       if (error) {
-        console.error('❌ Error en consulta:', error);
+        console.error('❌ Error en consulta específica:', error);
         console.error('❌ Detalles del error:', {
           message: error.message,
           code: error.code,
