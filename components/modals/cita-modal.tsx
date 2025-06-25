@@ -353,14 +353,38 @@ export function CitaModal({
     
     try {
       console.log('📡 Consultando base de datos...');
+      console.log('🔧 URL de consulta:', `rf_clientes?select=id,dni,nombre_completo,whatsapp&whatsapp=eq.${whatsapp}`);
+      
+      // Primero hacer una consulta de prueba para verificar que la tabla existe
+      console.log('🧪 Haciendo consulta de prueba...');
+      const { data: testData, error: testError } = await supabase
+        .from('rf_clientes')
+        .select('count')
+        .limit(1);
+      
+      console.log('🧪 Resultado de prueba:', { testData, testError });
+      
+      if (testError) {
+        console.error('❌ Error en consulta de prueba:', testError);
+        throw new Error(`Error de conexión: ${testError.message}`);
+      }
+      
       const { data: cliente, error } = await supabase
         .from('rf_clientes')
         .select('id, dni, nombre_completo, whatsapp')
         .eq('whatsapp', whatsapp)
         .maybeSingle()
 
+      console.log('📊 Respuesta de la consulta:', { data: cliente, error });
+
       if (error) {
         console.error('❌ Error en consulta:', error);
+        console.error('❌ Detalles del error:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
         throw error
       }
 
@@ -376,6 +400,9 @@ export function CitaModal({
       }
     } catch (error) {
       console.error('❌ Error al buscar cliente:', error)
+      console.error('❌ Tipo de error:', typeof error);
+      console.error('❌ Error completo:', JSON.stringify(error, null, 2));
+      
       toast({
         title: "Error",
         description: "No se pudo buscar el cliente",
