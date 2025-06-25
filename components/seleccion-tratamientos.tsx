@@ -575,7 +575,7 @@ const SeleccionTratamientos = () => {
         // Primero buscar si existe un cliente con ese WhatsApp
         const { data: existingClient, error: searchError } = await supabaseClient
           .from('rf_clientes')
-          .select('id, dni, nombre_completo, whatsapp')
+          .select('id, dni, nombre, apellido, whatsapp')
           .eq('whatsapp', citaData.cliente_data.whatsapp)
           .single()
 
@@ -585,11 +585,13 @@ const SeleccionTratamientos = () => {
 
         if (existingClient) {
           // Si existe, actualizar datos del cliente solo si han cambiado
-          if (existingClient.nombre_completo !== citaData.cliente_data.nombre_completo || 
+          const nombreCompleto = `${existingClient.nombre} ${existingClient.apellido}`.trim();
+          if (nombreCompleto !== citaData.cliente_data.nombre_completo || 
               existingClient.dni !== citaData.cliente_data.dni) {
             
             const updateData: any = {
-              nombre_completo: citaData.cliente_data.nombre_completo
+              nombre: citaData.cliente_data.nombre_completo.split(' ')[0] || '',
+              apellido: citaData.cliente_data.nombre_completo.split(' ').slice(1).join(' ') || ''
             };
             
             // Solo actualizar DNI si existe y no está vacío
@@ -609,8 +611,13 @@ const SeleccionTratamientos = () => {
           pacienteId = existingClient.id
         } else {
           // Si no existe, crear nuevo cliente
+          const nombreCompleto = citaData.cliente_data.nombre_completo;
+          const nombre = nombreCompleto.split(' ')[0] || '';
+          const apellido = nombreCompleto.split(' ').slice(1).join(' ') || '';
+          
           const clienteData: any = {
-            nombre_completo: citaData.cliente_data.nombre_completo,
+            nombre: nombre,
+            apellido: apellido,
             whatsapp: citaData.cliente_data.whatsapp
           };
           

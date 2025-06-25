@@ -400,7 +400,7 @@ export function CitaModal({
       console.log('🔍 Haciendo consulta específica...');
       const { data: cliente, error } = await supabase
         .from('rf_clientes')
-        .select('id, dni, nombre_completo, whatsapp')
+        .select('id, dni, nombre, apellido, whatsapp')
         .eq('whatsapp', whatsapp)
         .maybeSingle()
 
@@ -420,7 +420,7 @@ export function CitaModal({
       if (cliente) {
         console.log('✅ Cliente encontrado:', cliente);
         form.setValue('dni', cliente.dni || '')
-        form.setValue('nombre_completo', cliente.nombre_completo)
+        form.setValue('nombre_completo', `${cliente.nombre} ${cliente.apellido}`.trim())
         form.setValue('whatsapp', cliente.whatsapp || '')
         form.setValue('paciente_id', cliente.id)
         console.log('✅ Datos del cliente cargados en el formulario');
@@ -475,7 +475,7 @@ export function CitaModal({
     try {
       const { data: cliente, error } = await supabase
         .from('rf_clientes')
-        .select('id, dni, nombre_completo, whatsapp')
+        .select('id, dni, nombre, apellido, whatsapp')
         .eq('whatsapp', whatsapp)
         .maybeSingle()
 
@@ -489,7 +489,7 @@ export function CitaModal({
               i === index ? {
             ...c,
             dni: cliente.dni || '',
-            nombre_completo: cliente.nombre_completo,
+            nombre_completo: `${cliente.nombre} ${cliente.apellido}`.trim(),
             whatsapp: cliente.whatsapp || '',
             paciente_id: cliente.id
           } : c
