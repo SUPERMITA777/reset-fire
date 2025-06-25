@@ -169,8 +169,7 @@ export default function DisponibilidadPage() {
       let query = supabase
         .from("rf_disponibilidad")
         .select("id, fecha_inicio, fecha_fin")
-        .eq("tratamiento_id", tratamientoId)
-        .or(`fecha_inicio.lte.${formData.fecha_fin},fecha_fin.gte.${formData.fecha_inicio}`);
+        .eq("tratamiento_id", tratamientoId);
 
       // Solo agregamos el filtro de ID si estamos editando una disponibilidad existente
       if (editingDisponibilidad?.id) {
@@ -197,17 +196,17 @@ export default function DisponibilidadPage() {
 
       console.log("Disponibilidades existentes encontradas:", disponibilidadesExistentes);
 
-      // Verificar solapamiento
+      // Verificar solapamiento manualmente
       const haySolapamiento = disponibilidadesExistentes?.some(disp => {
         const inicioExistente = new Date(disp.fecha_inicio);
         const finExistente = new Date(disp.fecha_fin);
         const inicioNueva = new Date(formData.fecha_inicio);
         const finNueva = new Date(formData.fecha_fin);
 
+        // Verificar si hay solapamiento: dos rangos se solapan si el inicio de uno es menor o igual al fin del otro
+        // y el fin de uno es mayor o igual al inicio del otro
         const solapamiento = (
-          (inicioNueva >= inicioExistente && inicioNueva <= finExistente) || // La fecha inicio está dentro del rango existente
-          (finNueva >= inicioExistente && finNueva <= finExistente) || // La fecha fin está dentro del rango existente
-          (inicioNueva <= inicioExistente && finNueva >= finExistente) // El nuevo rango engloba al existente
+          (inicioNueva <= finExistente && finNueva >= inicioExistente)
         );
 
         if (solapamiento) {
