@@ -860,10 +860,10 @@ const SeleccionTratamientos = () => {
   }
 
   return (
-    <div className="w-full space-y-6 pt-8 mt-4">
+    <div className="w-full space-y-4 sm:space-y-6 pt-4 sm:pt-8 mt-2 sm:mt-4">
       {/* Botón para volver atrás */}
       {(tratamientoSeleccionado || subTratamientoSeleccionado) && (
-        <Button variant="ghost" onClick={volverAtras} className="mb-4">
+        <Button variant="ghost" onClick={volverAtras} className="mb-2 sm:mb-4">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Volver
         </Button>
@@ -871,10 +871,10 @@ const SeleccionTratamientos = () => {
 
       {/* Enlace a la página de clientes */}
       {!tratamientoSeleccionado && (
-        <div className="flex justify-end mb-6">
+        <div className="flex justify-end mb-4 sm:mb-6">
           <Link href="/clientes-landing">
-            <Button variant="outline" className="bg-gold hover:bg-gold/90 text-white border-gold">
-              <Sparkles className="mr-2 h-4 w-4" />
+            <Button variant="outline" className="bg-gold hover:bg-gold/90 text-white border-gold text-xs sm:text-sm">
+              <Sparkles className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               Ver Página de Clientes
             </Button>
           </Link>
@@ -883,33 +883,25 @@ const SeleccionTratamientos = () => {
 
       {/* Vista de selección de tratamiento */}
       {!tratamientoSeleccionado && (
-        <div 
-          className="grid gap-4" 
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1rem',
-            width: '100%'
-          }}
-        >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
           {tratamientos.map((tratamiento) => (
             <Card
               key={tratamiento.id}
-              className="cursor-pointer hover:border-primary transition-colors min-h-[120px] flex flex-col justify-between"
+              className="cursor-pointer hover:border-primary transition-colors min-h-[100px] sm:min-h-[120px] flex flex-col justify-between"
               onClick={() => seleccionarTratamiento(tratamiento)}
               style={{
                 backgroundColor: buttonBgColor,
                 borderRadius: 8,
-                maxWidth: '300px',
-                minWidth: '200px'
+                maxWidth: '100%',
+                minWidth: 'auto'
               }}
             >
-              <CardHeader className="p-3">
-                <CardTitle className="text-sm font-medium truncate">{tratamiento.nombre}</CardTitle>
+              <CardHeader className="p-2 sm:p-3">
+                <CardTitle className="text-xs sm:text-sm font-medium truncate">{tratamiento.nombre}</CardTitle>
                 <CardDescription className="text-xs">{tratamiento.sub_tratamientos.length} sub-tratamientos</CardDescription>
               </CardHeader>
-              <CardFooter className="flex justify-end p-3 pt-0">
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <CardFooter className="flex justify-end p-2 sm:p-3 pt-0">
+                <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
               </CardFooter>
             </Card>
           ))}
@@ -919,16 +911,8 @@ const SeleccionTratamientos = () => {
       {/* Vista de selección de sub-tratamiento */}
       {tratamientoSeleccionado && !subTratamientoSeleccionado && (
         <div className="w-full">
-          <h2 className="text-2xl font-bold mb-4">{tratamientoSeleccionado.nombre}</h2>
-          <div 
-            className="grid gap-4" 
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-              gap: '1rem',
-              width: '100%'
-            }}
-          >
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 sm:mb-4">{tratamientoSeleccionado.nombre}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {tratamientoSeleccionado.sub_tratamientos.map((subTratamiento) => (
               <Card
                 key={subTratamiento.id}
@@ -941,21 +925,21 @@ const SeleccionTratamientos = () => {
                   tratamiento_id: tratamientoSeleccionado.id
                 })}
               >
-                <CardHeader>
-                  <CardTitle className="text-base">{subTratamiento.nombre}</CardTitle>
-                  <div className="flex gap-2 mt-2">
-                    <Badge variant="outline" className="flex items-center gap-1 text-xs">
+                <CardHeader className="p-3 sm:p-4">
+                  <CardTitle className="text-sm sm:text-base">{subTratamiento.nombre}</CardTitle>
+                  <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 mt-2">
+                    <Badge variant="outline" className="flex items-center gap-1 text-xs w-fit">
                       <Clock className="h-3 w-3" />
                       {formatearDuracion(subTratamiento.duracion)}
                     </Badge>
-                    <Badge variant="outline" className="flex items-center gap-1 text-xs">
+                    <Badge variant="outline" className="flex items-center gap-1 text-xs w-fit">
                       <DollarSign className="h-3 w-3" />
                       {subTratamiento.precio.toLocaleString()}
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardFooter className="flex justify-end">
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                <CardFooter className="flex justify-end p-3 sm:p-4">
+                  <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                 </CardFooter>
               </Card>
             ))}
@@ -966,46 +950,38 @@ const SeleccionTratamientos = () => {
       {/* Vista de fechas disponibles */}
       {tratamientoSeleccionado && subTratamientoSeleccionado && !fechaSeleccionada && (
         <div className="w-full">
-          <h2 className="text-2xl font-bold mb-2">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-2">
             {tratamientoSeleccionado.nombre} - {subTratamientoSeleccionado.nombre}
           </h2>
-          <p className="text-muted-foreground mb-6">
+          <p className="text-muted-foreground mb-4 sm:mb-6 text-sm">
             Selecciona una fecha disponible para agendar tu cita
           </p>
 
           {fechasDisponibles.length === 0 ? (
-            <div className="text-center p-8 border rounded-lg bg-muted/50">
-              <p className="text-lg font-medium mb-2">No hay fechas disponibles</p>
-              <p className="text-muted-foreground">
+            <div className="text-center p-6 sm:p-8 border rounded-lg bg-muted/50">
+              <p className="text-base sm:text-lg font-medium mb-2">No hay fechas disponibles</p>
+              <p className="text-muted-foreground text-sm">
                 Por favor, contacta con el administrador para configurar la disponibilidad de este tratamiento.
               </p>
             </div>
           ) : (
-            <div 
-              className="grid gap-4" 
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                gap: '1rem',
-                width: '100%'
-              }}
-            >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
               {fechasDisponibles.map((fecha) => (
                 <Card
                   key={fecha.id}
                   className="cursor-pointer hover:border-primary transition-colors"
                   onClick={() => seleccionarFecha(fecha.fecha_inicio)}
                 >
-                  <CardHeader>
-                    <CardTitle className="text-lg">
+                  <CardHeader className="p-3 sm:p-4">
+                    <CardTitle className="text-sm sm:text-lg">
                       {formatearFechaParaMostrar(fecha.fecha_inicio)}
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-xs sm:text-sm">
                       Boxes disponibles: {fecha.boxes_disponibles.join(', ')}
                     </CardDescription>
                   </CardHeader>
-                  <CardFooter className="flex justify-end">
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  <CardFooter className="flex justify-end p-3 sm:p-4">
+                    <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                   </CardFooter>
                 </Card>
               ))}
@@ -1017,38 +993,30 @@ const SeleccionTratamientos = () => {
       {/* Vista de horarios disponibles */}
       {tratamientoSeleccionado && subTratamientoSeleccionado && fechaSeleccionada && (
         <div className="w-full">
-          <h2 className="text-2xl font-bold mb-2">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-2">
             {tratamientoSeleccionado.nombre} - {subTratamientoSeleccionado.nombre}
           </h2>
-          <p className="text-muted-foreground mb-6">
+          <p className="text-muted-foreground mb-4 sm:mb-6 text-sm">
             Horarios disponibles para el {formatearFechaParaMostrar(fechaSeleccionada)}
           </p>
 
-          <div 
-            className="grid gap-4" 
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-              gap: '1rem',
-              width: '100%'
-            }}
-          >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {horariosDisponibles.map((horario, index) => (
               <Card
                 key={index}
                 className="cursor-pointer hover:border-primary transition-colors"
                 onClick={() => seleccionarHorario(horario.hora_inicio, horario.boxes_disponibles[0])}
               >
-                <CardHeader>
-                  <CardTitle className="text-lg">
+                <CardHeader className="p-3 sm:p-4">
+                  <CardTitle className="text-sm sm:text-lg">
                     {horario.hora_inicio} - {horario.hora_fin}
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">
                     Boxes disponibles: {horario.boxes_disponibles.join(', ')}
                   </CardDescription>
                 </CardHeader>
-                <CardFooter className="flex justify-end">
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                <CardFooter className="flex justify-end p-3 sm:p-4">
+                  <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                 </CardFooter>
               </Card>
             ))}

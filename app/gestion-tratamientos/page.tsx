@@ -171,21 +171,21 @@ export default function GestionTratamientosPage() {
   };
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-4">
+    <div className="container mx-auto py-4 sm:py-6 px-2 sm:px-4">
+      <div className="flex justify-between items-center mb-4 sm:mb-6">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Link href="/">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
+            <Button variant="ghost" size="sm" className="text-xs sm:text-sm">
+              <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               Volver
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold">Gestión de Tratamientos</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Gestión de Tratamientos</h1>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={openNewTratamiento}>
-              <Plus className="w-4 h-4 mr-2" />Nuevo Tratamiento
+            <Button onClick={openNewTratamiento} className="text-xs sm:text-sm">
+              <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />Nuevo Tratamiento
             </Button>
           </DialogTrigger>
           <DialogContent style={{ maxWidth: 340, width: '100%', padding: 0 }} className="rounded-lg shadow-lg mx-auto">
@@ -235,18 +235,18 @@ export default function GestionTratamientosPage() {
               <hr className="my-2" />
               <div className="flex justify-between items-center mb-2">
                 <span className="font-semibold text-xs">Subtratamientos</span>
-                <Button type="button" size="sm" variant="outline" onClick={openNewSubTratamiento}>+ Agregar</Button>
+                <Button type="button" size="sm" variant="outline" onClick={openNewSubTratamiento} className="text-xs">+ Agregar</Button>
               </div>
               <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
                 {subTratamientosList.map((sub) => (
                   <div key={sub.id} className="flex items-center gap-2 border rounded px-2 py-1">
                     <span className="flex-1 truncate text-xs">{sub.nombre_subtratamiento}</span>
-                    <Button type="button" size="icon" variant="ghost" onClick={() => openEditSubTratamiento(sub)}><Edit className="w-4 h-4" /></Button>
-                    <Button type="button" size="icon" variant="destructive" onClick={() => deleteSubTratamiento(sub.id!)}><Trash2 className="w-4 h-4" /></Button>
+                    <Button type="button" size="icon" variant="ghost" onClick={() => openEditSubTratamiento(sub)}><Edit className="w-3 h-3 sm:w-4 sm:h-4" /></Button>
+                    <Button type="button" size="icon" variant="destructive" onClick={() => deleteSubTratamiento(sub.id!)}><Trash2 className="w-3 h-3 sm:w-4 sm:h-4" /></Button>
                   </div>
                 ))}
               </div>
-              <Button type="submit" className="w-full mt-2">{editingTratamiento ? "Actualizar" : "Crear"}</Button>
+              <Button type="submit" className="w-full mt-2 text-xs sm:text-sm">{editingTratamiento ? "Actualizar" : "Crear"}</Button>
             </form>
           </DialogContent>
         </Dialog>
@@ -298,9 +298,9 @@ export default function GestionTratamientosPage() {
               <Label className="text-xs">Duración (min)</Label>
               <Input type="number" min="1" max={999999} value={isNaN(subTratamientoForm.duracion) || subTratamientoForm.duracion === undefined ? '' : subTratamientoForm.duracion} onChange={e => setSubTratamientoForm({ ...subTratamientoForm, duracion: e.target.value === '' ? 1 : parseInt(e.target.value) })} required className="h-8 text-xs px-2 w-20" />
               <div className="flex gap-2 mt-2">
-                <Button type="submit" className="flex-1">{editingSub ? "Actualizar" : "Crear"}</Button>
+                <Button type="submit" className="flex-1 text-xs sm:text-sm">{editingSub ? "Actualizar" : "Crear"}</Button>
                 {editingSub && editingSub.id && (
-                  <Button type="button" variant="destructive" className="flex-1" onClick={() => deleteSubTratamiento(editingSub.id!)}>Eliminar</Button>
+                  <Button type="button" variant="destructive" className="flex-1 text-xs sm:text-sm" onClick={() => deleteSubTratamiento(editingSub.id!)}>Eliminar</Button>
                 )}
               </div>
             </form>
@@ -308,22 +308,22 @@ export default function GestionTratamientosPage() {
         </Dialog>
       </div>
       {isLoading ? (
-        <p>Cargando tratamientos...</p>
+        <p className="text-sm">Cargando tratamientos...</p>
       ) : (
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {tratamientos.map((trat) => (
             <Card key={trat.id} className="w-full">
-              <CardHeader className="p-4">
+              <CardHeader className="p-3 sm:p-4">
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle className="text-base">{trat.nombre_tratamiento}</CardTitle>
+                    <CardTitle className="text-sm sm:text-base">{trat.nombre_tratamiento}</CardTitle>
                     <CardDescription className="text-xs">Box: {trat.box}</CardDescription>
                   </div>
                   <div className="flex gap-1">
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-8 px-2 text-xs"
+                      className="h-6 sm:h-8 px-1 sm:px-2 text-xs"
                       onClick={() => {
                         setCurrentTratamientoId(trat.id);
                         openNewSubTratamiento();
@@ -334,7 +334,7 @@ export default function GestionTratamientosPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-8 w-8 p-0"
+                      className="h-6 w-6 sm:h-8 sm:w-8 p-0"
                       onClick={() => openEditTratamiento(trat)}
                     >
                       <Edit className="w-3 h-3" />
@@ -342,7 +342,7 @@ export default function GestionTratamientosPage() {
                     <Button
                       size="sm"
                       variant="destructive"
-                      className="h-8 w-8 p-0"
+                      className="h-6 w-6 sm:h-8 sm:w-8 p-0"
                       onClick={() => deleteTratamiento(trat.id)}
                     >
                       <Trash2 className="w-3 h-3" />
@@ -350,7 +350,7 @@ export default function GestionTratamientosPage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-4 pt-0">
+              <CardContent className="p-3 sm:p-4 pt-0">
                 {trat.rf_subtratamientos && trat.rf_subtratamientos.length > 0 && (
                   <div>
                     <h4 className="font-semibold text-xs mb-1">Subtratamientos:</h4>

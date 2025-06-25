@@ -351,49 +351,50 @@ export default function DisponibilidadPage() {
   }
 
   return (
-    <div className="container py-6 space-y-6">
+    <div className="container py-4 sm:py-6 px-2 sm:px-4 space-y-4 sm:space-y-6">
       {!selectedTratamiento ? (
         <>
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">Disponibilidad</h1>
-            <Button onClick={openNew}>
-              <Plus className="w-4 h-4 mr-2" />
+            <h1 className="text-xl sm:text-2xl font-semibold">Disponibilidad</h1>
+            <Button onClick={openNew} className="text-xs sm:text-sm">
+              <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               Nueva Disponibilidad
             </Button>
           </div>
 
           {isLoading ? (
-            <p>Cargando tratamientos...</p>
+            <p className="text-sm">Cargando tratamientos...</p>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {tratamientos.map((trat) => (
                 <Card key={trat.id} className="cursor-pointer hover:border-primary transition-colors">
-                  <CardHeader>
+                  <CardHeader className="p-3 sm:p-4">
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle className="text-lg">{trat.nombre}</CardTitle>
-                        <CardDescription>
+                        <CardTitle className="text-sm sm:text-lg">{trat.nombre}</CardTitle>
+                        <CardDescription className="text-xs sm:text-sm">
                           {trat.disponibilidades?.length || 0} disponibilidades futuras
                         </CardDescription>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1 sm:gap-2">
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => setSelectedTratamiento(trat)}
+                          className="text-xs"
                         >
                           VER DISPONIBILIDADES
                         </Button>
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-3 sm:p-4">
                     {trat.disponibilidades && trat.disponibilidades.length > 0 ? (
                       <div>
-                        <h4 className="font-semibold mb-2">Próximas disponibilidades:</h4>
+                        <h4 className="font-semibold mb-2 text-xs sm:text-sm">Próximas disponibilidades:</h4>
                         <ul className="space-y-1">
                           {trat.disponibilidades.slice(0, 3).map((disp) => (
-                            <li key={disp.id} className="text-sm">
+                            <li key={disp.id} className="text-xs sm:text-sm">
                               <span className="font-medium">
                                 {format(parseISO(disp.fecha_inicio), "dd/MM/yyyy", { locale: es })}
                                 {disp.fecha_fin && disp.fecha_fin !== disp.fecha_inicio && (
@@ -409,10 +410,10 @@ export default function DisponibilidadPage() {
                         </ul>
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">No hay disponibilidades futuras</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">No hay disponibilidades futuras</p>
                     )}
                   </CardContent>
-                  <CardFooter className="flex justify-between">
+                  <CardFooter className="flex justify-between p-3 sm:p-4">
                     <Button
                       size="sm"
                       variant="ghost"
@@ -420,11 +421,12 @@ export default function DisponibilidadPage() {
                         e.stopPropagation();
                         openNewForTratamiento(trat);
                       }}
+                      className="text-xs"
                     >
-                      <Plus className="h-4 w-4 mr-2" />
+                      <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                       Nueva Disponibilidad
                     </Button>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                   </CardFooter>
                 </Card>
               ))}
@@ -433,23 +435,24 @@ export default function DisponibilidadPage() {
         </>
       ) : (
         <>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setSelectedTratamiento(null)}
+              className="text-xs sm:text-sm"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
               Volver
             </Button>
-            <h1 className="text-2xl font-semibold">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-semibold">
               Disponibilidad - {selectedTratamiento.nombre}
             </h1>
           </div>
 
-          <div className="flex justify-end mb-4">
-            <Button onClick={() => openNewForTratamiento(selectedTratamiento)}>
-              <Plus className="w-4 h-4 mr-2" />
+          <div className="flex justify-end mb-3 sm:mb-4">
+            <Button onClick={() => openNewForTratamiento(selectedTratamiento)} className="text-xs sm:text-sm">
+              <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               Nueva Disponibilidad
             </Button>
           </div>
