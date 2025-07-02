@@ -597,83 +597,83 @@ html {
   }
 }
 
-/* Tamaños de texto para gestión de tratamientos */
+/* Tamaños de texto para gestión de tratamientos - REDUCIDOS */
 .gestion-tratamiento-title {
-  font-size: 0.875rem !important; /* text-sm */
-  line-height: 1.25rem !important;
+  font-size: 0.75rem !important; /* text-xs */
+  line-height: 1rem !important;
 }
 
 @media (min-width: 768px) {
   .gestion-tratamiento-title {
-    font-size: 1.125rem !important; /* text-lg */
-    line-height: 1.75rem !important;
+    font-size: 0.875rem !important; /* text-sm */
+    line-height: 1.25rem !important;
   }
 }
 
 @media (min-width: 1024px) {
   .gestion-tratamiento-title {
-    font-size: 1.25rem !important; /* text-xl */
-    line-height: 1.75rem !important;
+    font-size: 1rem !important; /* text-base */
+    line-height: 1.5rem !important;
   }
 }
 
 @media (min-width: 1280px) {
   .gestion-tratamiento-title {
-    font-size: 1.5rem !important; /* text-2xl */
-    line-height: 2rem !important;
+    font-size: 1.125rem !important; /* text-lg */
+    line-height: 1.75rem !important;
   }
 }
 
 .gestion-tratamiento-description {
-  font-size: 0.75rem !important; /* text-xs */
-  line-height: 1rem !important;
+  font-size: 0.625rem !important; /* text-xs más pequeño */
+  line-height: 0.875rem !important;
 }
 
 @media (min-width: 768px) {
+  .gestion-tratamiento-description {
+    font-size: 0.75rem !important; /* text-xs */
+    line-height: 1rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
   .gestion-tratamiento-description {
     font-size: 0.875rem !important; /* text-sm */
     line-height: 1.25rem !important;
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1280px) {
   .gestion-tratamiento-description {
     font-size: 1rem !important; /* text-base */
     line-height: 1.5rem !important;
   }
 }
 
-@media (min-width: 1280px) {
-  .gestion-tratamiento-description {
-    font-size: 1.125rem !important; /* text-lg */
-    line-height: 1.75rem !important;
-  }
-}
-
-/* Estilos para subtratamientos en gestión */
+/* Estilos para subtratamientos en gestión - REDUCIDOS */
 .gestion-subtratamiento-item {
-  font-size: 0.75rem !important; /* text-xs */
-  line-height: 1rem !important;
+  font-size: 0.625rem !important; /* text-xs más pequeño */
+  line-height: 0.875rem !important;
 }
 
 @media (min-width: 768px) {
+  .gestion-subtratamiento-item {
+    font-size: 0.75rem !important; /* text-xs */
+    line-height: 1rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
   .gestion-subtratamiento-item {
     font-size: 0.875rem !important; /* text-sm */
     line-height: 1.25rem !important;
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1280px) {
   .gestion-subtratamiento-item {
     font-size: 1rem !important; /* text-base */
     line-height: 1.5rem !important;
-  }
-}
-
-@media (min-width: 1280px) {
-  .gestion-subtratamiento-item {
-    font-size: 1.125rem !important; /* text-lg */
-    line-height: 1.75rem !important;
   }
 }
 
@@ -718,6 +718,9 @@ html {
   background-color: hsl(var(--muted) / 0.1) !important;
   border-bottom-left-radius: 0.5rem !important;
   border-bottom-right-radius: 0.5rem !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  backdrop-filter: blur(4px) !important;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1) !important;
 }
 
 .gestion-actions-section:hover {
