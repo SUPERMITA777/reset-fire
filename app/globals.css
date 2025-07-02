@@ -662,6 +662,39 @@ div.gestion-tratamiento-card .card-content,
   display: flex !important;
   flex-direction: column !important;
   min-height: 0 !important;
+  padding-bottom: 4rem !important; /* Espacio para los botones */
+}
+
+@media (min-width: 640px) {
+  div.gestion-tratamiento-card .card-content,
+  .gestion-tratamiento-card .card-content,
+  .card.gestion-tratamiento-card .card-content {
+    padding-bottom: 4.5rem !important;
+  }
+}
+
+@media (min-width: 768px) {
+  div.gestion-tratamiento-card .card-content,
+  .gestion-tratamiento-card .card-content,
+  .card.gestion-tratamiento-card .card-content {
+    padding-bottom: 5rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  div.gestion-tratamiento-card .card-content,
+  .gestion-tratamiento-card .card-content,
+  .card.gestion-tratamiento-card .card-content {
+    padding-bottom: 5.5rem !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  div.gestion-tratamiento-card .card-content,
+  .gestion-tratamiento-card .card-content,
+  .card.gestion-tratamiento-card .card-content {
+    padding-bottom: 6rem !important;
+  }
 }
 
 /* Forzar que el contenedor principal use el grid correcto */
@@ -845,6 +878,10 @@ div[class*="container"] {
 
 /* Estilos para la sección de botones en la parte inferior */
 .gestion-actions-section {
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
   border-top: 1px solid hsl(var(--border)) !important;
   background-color: hsl(var(--muted) / 0.1) !important;
   border-bottom-left-radius: 0.5rem !important;
@@ -852,6 +889,7 @@ div[class*="container"] {
   -webkit-backdrop-filter: blur(4px) !important;
   backdrop-filter: blur(4px) !important;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1) !important;
+  z-index: 10 !important;
 }
 
 .gestion-actions-section:hover {
