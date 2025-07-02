@@ -170,7 +170,7 @@ export default function ClientesPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              placeholder="Buscar por DNI, nombre o WhatsApp..."
+              placeholder="Buscar en todos los campos: nombre, DNI, WhatsApp, citas, tratamientos..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -183,6 +183,15 @@ export default function ClientesPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Contador de resultados */}
+      {searchTerm && (
+        <div className="mb-4">
+          <p className="text-sm text-gray-600">
+            {searching ? 'Buscando...' : `Se encontraron ${clientes.length} cliente(s) que coinciden con "${searchTerm}"`}
+          </p>
+        </div>
+      )}
 
       {/* Lista de clientes */}
       <div className="grid gap-4">
@@ -242,6 +251,15 @@ export default function ClientesPage() {
                         </span>
                       </div>
                     </div>
+                    
+                    {/* Información adicional cuando hay búsqueda activa */}
+                    {searchTerm && cliente.total_citas > 0 && (
+                      <div className="mt-2 p-2 bg-blue-50 rounded-md">
+                        <p className="text-xs text-blue-700">
+                          <strong>Coincidencia encontrada:</strong> Este cliente tiene {cliente.total_citas} cita(s) que coinciden con tu búsqueda.
+                        </p>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="text-right text-sm text-gray-500">

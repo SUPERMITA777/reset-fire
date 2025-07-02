@@ -46,6 +46,10 @@ export async function GET(request: Request) {
           fecha,
           hora,
           estado,
+          notas,
+          precio,
+          sena,
+          box,
           rf_subtratamientos (
             nombre_subtratamiento,
             precio
@@ -57,7 +61,81 @@ export async function GET(request: Request) {
     // Aplicar filtro de búsqueda si se proporciona
     if (search && search.trim()) {
       const searchTerm = search.trim()
-      query = query.or(`dni.ilike.%${searchTerm}%,nombre_completo.ilike.%${searchTerm}%,whatsapp.ilike.%${searchTerm}%`)
+      
+      // Búsqueda más completa que incluye todos los campos relevantes
+      query = query.or(`
+        dni.ilike.%${searchTerm}%,
+        nombre_completo.ilike.%${searchTerm}%,
+        whatsapp.ilike.%${searchTerm}%,
+        id.ilike.%${searchTerm}%,
+        created_at::text.ilike.%${searchTerm}%,
+        updated_at::text.ilike.%${searchTerm}%
+      `)
+      
+      // También buscar en las citas relacionadas
+      query = query.or(`
+        rf_citas.fecha::text.ilike.%${searchTerm}%,
+        rf_citas.hora.ilike.%${searchTerm}%,
+        rf_citas.estado.ilike.%${searchTerm}%,
+        rf_citas.notas.ilike.%${searchTerm}%,
+        rf_citas.precio::text.ilike.%${searchTerm}%,
+        rf_citas.sena::text.ilike.%${searchTerm}%,
+        rf_citas.box::text.ilike.%${searchTerm}%,
+        rf_citas.rf_subtratamientos.nombre_subtratamiento.ilike.%${searchTerm}%,
+        rf_citas.rf_subtratamientos.precio::text.ilike.%${searchTerm}%
+      `)
+      
+      // Búsqueda adicional para términos específicos
+      if (searchTerm.toLowerCase().includes('confirmado') || searchTerm.toLowerCase().includes('completado') || 
+          searchTerm.toLowerCase().includes('cancelado') || searchTerm.toLowerCase().includes('reservado')) {
+        query = query.or(`rf_citas.estado.ilike.%${searchTerm}%`)
+      }
+      
+      // Búsqueda por números (precio, box, etc.)
+      if (/^\d+$/.test(searchTerm)) {
+        query = query.or(`
+          rf_citas.precio.eq.${searchTerm},
+          rf_citas.sena.eq.${searchTerm},
+          rf_citas.box.eq.${searchTerm},
+          rf_citas.rf_subtratamientos.precio.eq.${searchTerm}
+        `)
+      }
+      
+      // Búsqueda por patrones de fecha (dd/mm/yyyy, yyyy-mm-dd, etc.)
+      const datePatterns = [
+        /^\d{2}\/\d{2}\/\d{4}$/, // dd/mm/yyyy
+        /^\d{4}-\d{2}-\d{2}$/,   // yyyy-mm-dd
+        /^\d{2}-\d{2}-\d{4}$/,   // dd-mm-yyyy
+        /^\d{1,2}\/\d{1,2}\/\d{4}$/ // d/m/yyyy
+      ]
+      
+      if (datePatterns.some(pattern => pattern.test(searchTerm))) {
+        // Convertir diferentes formatos de fecha a formato ISO
+        let isoDate = searchTerm
+        if (searchTerm.includes('/')) {
+          const parts = searchTerm.split('/')
+          if (parts.length === 3) {
+            if (parts[0].length === 4) {
+              // yyyy/mm/dd
+              isoDate = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`
+            } else {
+              // dd/mm/yyyy
+              isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+            }
+          }
+        } else if (searchTerm.includes('-')) {
+          const parts = searchTerm.split('-')
+          if (parts.length === 3 && parts[0].length === 2) {
+            // dd-mm-yyyy
+            isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+          }
+        }
+        
+        query = query.or(`
+          rf_citas.fecha.eq.${isoDate},
+          created_at::date.eq.${isoDate}
+        `)
+      }
     }
 
     const { data: clientes, error: clientesError } = await query
