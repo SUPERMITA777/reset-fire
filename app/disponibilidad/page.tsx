@@ -365,10 +365,25 @@ export default function DisponibilidadPage() {
           {isLoading ? (
             <p className="text-sm">Cargando tratamientos...</p>
           ) : (
-            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div 
+              className="grid gap-4" 
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '1rem',
+                width: '100%'
+              }}
+            >
               {tratamientos.map((trat) => (
-                <Card key={trat.id} className="cursor-pointer hover:border-primary transition-colors">
-                  <CardHeader className="p-3 sm:p-4">
+                <Card 
+                  key={trat.id} 
+                  className="cursor-pointer hover:border-primary transition-colors min-h-[120px] flex flex-col justify-between overflow-hidden"
+                  style={{
+                    maxWidth: '300px',
+                    minWidth: '200px'
+                  }}
+                >
+                  <CardHeader className="p-3">
                     <div className="flex justify-between items-start">
                       <div>
                         <CardTitle className="text-sm sm:text-lg">{trat.nombre}</CardTitle>
@@ -380,7 +395,10 @@ export default function DisponibilidadPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setSelectedTratamiento(trat)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedTratamiento(trat);
+                          }}
                           className="text-xs"
                         >
                           VER DISPONIBILIDADES
@@ -388,7 +406,7 @@ export default function DisponibilidadPage() {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-3 sm:p-4">
+                  <CardContent className="p-3">
                     {trat.disponibilidades && trat.disponibilidades.length > 0 ? (
                       <div>
                         <h4 className="font-semibold mb-2 text-xs sm:text-sm">Próximas disponibilidades:</h4>
@@ -413,7 +431,7 @@ export default function DisponibilidadPage() {
                       <p className="text-xs sm:text-sm text-muted-foreground">No hay disponibilidades futuras</p>
                     )}
                   </CardContent>
-                  <CardFooter className="flex justify-between p-3 sm:p-4">
+                  <CardFooter className="flex justify-between p-3 pt-0">
                     <Button
                       size="sm"
                       variant="ghost"
