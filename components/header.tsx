@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { FechaHora } from "@/components/fecha-hora"
+import { CarritoWidget } from "@/components/carrito/carrito-widget"
 
 export function Header() {
   return (
@@ -15,7 +16,10 @@ export function Header() {
             </Link>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <FechaHora />
+            <div className="flex items-center gap-4">
+              <FechaHora />
+              <CarritoWidget />
+            </div>
             <div className="flex flex-row gap-2">
               <Link href="/institucional">
                 <Button variant="default" className="bg-green-600 hover:bg-green-700">

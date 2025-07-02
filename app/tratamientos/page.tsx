@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabase';
+import { AgregarAlCarrito } from '@/components/carrito/agregar-al-carrito';
 
 type Tratamiento = {
   id: string;
@@ -168,8 +169,7 @@ export default function TratamientosPage() {
             {tratamientoSeleccionado.sub_tratamientos.map((subTratamiento) => (
               <Card
                 key={subTratamiento.id}
-                className="cursor-pointer hover:border-primary transition-colors"
-                onClick={() => setSubTratamientoSeleccionado(subTratamiento)}
+                className="hover:border-primary transition-colors"
               >
                 <CardHeader>
                   <CardTitle>{subTratamiento.nombre}</CardTitle>
@@ -184,9 +184,29 @@ export default function TratamientosPage() {
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardFooter className="flex justify-end">
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                </CardFooter>
+                <CardContent>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSubTratamientoSeleccionado(subTratamiento)}
+                      className="flex-1"
+                    >
+                      Ver Disponibilidad
+                    </Button>
+                    <AgregarAlCarrito
+                      tratamiento_id={subTratamiento.tratamiento_id}
+                      subtratamiento_id={subTratamiento.id}
+                      precio={subTratamiento.precio}
+                      nombre_tratamiento={tratamientoSeleccionado.nombre}
+                      nombre_subtratamiento={subTratamiento.nombre}
+                      duracion={subTratamiento.duracion}
+                      variant="default"
+                      size="sm"
+                      className="flex-1"
+                    />
+                  </div>
+                </CardContent>
               </Card>
             ))}
           </div>

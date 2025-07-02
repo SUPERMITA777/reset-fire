@@ -11,6 +11,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Header } from "@/components/header"
 import { BackgroundWrapper } from "@/components/background-wrapper"
 import { Toaster } from "@/components/ui/toaster"
+import { CarritoProvider } from "@/contexts/CarritoContext"
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -49,15 +50,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           enableSystem
           disableTransitionOnChange
         >
-          <BackgroundWrapper>
-            <div className="relative flex min-h-screen flex-col" suppressHydrationWarning>
-              <Header />
-              <main className="flex-1" suppressHydrationWarning>
-                {children}
-              </main>
-            </div>
-          </BackgroundWrapper>
-          <Toaster />
+          <CarritoProvider>
+            <BackgroundWrapper>
+              <div className="relative flex min-h-screen flex-col" suppressHydrationWarning>
+                <Header />
+                <main className="flex-1" suppressHydrationWarning>
+                  {children}
+                </main>
+              </div>
+            </BackgroundWrapper>
+            <Toaster />
+          </CarritoProvider>
         </ThemeProvider>
       </body>
     </html>
