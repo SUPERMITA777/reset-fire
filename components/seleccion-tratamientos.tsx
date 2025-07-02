@@ -861,6 +861,9 @@ const SeleccionTratamientos = () => {
 
   return (
     <div className="w-full space-y-4 sm:space-y-6 pt-4 sm:pt-8 mt-2 sm:mt-4">
+      {/* Indicador de debug temporal */}
+      <div className="debug-indicator"></div>
+      
       {/* Botón para volver atrás */}
       {(tratamientoSeleccionado || subTratamientoSeleccionado) && (
         <Button variant="ghost" onClick={volverAtras} className="mb-2 sm:mb-4">
@@ -883,28 +886,32 @@ const SeleccionTratamientos = () => {
 
       {/* Vista de selección de tratamiento */}
       {!tratamientoSeleccionado && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5">
-          {tratamientos.map((tratamiento) => (
-            <Card
-              key={tratamiento.id}
-              className="cursor-pointer hover:border-primary transition-colors min-h-[100px] sm:min-h-[120px] md:min-h-[140px] lg:min-h-[150px] flex flex-col justify-between"
-              onClick={() => seleccionarTratamiento(tratamiento)}
-              style={{
-                backgroundColor: buttonBgColor,
-                borderRadius: 8,
-                maxWidth: '100%',
-                minWidth: 'auto'
-              }}
-            >
-              <CardHeader className="p-2 sm:p-3 md:p-4">
-                <CardTitle className="text-xs sm:text-sm md:text-base lg:text-lg font-medium truncate">{tratamiento.nombre}</CardTitle>
-                <CardDescription className="text-xs sm:text-sm md:text-sm">{tratamiento.sub_tratamientos.length} sub-tratamientos</CardDescription>
-              </CardHeader>
-              <CardFooter className="flex justify-end p-2 sm:p-3 md:p-4 pt-0">
-                <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 text-muted-foreground" />
-              </CardFooter>
-            </Card>
-          ))}
+        <div className="w-full">
+          <div className="treatment-grid">
+            {tratamientos.map((tratamiento) => (
+              <Card
+                key={tratamiento.id}
+                className="treatment-card cursor-pointer hover:border-primary hover:shadow-lg transition-all duration-200 justify-between"
+                onClick={() => seleccionarTratamiento(tratamiento)}
+                style={{
+                  backgroundColor: buttonBgColor,
+                  borderRadius: 12,
+                }}
+              >
+                <CardHeader className="p-4 md:p-6 lg:p-8 xl:p-10 flex-grow">
+                  <CardTitle className="treatment-title font-semibold leading-tight mb-3">
+                    {tratamiento.nombre}
+                  </CardTitle>
+                  <CardDescription className="treatment-description text-muted-foreground">
+                    {tratamiento.sub_tratamientos.length} sub-tratamientos
+                  </CardDescription>
+                </CardHeader>
+                <CardFooter className="flex justify-end p-4 md:p-6 lg:p-8 xl:p-10 pt-0">
+                  <ChevronRight className="text-muted-foreground h-5 w-5 md:h-7 md:w-7 lg:h-8 lg:w-8 xl:h-10 xl:w-10" />
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
 

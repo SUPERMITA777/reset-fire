@@ -85,6 +85,194 @@ html {
   background: #b8941f;
 }
 
+/* Forzar responsividad en las tarjetas principales */
+.treatment-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 0.75rem !important;
+  width: 100% !important;
+}
+
+/* Tablet */
+@media (min-width: 640px) {
+  .treatment-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem !important;
+  }
+}
+
+/* Tablet Grande */
+@media (min-width: 768px) {
+  .treatment-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 1.25rem !important;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+  .treatment-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 1.5rem !important;
+  }
+}
+
+/* Desktop Grande */
+@media (min-width: 1280px) {
+  .treatment-grid {
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 1.75rem !important;
+  }
+}
+
+/* Desktop XL */
+@media (min-width: 1536px) {
+  .treatment-grid {
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 2rem !important;
+  }
+}
+
+/* Estilos para las tarjetas */
+.treatment-card {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  min-height: 120px !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+@media (min-width: 640px) {
+  .treatment-card {
+    min-height: 140px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .treatment-card {
+    min-height: 160px !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .treatment-card {
+    min-height: 180px !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .treatment-card {
+    min-height: 200px !important;
+  }
+}
+
+@media (min-width: 1536px) {
+  .treatment-card {
+    min-height: 220px !important;
+  }
+}
+
+/* Tamaños de texto responsivos */
+.treatment-title {
+  font-size: 0.875rem !important; /* text-sm */
+  line-height: 1.25rem !important;
+}
+
+@media (min-width: 768px) {
+  .treatment-title {
+    font-size: 1.25rem !important; /* text-xl */
+    line-height: 1.75rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .treatment-title {
+    font-size: 1.5rem !important; /* text-2xl */
+    line-height: 2rem !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .treatment-title {
+    font-size: 1.875rem !important; /* text-3xl */
+    line-height: 2.25rem !important;
+  }
+}
+
+.treatment-description {
+  font-size: 0.75rem !important; /* text-xs */
+  line-height: 1rem !important;
+}
+
+@media (min-width: 768px) {
+  .treatment-description {
+    font-size: 1rem !important; /* text-base */
+    line-height: 1.5rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .treatment-description {
+    font-size: 1.125rem !important; /* text-lg */
+    line-height: 1.75rem !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .treatment-description {
+    font-size: 1.25rem !important; /* text-xl */
+    line-height: 1.75rem !important;
+  }
+}
+
+/* Indicador de debug temporal para verificar breakpoints */
+.debug-indicator {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 9999;
+}
+
+.debug-indicator::after {
+  content: "Móvil";
+}
+
+@media (min-width: 640px) {
+  .debug-indicator::after {
+    content: "Tablet (640px+)";
+  }
+}
+
+@media (min-width: 768px) {
+  .debug-indicator::after {
+    content: "Tablet Grande (768px+)";
+  }
+}
+
+@media (min-width: 1024px) {
+  .debug-indicator::after {
+    content: "Desktop (1024px+)";
+  }
+}
+
+@media (min-width: 1280px) {
+  .debug-indicator::after {
+    content: "Desktop Grande (1280px+)";
+  }
+}
+
+@media (min-width: 1536px) {
+  .debug-indicator::after {
+    content: "Desktop XL (1536px+)";
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
