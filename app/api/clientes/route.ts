@@ -46,23 +46,38 @@ export async function GET(request: Request) {
     if (search && search.trim()) {
       const searchTerm = search.trim()
       
-      // Búsqueda básica en campos del cliente
-      query = query.or(`
-        dni.ilike.%${searchTerm}%,
-        nombre_completo.ilike.%${searchTerm}%,
-        whatsapp.ilike.%${searchTerm}%
-      `)
+      // Búsqueda básica en campos del cliente - versión más simple
+      query = query.ilike('nombre_completo', `%${searchTerm}%`)
     }
 
     console.log('Ejecutando consulta...')
-    const { data: clientes, error: clientesError } = await query
-
-    if (clientesError) {
-      console.error('Error al obtener clientes:', clientesError)
+    console.log('Query object:', query)
+    
+    let clientes: any[] = []
+    let clientesError: any = null
+    
+    try {
+      const result = await query
+      clientes = result.data || []
+      clientesError = result.error
+      console.log('Resultado de la consulta:', { data: clientes?.length, error: clientesError })
+      
+      if (clientesError) {
+        console.error('Error al obtener clientes:', clientesError)
+        return NextResponse.json(
+          { 
+            error: 'Error al obtener la lista de clientes',
+            details: clientesError.message
+          },
+          { status: 500 }
+        )
+      }
+    } catch (queryError) {
+      console.error('Error en la consulta:', queryError)
       return NextResponse.json(
         { 
-          error: 'Error al obtener la lista de clientes',
-          details: clientesError.message
+          error: 'Error en la consulta SQL',
+          details: queryError instanceof Error ? queryError.message : 'Error desconocido'
         },
         { status: 500 }
       )
