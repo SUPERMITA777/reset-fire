@@ -62,79 +62,68 @@ export async function GET(request: Request) {
     if (search && search.trim()) {
       const searchTerm = search.trim()
       
-      // Búsqueda más completa que incluye todos los campos relevantes
+      // Búsqueda básica en campos del cliente
       query = query.or(`
         dni.ilike.%${searchTerm}%,
         nombre_completo.ilike.%${searchTerm}%,
         whatsapp.ilike.%${searchTerm}%,
-        id.ilike.%${searchTerm}%,
-        created_at::text.ilike.%${searchTerm}%,
-        updated_at::text.ilike.%${searchTerm}%
+        id.ilike.%${searchTerm}%
       `)
       
-      // También buscar en las citas relacionadas
-      query = query.or(`
-        rf_citas.fecha::text.ilike.%${searchTerm}%,
-        rf_citas.hora.ilike.%${searchTerm}%,
-        rf_citas.estado.ilike.%${searchTerm}%,
-        rf_citas.notas.ilike.%${searchTerm}%,
-        rf_citas.precio::text.ilike.%${searchTerm}%,
-        rf_citas.sena::text.ilike.%${searchTerm}%,
-        rf_citas.box::text.ilike.%${searchTerm}%,
-        rf_citas.rf_subtratamientos.nombre_subtratamiento.ilike.%${searchTerm}%,
-        rf_citas.rf_subtratamientos.precio::text.ilike.%${searchTerm}%
-      `)
-      
-      // Búsqueda adicional para términos específicos
-      if (searchTerm.toLowerCase().includes('confirmado') || searchTerm.toLowerCase().includes('completado') || 
-          searchTerm.toLowerCase().includes('cancelado') || searchTerm.toLowerCase().includes('reservado')) {
-        query = query.or(`rf_citas.estado.ilike.%${searchTerm}%`)
-      }
-      
-      // Búsqueda por números (precio, box, etc.)
-      if (/^\d+$/.test(searchTerm)) {
-        query = query.or(`
-          rf_citas.precio.eq.${searchTerm},
-          rf_citas.sena.eq.${searchTerm},
-          rf_citas.box.eq.${searchTerm},
-          rf_citas.rf_subtratamientos.precio.eq.${searchTerm}
-        `)
-      }
-      
-      // Búsqueda por patrones de fecha (dd/mm/yyyy, yyyy-mm-dd, etc.)
-      const datePatterns = [
-        /^\d{2}\/\d{2}\/\d{4}$/, // dd/mm/yyyy
-        /^\d{4}-\d{2}-\d{2}$/,   // yyyy-mm-dd
-        /^\d{2}-\d{2}-\d{4}$/,   // dd-mm-yyyy
-        /^\d{1,2}\/\d{1,2}\/\d{4}$/ // d/m/yyyy
-      ]
-      
-      if (datePatterns.some(pattern => pattern.test(searchTerm))) {
-        // Convertir diferentes formatos de fecha a formato ISO
-        let isoDate = searchTerm
-        if (searchTerm.includes('/')) {
-          const parts = searchTerm.split('/')
-          if (parts.length === 3) {
-            if (parts[0].length === 4) {
-              // yyyy/mm/dd
-              isoDate = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`
-            } else {
-              // dd/mm/yyyy
-              isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
-            }
-          }
-        } else if (searchTerm.includes('-')) {
-          const parts = searchTerm.split('-')
-          if (parts.length === 3 && parts[0].length === 2) {
-            // dd-mm-yyyy
-            isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
-          }
-        }
+      // Si la búsqueda incluye términos específicos de citas, hacer una búsqueda adicional
+      const citaTerms = ['confirmado', 'completado', 'cancelado', 'reservado', 'limpieza', 'blanqueamiento']
+      if (citaTerms.some(term => searchTerm.toLowerCase().includes(term))) {
+        // Hacer una consulta adicional para buscar clientes con citas que coincidan
+        const { data: clientesConCitas, error: errorCitas } = await supabase
+          .from('rf_clientes')
+          .select(`
+            *,
+            rf_citas!inner (
+              id,
+              fecha,
+              hora,
+              estado,
+              notas,
+              precio,
+              sena,
+              box,
+              rf_subtratamientos (
+                nombre_subtratamiento,
+                precio
+              )
+            )
+          `)
+          .or(`
+            rf_citas.estado.ilike.%${searchTerm}%,
+            rf_citas.notas.ilike.%${searchTerm}%,
+            rf_citas.rf_subtratamientos.nombre_subtratamiento.ilike.%${searchTerm}%
+          `)
+          .order('nombre_completo', { ascending: true })
         
-        query = query.or(`
-          rf_citas.fecha.eq.${isoDate},
-          created_at::date.eq.${isoDate}
-        `)
+        if (!errorCitas && clientesConCitas) {
+          // Combinar resultados únicos
+          const clientesIds = new Set(clientesConCitas.map(c => c.id))
+          const { data: clientesBase } = await query
+          const todosLosClientes = [...clientesConCitas, ...(clientesBase || []).filter(c => !clientesIds.has(c.id))]
+          
+          // Procesar y retornar
+          const clientesProcesados = todosLosClientes.map((cliente: ClienteConCitas) => {
+            const citas = cliente.rf_citas || []
+            const total_citas = citas.length
+            const ultima_cita = citas.length > 0 
+              ? new Date(Math.max(...citas.map((c: Cita) => new Date(c.fecha).getTime())))
+              : null
+
+            return {
+              ...cliente,
+              total_citas,
+              ultima_cita,
+              rf_citas: undefined
+            }
+          })
+          
+          return NextResponse.json(clientesProcesados)
+        }
       }
     }
 
