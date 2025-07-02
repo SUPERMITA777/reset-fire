@@ -36,26 +36,10 @@ export async function GET(request: Request) {
     
     console.log('Parámetros de búsqueda:', { search })
     
-    // Construir la consulta base
+    // Construir la consulta base - simplificada sin relaciones complejas
     let query = supabase
       .from('rf_clientes')
-      .select(`
-        *,
-        rf_citas (
-          id,
-          fecha,
-          hora,
-          estado,
-          notas,
-          precio,
-          sena,
-          box,
-          rf_subtratamientos (
-            nombre_subtratamiento,
-            precio
-          )
-        )
-      `)
+      .select('*')
       .order('nombre_completo', { ascending: true })
 
     // Aplicar filtro de búsqueda si se proporciona
@@ -86,22 +70,16 @@ export async function GET(request: Request) {
 
     console.log('Consulta ejecutada exitosamente, procesando datos...')
 
-    // Procesar los datos para incluir el total de citas y la última cita
+    // Procesar los datos - versión simplificada sin citas
     console.log('Procesando', clientes?.length || 0, 'clientes...')
     
-    const clientesProcesados = (clientes || []).map((cliente: ClienteConCitas) => {
+    const clientesProcesados = (clientes || []).map((cliente: any) => {
       try {
-        const citas = cliente.rf_citas || []
-        const total_citas = citas.length
-        const ultima_cita = citas.length > 0 
-          ? new Date(Math.max(...citas.map((c: Cita) => new Date(c.fecha).getTime())))
-          : null
-
         return {
           ...cliente,
-          total_citas,
-          ultima_cita,
-          rf_citas: undefined // Eliminar el array de citas del resultado
+          total_citas: 0, // Por ahora sin citas
+          ultima_cita: null,
+          rf_citas: undefined
         }
       } catch (error) {
         console.error('Error procesando cliente:', cliente.id, error)
