@@ -66,67 +66,11 @@ export async function GET(request: Request) {
       query = query.or(`
         dni.ilike.%${searchTerm}%,
         nombre_completo.ilike.%${searchTerm}%,
-        whatsapp.ilike.%${searchTerm}%,
-        id.ilike.%${searchTerm}%
+        whatsapp.ilike.%${searchTerm}%
       `)
-      
-      // Si la búsqueda incluye términos específicos de citas, hacer una búsqueda adicional
-      const citaTerms = ['confirmado', 'completado', 'cancelado', 'reservado', 'limpieza', 'blanqueamiento']
-      if (citaTerms.some(term => searchTerm.toLowerCase().includes(term))) {
-        // Hacer una consulta adicional para buscar clientes con citas que coincidan
-        const { data: clientesConCitas, error: errorCitas } = await supabase
-          .from('rf_clientes')
-          .select(`
-            *,
-            rf_citas!inner (
-              id,
-              fecha,
-              hora,
-              estado,
-              notas,
-              precio,
-              sena,
-              box,
-              rf_subtratamientos (
-                nombre_subtratamiento,
-                precio
-              )
-            )
-          `)
-          .or(`
-            rf_citas.estado.ilike.%${searchTerm}%,
-            rf_citas.notas.ilike.%${searchTerm}%,
-            rf_citas.rf_subtratamientos.nombre_subtratamiento.ilike.%${searchTerm}%
-          `)
-          .order('nombre_completo', { ascending: true })
-        
-        if (!errorCitas && clientesConCitas) {
-          // Combinar resultados únicos
-          const clientesIds = new Set(clientesConCitas.map(c => c.id))
-          const { data: clientesBase } = await query
-          const todosLosClientes = [...clientesConCitas, ...(clientesBase || []).filter(c => !clientesIds.has(c.id))]
-          
-          // Procesar y retornar
-          const clientesProcesados = todosLosClientes.map((cliente: ClienteConCitas) => {
-            const citas = cliente.rf_citas || []
-            const total_citas = citas.length
-            const ultima_cita = citas.length > 0 
-              ? new Date(Math.max(...citas.map((c: Cita) => new Date(c.fecha).getTime())))
-              : null
-
-            return {
-              ...cliente,
-              total_citas,
-              ultima_cita,
-              rf_citas: undefined
-            }
-          })
-          
-          return NextResponse.json(clientesProcesados)
-        }
-      }
     }
 
+    console.log('Ejecutando consulta...')
     const { data: clientes, error: clientesError } = await query
 
     if (clientesError) {
@@ -140,19 +84,33 @@ export async function GET(request: Request) {
       )
     }
 
-    // Procesar los datos para incluir el total de citas y la última cita
-    const clientesProcesados = (clientes || []).map((cliente: ClienteConCitas) => {
-      const citas = cliente.rf_citas || []
-      const total_citas = citas.length
-      const ultima_cita = citas.length > 0 
-        ? new Date(Math.max(...citas.map((c: Cita) => new Date(c.fecha).getTime())))
-        : null
+    console.log('Consulta ejecutada exitosamente, procesando datos...')
 
-      return {
-        ...cliente,
-        total_citas,
-        ultima_cita,
-        rf_citas: undefined // Eliminar el array de citas del resultado
+    // Procesar los datos para incluir el total de citas y la última cita
+    console.log('Procesando', clientes?.length || 0, 'clientes...')
+    
+    const clientesProcesados = (clientes || []).map((cliente: ClienteConCitas) => {
+      try {
+        const citas = cliente.rf_citas || []
+        const total_citas = citas.length
+        const ultima_cita = citas.length > 0 
+          ? new Date(Math.max(...citas.map((c: Cita) => new Date(c.fecha).getTime())))
+          : null
+
+        return {
+          ...cliente,
+          total_citas,
+          ultima_cita,
+          rf_citas: undefined // Eliminar el array de citas del resultado
+        }
+      } catch (error) {
+        console.error('Error procesando cliente:', cliente.id, error)
+        return {
+          ...cliente,
+          total_citas: 0,
+          ultima_cita: null,
+          rf_citas: undefined
+        }
       }
     })
 
