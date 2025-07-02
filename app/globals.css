@@ -510,15 +510,20 @@ html {
 }
 
 /* Estilos para Gestión de Tratamientos */
+/* Estilos para gestión de tratamientos - MÁS AGRESIVOS */
+div.gestion-tratamientos-grid,
 .gestion-tratamientos-grid {
   display: grid !important;
   grid-template-columns: 1fr !important;
   gap: 0.75rem !important;
   width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
 }
 
 /* Tablet */
 @media (min-width: 640px) {
+  div.gestion-tratamientos-grid,
   .gestion-tratamientos-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 1rem !important;
@@ -527,6 +532,7 @@ html {
 
 /* Tablet Grande */
 @media (min-width: 768px) {
+  div.gestion-tratamientos-grid,
   .gestion-tratamientos-grid {
     grid-template-columns: repeat(3, 1fr) !important;
     gap: 1.25rem !important;
@@ -535,6 +541,7 @@ html {
 
 /* Desktop */
 @media (min-width: 1024px) {
+  div.gestion-tratamientos-grid,
   .gestion-tratamientos-grid {
     grid-template-columns: repeat(4, 1fr) !important;
     gap: 1.5rem !important;
@@ -543,6 +550,7 @@ html {
 
 /* Desktop Grande */
 @media (min-width: 1280px) {
+  div.gestion-tratamientos-grid,
   .gestion-tratamientos-grid {
     grid-template-columns: repeat(5, 1fr) !important;
     gap: 1.75rem !important;
@@ -551,14 +559,17 @@ html {
 
 /* Desktop XL */
 @media (min-width: 1536px) {
+  div.gestion-tratamientos-grid,
   .gestion-tratamientos-grid {
     grid-template-columns: repeat(6, 1fr) !important;
     gap: 2rem !important;
   }
 }
 
-/* Estilos para las tarjetas de gestión de tratamientos */
-.gestion-tratamiento-card {
+/* Estilos para las tarjetas de gestión de tratamientos - MÁS AGRESIVOS */
+div.gestion-tratamiento-card,
+.gestion-tratamiento-card,
+.card.gestion-tratamiento-card {
   width: 100% !important;
   max-width: none !important;
   min-width: 0 !important;
@@ -566,48 +577,155 @@ html {
   display: flex !important;
   flex-direction: column !important;
   position: relative !important;
+  flex-shrink: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Forzar que todas las tarjetas Card usen el grid correcto */
+div[class*="gestion-tratamiento-card"],
+.card[class*="gestion-tratamiento-card"],
+div[class*="card"][class*="gestion"] {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  flex-shrink: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Asegurar que las tarjetas Card no tengan restricciones de ancho */
+.card {
+  max-width: none !important;
+  width: 100% !important;
 }
 
 @media (min-width: 640px) {
-  .gestion-tratamiento-card {
+  div.gestion-tratamiento-card,
+  .gestion-tratamiento-card,
+  .card.gestion-tratamiento-card {
     min-height: 180px !important;
+    width: 100% !important;
+    max-width: none !important;
   }
 }
 
 @media (min-width: 768px) {
-  .gestion-tratamiento-card {
+  div.gestion-tratamiento-card,
+  .gestion-tratamiento-card,
+  .card.gestion-tratamiento-card {
     min-height: 200px !important;
+    width: 100% !important;
+    max-width: none !important;
   }
 }
 
 @media (min-width: 1024px) {
-  .gestion-tratamiento-card {
+  div.gestion-tratamiento-card,
+  .gestion-tratamiento-card,
+  .card.gestion-tratamiento-card {
     min-height: 220px !important;
+    width: 100% !important;
+    max-width: none !important;
   }
 }
 
 @media (min-width: 1280px) {
-  .gestion-tratamiento-card {
+  div.gestion-tratamiento-card,
+  .gestion-tratamiento-card,
+  .card.gestion-tratamiento-card {
     min-height: 240px !important;
+    width: 100% !important;
+    max-width: none !important;
   }
 }
 
 @media (min-width: 1536px) {
-  .gestion-tratamiento-card {
+  div.gestion-tratamiento-card,
+  .gestion-tratamiento-card,
+  .card.gestion-tratamiento-card {
     min-height: 260px !important;
+    width: 100% !important;
+    max-width: none !important;
   }
 }
 
 /* Asegurar que el contenido de la tarjeta se distribuya correctamente */
-.gestion-tratamiento-card .card-header {
+div.gestion-tratamiento-card .card-header,
+.gestion-tratamiento-card .card-header,
+.card.gestion-tratamiento-card .card-header {
   flex-shrink: 0 !important;
 }
 
-.gestion-tratamiento-card .card-content {
+div.gestion-tratamiento-card .card-content,
+.gestion-tratamiento-card .card-content,
+.card.gestion-tratamiento-card .card-content {
   flex: 1 !important;
   display: flex !important;
   flex-direction: column !important;
   min-height: 0 !important;
+}
+
+/* Forzar que el contenedor principal use el grid correcto */
+.container .gestion-tratamientos-grid,
+div.container .gestion-tratamientos-grid,
+div[class*="container"] .gestion-tratamientos-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 0.75rem !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Asegurar que el contenedor principal no tenga restricciones */
+div[class*="container"] {
+  max-width: none !important;
+  width: 100% !important;
+}
+
+@media (min-width: 640px) {
+  .container .gestion-tratamientos-grid,
+  div.container .gestion-tratamientos-grid,
+  div[class*="container"] .gestion-tratamientos-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .container .gestion-tratamientos-grid,
+  div.container .gestion-tratamientos-grid,
+  div[class*="container"] .gestion-tratamientos-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 1.25rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container .gestion-tratamientos-grid,
+  div.container .gestion-tratamientos-grid,
+  div[class*="container"] .gestion-tratamientos-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 1.5rem !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container .gestion-tratamientos-grid,
+  div.container .gestion-tratamientos-grid,
+  div[class*="container"] .gestion-tratamientos-grid {
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 1.75rem !important;
+  }
+}
+
+@media (min-width: 1536px) {
+  .container .gestion-tratamientos-grid,
+  div.container .gestion-tratamientos-grid,
+  div[class*="container"] .gestion-tratamientos-grid {
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 2rem !important;
+  }
 }
 
 /* Tamaños de texto para gestión de tratamientos - REDUCIDOS */
