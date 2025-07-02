@@ -226,6 +226,289 @@ html {
   }
 }
 
+/* Estilos para sub-tratamientos */
+.subtreatment-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 0.75rem !important;
+  width: 100% !important;
+}
+
+/* Tablet */
+@media (min-width: 640px) {
+  .subtreatment-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem !important;
+  }
+}
+
+/* Tablet Grande */
+@media (min-width: 768px) {
+  .subtreatment-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 1.25rem !important;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+  .subtreatment-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 1.5rem !important;
+  }
+}
+
+/* Desktop Grande */
+@media (min-width: 1280px) {
+  .subtreatment-grid {
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 1.75rem !important;
+  }
+}
+
+/* Desktop XL */
+@media (min-width: 1536px) {
+  .subtreatment-grid {
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 2rem !important;
+  }
+}
+
+/* Estilos para las tarjetas de sub-tratamientos */
+.subtreatment-card {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  min-height: 140px !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+@media (min-width: 640px) {
+  .subtreatment-card {
+    min-height: 160px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .subtreatment-card {
+    min-height: 180px !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .subtreatment-card {
+    min-height: 200px !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .subtreatment-card {
+    min-height: 220px !important;
+  }
+}
+
+@media (min-width: 1536px) {
+  .subtreatment-card {
+    min-height: 240px !important;
+  }
+}
+
+/* Tamaños de texto para sub-tratamientos */
+.subtreatment-title {
+  font-size: 0.875rem !important; /* text-sm */
+  line-height: 1.25rem !important;
+}
+
+@media (min-width: 768px) {
+  .subtreatment-title {
+    font-size: 1.125rem !important; /* text-lg */
+    line-height: 1.75rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .subtreatment-title {
+    font-size: 1.25rem !important; /* text-xl */
+    line-height: 1.75rem !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .subtreatment-title {
+    font-size: 1.5rem !important; /* text-2xl */
+    line-height: 2rem !important;
+  }
+}
+
+/* Estilos para badges en sub-tratamientos */
+.subtreatment-badge {
+  font-size: 0.75rem !important; /* text-xs */
+  padding: 0.25rem 0.5rem !important;
+}
+
+@media (min-width: 768px) {
+  .subtreatment-badge {
+    font-size: 0.875rem !important; /* text-sm */
+    padding: 0.375rem 0.75rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .subtreatment-badge {
+    font-size: 1rem !important; /* text-base */
+    padding: 0.5rem 1rem !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .subtreatment-badge {
+    font-size: 1.125rem !important; /* text-lg */
+    padding: 0.625rem 1.25rem !important;
+  }
+}
+
+/* Estilos para fechas y horarios disponibles */
+.date-time-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 0.75rem !important;
+  width: 100% !important;
+}
+
+/* Tablet */
+@media (min-width: 640px) {
+  .date-time-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem !important;
+  }
+}
+
+/* Tablet Grande */
+@media (min-width: 768px) {
+  .date-time-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 1.25rem !important;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+  .date-time-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 1.5rem !important;
+  }
+}
+
+/* Desktop Grande */
+@media (min-width: 1280px) {
+  .date-time-grid {
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 1.75rem !important;
+  }
+}
+
+/* Desktop XL */
+@media (min-width: 1536px) {
+  .date-time-grid {
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 2rem !important;
+  }
+}
+
+/* Estilos para las tarjetas de fechas y horarios */
+.date-time-card {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  min-height: 120px !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+@media (min-width: 640px) {
+  .date-time-card {
+    min-height: 140px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .date-time-card {
+    min-height: 160px !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .date-time-card {
+    min-height: 180px !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .date-time-card {
+    min-height: 200px !important;
+  }
+}
+
+@media (min-width: 1536px) {
+  .date-time-card {
+    min-height: 220px !important;
+  }
+}
+
+/* Tamaños de texto para fechas y horarios */
+.date-time-title {
+  font-size: 0.875rem !important; /* text-sm */
+  line-height: 1.25rem !important;
+}
+
+@media (min-width: 768px) {
+  .date-time-title {
+    font-size: 1.125rem !important; /* text-lg */
+    line-height: 1.75rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .date-time-title {
+    font-size: 1.25rem !important; /* text-xl */
+    line-height: 1.75rem !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .date-time-title {
+    font-size: 1.5rem !important; /* text-2xl */
+    line-height: 2rem !important;
+  }
+}
+
+.date-time-description {
+  font-size: 0.75rem !important; /* text-xs */
+  line-height: 1rem !important;
+}
+
+@media (min-width: 768px) {
+  .date-time-description {
+    font-size: 0.875rem !important; /* text-sm */
+    line-height: 1.25rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .date-time-description {
+    font-size: 1rem !important; /* text-base */
+    line-height: 1.5rem !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .date-time-description {
+    font-size: 1.125rem !important; /* text-lg */
+    line-height: 1.75rem !important;
+  }
+}
+
 /* Indicador de debug temporal para verificar breakpoints */
 .debug-indicator {
   position: fixed;

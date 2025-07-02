@@ -919,11 +919,11 @@ const SeleccionTratamientos = () => {
       {tratamientoSeleccionado && !subTratamientoSeleccionado && (
         <div className="w-full">
           <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 sm:mb-4">{tratamientoSeleccionado.nombre}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5">
+          <div className="subtreatment-grid">
             {tratamientoSeleccionado.sub_tratamientos.map((subTratamiento) => (
               <Card
                 key={subTratamiento.id}
-                className="cursor-pointer hover:border-primary transition-colors min-h-[120px] sm:min-h-[140px] md:min-h-[160px]"
+                className="subtreatment-card cursor-pointer hover:border-primary hover:shadow-lg transition-all duration-200 justify-between"
                 onClick={() => seleccionarSubTratamiento({
                   id: subTratamiento.id,
                   nombre: subTratamiento.nombre,
@@ -931,22 +931,27 @@ const SeleccionTratamientos = () => {
                   precio: subTratamiento.precio,
                   tratamiento_id: tratamientoSeleccionado.id
                 })}
+                style={{
+                  borderRadius: 12,
+                }}
               >
-                <CardHeader className="p-3 sm:p-4 md:p-5">
-                  <CardTitle className="text-sm sm:text-base md:text-lg">{subTratamiento.nombre}</CardTitle>
-                  <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 mt-2">
-                    <Badge variant="outline" className="flex items-center gap-1 text-xs w-fit">
-                      <Clock className="h-3 w-3" />
+                <CardHeader className="p-4 md:p-6 lg:p-8 xl:p-10 flex-grow">
+                  <CardTitle className="subtreatment-title font-semibold leading-tight mb-3">
+                    {subTratamiento.nombre}
+                  </CardTitle>
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-3">
+                    <Badge variant="outline" className="subtreatment-badge flex items-center gap-1 w-fit">
+                      <Clock className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />
                       {formatearDuracion(subTratamiento.duracion)}
                     </Badge>
-                    <Badge variant="outline" className="flex items-center gap-1 text-xs w-fit">
-                      <DollarSign className="h-3 w-3" />
+                    <Badge variant="outline" className="subtreatment-badge flex items-center gap-1 w-fit">
+                      <DollarSign className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />
                       {subTratamiento.precio.toLocaleString()}
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardFooter className="flex justify-end p-3 sm:p-4 md:p-5">
-                  <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-muted-foreground" />
+                <CardFooter className="flex justify-end p-4 md:p-6 lg:p-8 xl:p-10 pt-0">
+                  <ChevronRight className="text-muted-foreground h-5 w-5 md:h-7 md:w-7 lg:h-8 lg:w-8 xl:h-10 xl:w-10" />
                 </CardFooter>
               </Card>
             ))}
@@ -972,23 +977,26 @@ const SeleccionTratamientos = () => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5">
+            <div className="date-time-grid">
               {fechasDisponibles.map((fecha) => (
                 <Card
                   key={fecha.id}
-                  className="cursor-pointer hover:border-primary transition-colors min-h-[100px] sm:min-h-[120px] md:min-h-[130px]"
+                  className="date-time-card cursor-pointer hover:border-primary hover:shadow-lg transition-all duration-200 justify-between"
                   onClick={() => seleccionarFecha(fecha.fecha_inicio)}
+                  style={{
+                    borderRadius: 12,
+                  }}
                 >
-                  <CardHeader className="p-3 sm:p-4 md:p-5">
-                    <CardTitle className="text-sm sm:text-lg md:text-xl">
+                  <CardHeader className="p-4 md:p-6 lg:p-8 xl:p-10 flex-grow">
+                    <CardTitle className="date-time-title font-semibold leading-tight mb-3">
                       {formatearFechaParaMostrar(fecha.fecha_inicio)}
                     </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm md:text-base">
+                    <CardDescription className="date-time-description text-muted-foreground">
                       Boxes disponibles: {fecha.boxes_disponibles.join(', ')}
                     </CardDescription>
                   </CardHeader>
-                  <CardFooter className="flex justify-end p-3 sm:p-4 md:p-5">
-                    <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-muted-foreground" />
+                  <CardFooter className="flex justify-end p-4 md:p-6 lg:p-8 xl:p-10 pt-0">
+                    <ChevronRight className="text-muted-foreground h-5 w-5 md:h-7 md:w-7 lg:h-8 lg:w-8 xl:h-10 xl:w-10" />
                   </CardFooter>
                 </Card>
               ))}
@@ -1007,23 +1015,26 @@ const SeleccionTratamientos = () => {
             Horarios disponibles para el {formatearFechaParaMostrar(fechaSeleccionada)}
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5">
+          <div className="date-time-grid">
             {horariosDisponibles.map((horario, index) => (
               <Card
                 key={index}
-                className="cursor-pointer hover:border-primary transition-colors min-h-[100px] sm:min-h-[120px] md:min-h-[130px]"
+                className="date-time-card cursor-pointer hover:border-primary hover:shadow-lg transition-all duration-200 justify-between"
                 onClick={() => seleccionarHorario(horario.hora_inicio, horario.boxes_disponibles[0])}
+                style={{
+                  borderRadius: 12,
+                }}
               >
-                <CardHeader className="p-3 sm:p-4 md:p-5">
-                  <CardTitle className="text-sm sm:text-lg md:text-xl">
+                <CardHeader className="p-4 md:p-6 lg:p-8 xl:p-10 flex-grow">
+                  <CardTitle className="date-time-title font-semibold leading-tight mb-3">
                     {horario.hora_inicio} - {horario.hora_fin}
                   </CardTitle>
-                  <CardDescription className="text-xs sm:text-sm md:text-base">
+                  <CardDescription className="date-time-description text-muted-foreground">
                     Boxes disponibles: {horario.boxes_disponibles.join(', ')}
                   </CardDescription>
                 </CardHeader>
-                <CardFooter className="flex justify-end p-3 sm:p-4 md:p-5">
-                  <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-muted-foreground" />
+                <CardFooter className="flex justify-end p-4 md:p-6 lg:p-8 xl:p-10 pt-0">
+                  <ChevronRight className="text-muted-foreground h-5 w-5 md:h-7 md:w-7 lg:h-8 lg:w-8 xl:h-10 xl:w-10" />
                 </CardFooter>
               </Card>
             ))}
