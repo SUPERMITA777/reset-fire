@@ -45,9 +45,13 @@ export async function GET(request: Request) {
     // Aplicar filtro de búsqueda si se proporciona
     if (search && search.trim()) {
       const searchTerm = search.trim()
+      console.log('Aplicando búsqueda para:', searchTerm)
       
-      // Búsqueda básica en campos del cliente - versión más simple
-      query = query.ilike('nombre_completo', `%${searchTerm}%`)
+      // Búsqueda en múltiples campos usando OR
+      query = query.or(`nombre_completo.ilike.%${searchTerm}%,dni.ilike.%${searchTerm}%,whatsapp.ilike.%${searchTerm}%`)
+      console.log('Query después de aplicar búsqueda:', query)
+    } else {
+      console.log('No hay término de búsqueda, mostrando todos los clientes')
     }
 
     console.log('Ejecutando consulta...')
@@ -60,7 +64,15 @@ export async function GET(request: Request) {
       const result = await query
       clientes = result.data || []
       clientesError = result.error
-      console.log('Resultado de la consulta:', { data: clientes?.length, error: clientesError })
+      console.log('Resultado de la consulta:', { 
+        data: clientes?.length, 
+        error: clientesError,
+        primerCliente: clientes?.[0] ? {
+          id: clientes[0].id,
+          nombre: clientes[0].nombre_completo,
+          dni: clientes[0].dni
+        } : null
+      })
       
       if (clientesError) {
         console.error('Error al obtener clientes:', clientesError)

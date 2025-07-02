@@ -68,7 +68,8 @@ export default function ClientesPage() {
       if (!response.ok) throw new Error('Error al cargar clientes')
       
       const data = await response.json()
-      setClientes(data.clientes || [])
+      console.log('Datos recibidos del servidor:', data)
+      setClientes(data || [])
     } catch (error) {
       console.error('Error:', error)
       toast({
