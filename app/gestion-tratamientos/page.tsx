@@ -317,44 +317,13 @@ export default function GestionTratamientosPage() {
           {tratamientos.map((trat) => (
             <Card key={trat.id} className="gestion-tratamiento-card hover:shadow-lg transition-all duration-200">
               <CardHeader className="p-4 md:p-6 lg:p-8 xl:p-10 flex-grow">
-                <div className="flex justify-between items-start">
-                  <div className="flex-grow">
-                    <CardTitle className="gestion-tratamiento-title font-semibold leading-tight mb-2">
-                      {trat.nombre_tratamiento}
-                    </CardTitle>
-                    <CardDescription className="gestion-tratamiento-description text-muted-foreground">
-                      Box: {trat.box}
-                    </CardDescription>
-                  </div>
-                  <div className="flex gap-1 md:gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gestion-button"
-                      onClick={() => {
-                        setCurrentTratamientoId(trat.id);
-                        openNewSubTratamiento();
-                      }}
-                    >
-                      + SUB
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gestion-button p-0"
-                      onClick={() => openEditTratamiento(trat)}
-                    >
-                      <Edit className="w-3 h-3 md:w-4 md:h-4 lg:w-5 lg:h-5" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="gestion-button p-0"
-                      onClick={() => deleteTratamiento(trat.id)}
-                    >
-                      <Trash2 className="w-3 h-3 md:w-4 md:h-4 lg:w-5 lg:h-5" />
-                    </Button>
-                  </div>
+                <div>
+                  <CardTitle className="gestion-tratamiento-title font-semibold leading-tight mb-2">
+                    {trat.nombre_tratamiento}
+                  </CardTitle>
+                  <CardDescription className="gestion-tratamiento-description text-muted-foreground">
+                    Box: {trat.box}
+                  </CardDescription>
                 </div>
               </CardHeader>
               <CardContent className="p-4 md:p-6 lg:p-8 xl:p-10 pt-0 flex-grow">
@@ -372,6 +341,44 @@ export default function GestionTratamientosPage() {
                   </div>
                 )}
               </CardContent>
+              
+              {/* Botones de acción en la parte inferior */}
+              <div className="gestion-actions-section p-4 md:p-6 lg:p-8 xl:p-10 pt-0">
+                <div className="flex justify-between items-center">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gestion-add-sub-button"
+                    onClick={() => {
+                      setCurrentTratamientoId(trat.id);
+                      openNewSubTratamiento();
+                    }}
+                  >
+                    <Plus className="w-3 h-3 md:w-4 md:h-4 lg:w-5 lg:h-5 mr-1 md:mr-2" />
+                    Agregar Sub
+                  </Button>
+                  <div className="flex gap-1 md:gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gestion-button p-0"
+                      onClick={() => openEditTratamiento(trat)}
+                      title="Editar tratamiento"
+                    >
+                      <Edit className="w-3 h-3 md:w-4 md:h-4 lg:w-5 lg:h-5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="gestion-button p-0"
+                      onClick={() => deleteTratamiento(trat.id)}
+                      title="Eliminar tratamiento"
+                    >
+                      <Trash2 className="w-3 h-3 md:w-4 md:h-4 lg:w-5 lg:h-5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </Card>
           ))}
         </div>

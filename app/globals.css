@@ -712,6 +712,49 @@ html {
   }
 }
 
+/* Estilos para la sección de botones en la parte inferior */
+.gestion-actions-section {
+  border-top: 1px solid hsl(var(--border)) !important;
+  background-color: hsl(var(--muted) / 0.1) !important;
+  border-bottom-left-radius: 0.5rem !important;
+  border-bottom-right-radius: 0.5rem !important;
+}
+
+.gestion-actions-section:hover {
+  background-color: hsl(var(--muted) / 0.2) !important;
+}
+
+/* Estilos para el botón "Agregar Sub" */
+.gestion-add-sub-button {
+  font-size: 0.75rem !important; /* text-xs */
+  padding: 0.25rem 0.5rem !important;
+  height: 1.75rem !important;
+}
+
+@media (min-width: 768px) {
+  .gestion-add-sub-button {
+    font-size: 0.875rem !important; /* text-sm */
+    padding: 0.375rem 0.75rem !important;
+    height: 2rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .gestion-add-sub-button {
+    font-size: 1rem !important; /* text-base */
+    padding: 0.5rem 1rem !important;
+    height: 2.25rem !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .gestion-add-sub-button {
+    font-size: 1.125rem !important; /* text-lg */
+    padding: 0.625rem 1.25rem !important;
+    height: 2.5rem !important;
+  }
+}
+
 /* Indicador de debug temporal para verificar breakpoints */
 .debug-indicator {
   position: fixed;
