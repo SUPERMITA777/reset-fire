@@ -172,6 +172,9 @@ export default function GestionTratamientosPage() {
 
   return (
     <div className="container mx-auto py-4 sm:py-6 px-2 sm:px-4">
+      {/* Indicador de debug temporal */}
+      <div className="debug-indicator"></div>
+      
       <div className="flex justify-between items-center mb-4 sm:mb-6">
         <div className="flex items-center gap-2 sm:gap-4">
           <Link href="/">
@@ -310,20 +313,24 @@ export default function GestionTratamientosPage() {
       {isLoading ? (
         <p className="text-sm">Cargando tratamientos...</p>
       ) : (
-        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="gestion-tratamientos-grid">
           {tratamientos.map((trat) => (
-            <Card key={trat.id} className="w-full">
-              <CardHeader className="p-3 sm:p-4">
+            <Card key={trat.id} className="gestion-tratamiento-card hover:shadow-lg transition-all duration-200">
+              <CardHeader className="p-4 md:p-6 lg:p-8 xl:p-10 flex-grow">
                 <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-sm sm:text-base">{trat.nombre_tratamiento}</CardTitle>
-                    <CardDescription className="text-xs">Box: {trat.box}</CardDescription>
+                  <div className="flex-grow">
+                    <CardTitle className="gestion-tratamiento-title font-semibold leading-tight mb-2">
+                      {trat.nombre_tratamiento}
+                    </CardTitle>
+                    <CardDescription className="gestion-tratamiento-description text-muted-foreground">
+                      Box: {trat.box}
+                    </CardDescription>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 md:gap-2">
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-6 sm:h-8 px-1 sm:px-2 text-xs"
+                      className="gestion-button"
                       onClick={() => {
                         setCurrentTratamientoId(trat.id);
                         openNewSubTratamiento();
@@ -334,29 +341,29 @@ export default function GestionTratamientosPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-6 w-6 sm:h-8 sm:w-8 p-0"
+                      className="gestion-button p-0"
                       onClick={() => openEditTratamiento(trat)}
                     >
-                      <Edit className="w-3 h-3" />
+                      <Edit className="w-3 h-3 md:w-4 md:h-4 lg:w-5 lg:h-5" />
                     </Button>
                     <Button
                       size="sm"
                       variant="destructive"
-                      className="h-6 w-6 sm:h-8 sm:w-8 p-0"
+                      className="gestion-button p-0"
                       onClick={() => deleteTratamiento(trat.id)}
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3 h-3 md:w-4 md:h-4 lg:w-5 lg:h-5" />
                     </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-3 sm:p-4 pt-0">
+              <CardContent className="p-4 md:p-6 lg:p-8 xl:p-10 pt-0 flex-grow">
                 {trat.rf_subtratamientos && trat.rf_subtratamientos.length > 0 && (
                   <div>
-                    <h4 className="font-semibold text-xs mb-1">Subtratamientos:</h4>
-                    <ul className="space-y-0.5">
+                    <h4 className="font-semibold gestion-subtratamiento-item mb-2 md:mb-3">Subtratamientos:</h4>
+                    <ul className="space-y-1 md:space-y-2">
                       {trat.rf_subtratamientos.map((sub) => (
-                        <li key={sub.id} className="text-xs flex justify-between items-center">
+                        <li key={sub.id} className="gestion-subtratamiento-item flex justify-between items-center p-2 md:p-3 bg-muted/30 rounded-md">
                           <span className="font-medium truncate mr-2">{sub.nombre_subtratamiento}</span>
                           <span className="text-muted-foreground whitespace-nowrap">{sub.duracion}min - €{sub.precio}</span>
                         </li>
