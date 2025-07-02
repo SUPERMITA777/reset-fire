@@ -565,6 +565,7 @@ html {
   min-height: 160px !important;
   display: flex !important;
   flex-direction: column !important;
+  position: relative !important;
 }
 
 @media (min-width: 640px) {
@@ -595,6 +596,18 @@ html {
   .gestion-tratamiento-card {
     min-height: 260px !important;
   }
+}
+
+/* Asegurar que el contenido de la tarjeta se distribuya correctamente */
+.gestion-tratamiento-card .card-header {
+  flex-shrink: 0 !important;
+}
+
+.gestion-tratamiento-card .card-content {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
 }
 
 /* Tamaños de texto para gestión de tratamientos - REDUCIDOS */

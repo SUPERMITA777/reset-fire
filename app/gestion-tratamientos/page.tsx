@@ -315,8 +315,8 @@ export default function GestionTratamientosPage() {
       ) : (
         <div className="gestion-tratamientos-grid">
           {tratamientos.map((trat) => (
-            <Card key={trat.id} className="gestion-tratamiento-card hover:shadow-lg transition-all duration-200 relative">
-              <CardHeader className="p-3 md:p-4 lg:p-5 xl:p-6 flex-grow">
+            <Card key={trat.id} className="gestion-tratamiento-card hover:shadow-lg transition-all duration-200 relative flex flex-col">
+              <CardHeader className="p-3 md:p-4 lg:p-5 xl:p-6">
                 <div>
                   <CardTitle className="gestion-tratamiento-title font-semibold leading-tight mb-1">
                     {trat.nombre_tratamiento}
@@ -326,8 +326,9 @@ export default function GestionTratamientosPage() {
                   </CardDescription>
                 </div>
               </CardHeader>
-              <CardContent className="p-3 md:p-4 lg:p-5 xl:p-6 pt-0 flex-grow pb-16">
-                {trat.rf_subtratamientos && trat.rf_subtratamientos.length > 0 && (
+              
+              <CardContent className="p-3 md:p-4 lg:p-5 xl:p-6 pt-0 flex-1 pb-16">
+                {trat.rf_subtratamientos && trat.rf_subtratamientos.length > 0 ? (
                   <div>
                     <h4 className="font-semibold gestion-subtratamiento-item mb-1 md:mb-2">Subtratamientos:</h4>
                     <ul className="space-y-1">
@@ -338,6 +339,12 @@ export default function GestionTratamientosPage() {
                         </li>
                       ))}
                     </ul>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="gestion-tratamiento-description text-muted-foreground">
+                      No hay subtratamientos
+                    </p>
                   </div>
                 )}
               </CardContent>
