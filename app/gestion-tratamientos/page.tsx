@@ -362,7 +362,7 @@ export default function GestionTratamientosPage() {
                     }}
                   >
                     <Plus className="w-3 h-3 md:w-4 md:h-4 lg:w-5 lg:h-5 mr-1" />
-                    + Sub
+                    Sub
                   </Button>
                   <div className="flex gap-1">
                     <Button
