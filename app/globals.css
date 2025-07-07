@@ -85,6 +85,50 @@ html {
   background: #b8941f;
 }
 
+/* Custom scrollbar para el modal de clientes */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 12px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border-radius: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Custom scrollbar para el historial de citas */
+.custom-scrollbar-historial::-webkit-scrollbar {
+  width: 12px;
+}
+
+.custom-scrollbar-historial::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 6px;
+  margin: 4px;
+}
+
+.custom-scrollbar-historial::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 6px;
+  border: 2px solid #e2e8f0;
+}
+
+.custom-scrollbar-historial::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+.custom-scrollbar-historial::-webkit-scrollbar-corner {
+  background: #e2e8f0;
+}
+
 /* Forzar responsividad en las tarjetas principales */
 .treatment-grid {
   display: grid !important;

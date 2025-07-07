@@ -11,7 +11,7 @@ import { supabase } from "@/lib/supabase"
 import { toast } from "@/components/ui/use-toast"
 import { Textarea } from "@/components/ui/textarea"
 import { DialogFooter } from "@/components/ui/dialog"
-import { Plus, Trash2, Loader2, ShoppingCart } from "lucide-react"
+import { Plus, Trash2, Loader2, ShoppingCart, MessageCircle } from "lucide-react"
 import type { CitaWithRelations } from "@/types/cita"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -19,7 +19,7 @@ import * as z from "zod"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import type { Database } from "@/types/db"
 import { useCarrito } from "@/contexts/CarritoContext"
-import { AgregarAlCarrito } from "@/components/carrito/agregar-al-carrito"
+import { CarritoModal } from "@/components/modals/carrito-modal"
 
 interface CitaModalProps {
   open: boolean
@@ -187,6 +187,7 @@ export function CitaModal({
     : "Complete los datos para crear una nueva cita"
 }: CitaModalProps) {
   const [activeTab, setActiveTab] = useState(cita?.es_multiple ? "multiple" : "individual")
+  const [carritoOpen, setCarritoOpen] = useState(false)
   const { cantidadItems } = useCarrito()
   const form = useForm<FormData>({
     defaultValues: {
@@ -231,41 +232,76 @@ export function CitaModal({
   const [clienteEncontrado, setClienteEncontrado] = useState<Cliente | null>(null)
 
   const buscarCliente = async (whatsapp: string) => {
+    console.log('🔍 Buscando cliente con WhatsApp:', whatsapp)
+    
     if (!whatsapp || whatsapp.length < 8) {
+      console.log('❌ WhatsApp inválido o muy corto')
       setClienteEncontrado(null)
       return
     }
 
     try {
-      const { data, error } = await supabase
-        .from('clientes')
+      console.log('📡 Consultando tabla rf_clientes...')
+      
+      // Limpiar el número de WhatsApp (remover espacios, guiones, etc.)
+      const whatsappLimpio = whatsapp.replace(/[\s\-\(\)]/g, '')
+      console.log('📱 WhatsApp limpio:', whatsappLimpio)
+      
+      // Intentar buscar con diferentes formatos
+      let { data, error } = await supabase
+        .from('rf_clientes')
         .select('*')
-        .eq('whatsapp', whatsapp)
-        .single()
+        .eq('whatsapp', whatsappLimpio)
+
+      // Si no se encuentra, intentar con el formato original
+      if (error) {
+        console.log('🔄 Intentando con formato original...')
+        const { data: data2, error: error2 } = await supabase
+          .from('rf_clientes')
+          .select('*')
+          .eq('whatsapp', whatsapp)
+        
+        data = data2
+        error = error2
+      }
+
+      console.log('📊 Respuesta de Supabase:', { data, error })
+
+      // Manejar múltiples resultados
+      let clienteData = null
+      if (data && Array.isArray(data) && data.length > 0) {
+        clienteData = data[0] // Tomar el primer registro
+        console.log(`⚠️ Se encontraron ${data.length} registros con el mismo WhatsApp, usando el primero`)
+      } else if (data && !Array.isArray(data)) {
+        clienteData = data
+      }
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Error buscando cliente:', error)
+        console.error('❌ Error buscando cliente:', error)
         return
       }
 
-      if (data) {
-        setClienteEncontrado(data)
-        form.setValue('nombre_completo', data.nombre_completo)
-        form.setValue('dni', data.dni || '')
-        form.setValue('paciente_id', data.id)
+      if (clienteData) {
+        console.log('✅ Cliente encontrado:', clienteData)
+        setClienteEncontrado(clienteData)
+        form.setValue('nombre_completo', clienteData.nombre_completo)
+        form.setValue('dni', clienteData.dni || '')
+        form.setValue('paciente_id', clienteData.id)
+        console.log('✅ Campos actualizados en el formulario')
       } else {
+        console.log('❌ No se encontró cliente con ese WhatsApp')
         setClienteEncontrado(null)
         form.setValue('paciente_id', '')
       }
     } catch (error) {
-      console.error('Error buscando cliente:', error)
+      console.error('❌ Error en try/catch:', error)
       setClienteEncontrado(null)
     }
   }
 
   const buscarClienteDebounced = useCallback(
     debounce(buscarCliente, 500),
-    []
+    [form]
   )
 
   const handleClienteChange = (index: number, field: keyof ClienteMultiple, value: string | number) => {
@@ -299,21 +335,42 @@ export function CitaModal({
     if (!whatsapp || whatsapp.length < 8) return
 
     try {
-      const { data, error } = await supabase
-        .from('clientes')
+      // Limpiar el número de WhatsApp
+      const whatsappLimpio = whatsapp.replace(/[\s\-\(\)]/g, '')
+      
+      let { data, error } = await supabase
+        .from('rf_clientes')
         .select('*')
-        .eq('whatsapp', whatsapp)
-        .single()
+        .eq('whatsapp', whatsappLimpio)
+
+      // Si no se encuentra, intentar con el formato original
+      if (error) {
+        const { data: data2, error: error2 } = await supabase
+          .from('rf_clientes')
+          .select('*')
+          .eq('whatsapp', whatsapp)
+        
+        data = data2
+        error = error2
+      }
+
+      // Manejar múltiples resultados
+      let clienteData = null
+      if (data && Array.isArray(data) && data.length > 0) {
+        clienteData = data[0]
+      } else if (data && !Array.isArray(data)) {
+        clienteData = data
+      }
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error buscando cliente:', error)
         return
       }
 
-      if (data) {
-        handleClienteChange(index, 'nombre_completo', data.nombre_completo)
-        handleClienteChange(index, 'dni', data.dni || '')
-        handleClienteChange(index, 'paciente_id', data.id)
+      if (clienteData) {
+        handleClienteChange(index, 'nombre_completo', clienteData.nombre_completo)
+        handleClienteChange(index, 'dni', clienteData.dni || '')
+        handleClienteChange(index, 'paciente_id', clienteData.id)
       }
     } catch (error) {
       console.error('Error buscando cliente:', error)
@@ -325,7 +382,7 @@ export function CitaModal({
 
     try {
       const { data, error } = await supabase
-        .from('citas')
+        .from('rf_citas')
         .select('id, fecha, hora, box')
         .eq('fecha', fecha)
         .eq('hora', hora)
@@ -411,6 +468,11 @@ export function CitaModal({
             notas: cita.notas || '',
             estado: cita.estado
           })
+          
+          // Cargar subtratamientos para el tratamiento seleccionado
+          if (cita.tratamiento_id) {
+            fetchSubtratamientos(cita.tratamiento_id)
+          }
         }
       }
     }
@@ -424,7 +486,7 @@ export function CitaModal({
 
     try {
       const { data, error } = await supabase
-        .from('sub_tratamientos')
+        .from('rf_subtratamientos')
         .select('*')
         .eq('tratamiento_id', tratamientoId)
 
@@ -437,6 +499,50 @@ export function CitaModal({
     } catch (error) {
       console.error('Error fetching subtratamientos:', error)
     }
+  }
+
+  // Función para generar y enviar mensaje de WhatsApp
+  const enviarRecordatorioWhatsApp = () => {
+    const nombreCliente = form.watch('nombre_completo')
+    const fechaCita = form.watch('fecha')
+    const horaCita = form.watch('hora')
+    const whatsapp = form.watch('whatsapp')
+    const tratamientoId = form.watch('tratamiento_id')
+    const subtratamientoId = form.watch('subtratamiento_id')
+    
+    // Obtener nombres del tratamiento y subtratamiento
+    const tratamientoSeleccionado = tratamientos.find(t => t.id === tratamientoId)
+    const subtratamientoSeleccionado = subtratamientos.find(st => st.id === subtratamientoId)
+    
+    const nombreTratamiento = tratamientoSeleccionado?.nombre_tratamiento || 'Tratamiento'
+    const nombreSubtratamiento = subtratamientoSeleccionado?.nombre_subtratamiento || 'Subtratamiento'
+    
+    // Formatear fecha
+    const fechaFormateada = fechaCita ? new Date(fechaCita).toLocaleDateString('es-AR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }) : 'FECHA'
+    
+    // Crear mensaje
+    const mensaje = `Hola ${nombreCliente}, te recordamos que el día ${fechaFormateada}, a las ${horaCita}, tenés tu turno de ${nombreTratamiento} - ${nombreSubtratamiento}. Aguardamos tu confirmación. En caso de no poder asistir avisar con antelación mínimo de 24 hs para no perder tu seña. La tolerancia de espera es de 15 minutos, y les recordamos que no se puede asistir con acompañante. Muchas gracias!! Reset Home Spa.`
+    
+    // Codificar el mensaje para URL
+    const mensajeCodificado = encodeURIComponent(mensaje)
+    
+    // Crear URL de WhatsApp con prefijo +549
+    let numeroWhatsApp = whatsapp.replace(/\D/g, '') // Remover caracteres no numéricos
+    
+    // Agregar prefijo +549 si no lo tiene
+    if (!numeroWhatsApp.startsWith('549')) {
+      numeroWhatsApp = '549' + numeroWhatsApp
+    }
+    
+    const urlWhatsApp = `https://wa.me/${numeroWhatsApp}?text=${mensajeCodificado}`
+    
+    // Abrir WhatsApp
+    window.open(urlWhatsApp, '_blank')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -468,7 +574,7 @@ export function CitaModal({
       let pacienteId = formData.paciente_id
       if (!pacienteId && formData.whatsapp) {
         const { data: clienteData, error: clienteError } = await supabase
-          .from('clientes')
+          .from('rf_clientes')
           .insert({
             dni: formData.dni,
             nombre_completo: formData.nombre_completo,
@@ -556,7 +662,7 @@ export function CitaModal({
           let pacienteId = cliente.paciente_id
           if (!pacienteId && cliente.whatsapp) {
             const { data: clienteData, error: clienteError } = await supabase
-              .from('clientes')
+              .from('rf_clientes')
               .insert({
                 dni: cliente.dni,
                 nombre_completo: cliente.nombre_completo,
@@ -615,7 +721,7 @@ export function CitaModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -713,7 +819,7 @@ export function CitaModal({
                 </div>
               </div>
 
-              <div>
+              <div className="w-1/2">
                 <Label htmlFor="nombre_completo" className="mb-1.5 block">NOMBRE Y APELLIDO</Label>
                 <Input
                   id="nombre_completo"
@@ -820,21 +926,7 @@ export function CitaModal({
                 </div>
               </div>
 
-              {form.watch('tratamiento_id') && form.watch('subtratamiento_id') && (
-                <div className="flex gap-2">
-                  <AgregarAlCarrito
-                    tratamiento_id={form.watch('tratamiento_id')}
-                    subtratamiento_id={form.watch('subtratamiento_id')}
-                    precio={form.watch('precio')}
-                    nombre_tratamiento={tratamientos.find(t => t.id === form.watch('tratamiento_id'))?.nombre_tratamiento || ''}
-                    nombre_subtratamiento={subtratamientos.find(st => st.id === form.watch('subtratamiento_id'))?.nombre_subtratamiento || ''}
-                    duracion={subtratamientos.find(st => st.id === form.watch('subtratamiento_id'))?.duracion}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                  />
-                </div>
-              )}
+
 
               <div>
                 <Label htmlFor="notas" className="mb-1.5 block">NOTAS</Label>
@@ -847,7 +939,7 @@ export function CitaModal({
                 />
               </div>
 
-              <DialogFooter>
+              <DialogFooter className="flex items-center gap-2">
                 <Button
                   type="submit"
                   disabled={loading}
@@ -862,6 +954,30 @@ export function CitaModal({
                     'Actualizar Cita'
                   ) : (
                     'Crear Cita'
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="relative rounded-full w-10 h-10 shadow-lg bg-green-50 hover:bg-green-100 border-green-200"
+                  onClick={enviarRecordatorioWhatsApp}
+                  disabled={!form.watch('whatsapp') || !form.watch('nombre_completo') || !form.watch('fecha') || !form.watch('hora')}
+                  title="Enviar recordatorio por WhatsApp"
+                >
+                  <MessageCircle className="h-5 w-5 text-green-600" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="relative rounded-full w-10 h-10 shadow-lg bg-white hover:bg-gray-50"
+                  onClick={() => setCarritoOpen(true)}
+                >
+                  <ShoppingCart className="h-5 w-5" />
+                  {cantidadItems > 0 && (
+                    <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {cantidadItems}
+                    </div>
                   )}
                 </Button>
               </DialogFooter>
@@ -1087,27 +1203,26 @@ export function CitaModal({
             </form>
           )}
         </div>
-        
-        {/* Icono del carrito en la parte inferior */}
-        <div className="fixed bottom-4 right-4 z-50">
-          <Button
-            variant="outline"
-            size="lg"
-            className="relative rounded-full w-14 h-14 shadow-lg bg-white hover:bg-gray-50"
-            onClick={() => {
-              // Aquí puedes abrir un modal del carrito o navegar a la pestaña del carrito
-              console.log('Abrir carrito');
-            }}
-          >
-            <ShoppingCart className="h-6 w-6" />
-            {cantidadItems > 0 && (
-              <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
-                {cantidadItems}
-              </div>
-            )}
-          </Button>
-        </div>
       </DialogContent>
+
+      {/* Modal del Carrito */}
+      <CarritoModal
+        open={carritoOpen}
+        onOpenChange={setCarritoOpen}
+        datosCita={activeTab === "individual" ? {
+          cliente_id: form.watch('paciente_id'),
+          nombre_completo: form.watch('nombre_completo'),
+          whatsapp: form.watch('whatsapp'),
+          dni: form.watch('dni'),
+          tratamiento_id: form.watch('tratamiento_id'),
+          subtratamiento_id: form.watch('subtratamiento_id'),
+          precio: form.watch('precio'),
+          sena: form.watch('sena'),
+          fecha: form.watch('fecha'),
+          hora: form.watch('hora'),
+          box: form.watch('box')
+        } : undefined}
+      />
     </Dialog>
   )
 } 

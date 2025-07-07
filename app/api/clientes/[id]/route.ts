@@ -94,7 +94,7 @@ export async function PUT(
   
   try {
     const body = await request.json()
-    const { nombre_completo, dni, whatsapp } = body
+    const { nombre_completo, whatsapp, observaciones } = body
 
     // Validaciones básicas
     if (!nombre_completo || !whatsapp) {
@@ -127,38 +127,15 @@ export async function PUT(
       )
     }
 
-    // Si se proporciona DNI, verificar que no esté duplicado en otro cliente
-    if (dni) {
-      const { data: dniExistente, error: dniError } = await supabase
-        .from('rf_clientes')
-        .select('id')
-        .eq('dni', dni)
-        .neq('id', id)
-        .single()
 
-      if (dniError && dniError.code !== 'PGRST116') {
-        console.error('Error al verificar DNI:', dniError)
-        return NextResponse.json(
-          { error: 'Error al verificar DNI existente' },
-          { status: 500 }
-        )
-      }
-
-      if (dniExistente) {
-        return NextResponse.json(
-          { error: 'Ya existe otro cliente con este DNI' },
-          { status: 400 }
-        )
-      }
-    }
 
     // Actualizar el cliente
     const { data: cliente, error: updateError } = await supabase
       .from('rf_clientes')
       .update({
         nombre_completo,
-        dni: dni || null,
         whatsapp: whatsapp,
+        observaciones: observaciones || null,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
@@ -179,7 +156,7 @@ export async function PUT(
     console.log('Cliente actualizado exitosamente:', {
       id: cliente.id,
       nombre: cliente.nombre_completo,
-      dni: cliente.dni
+      whatsapp: cliente.whatsapp
     })
 
     return NextResponse.json(cliente)

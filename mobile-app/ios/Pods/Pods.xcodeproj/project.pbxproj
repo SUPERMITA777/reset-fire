@@ -1,0 +1,156 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B3E7B58A1A9A6C85003C3F31 /* libPods-ResetFireMobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B3E7B5891A9A6C85003C3F31 /* libPods-ResetFireMobile.a */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		B3E7B5891A9A6C85003C3F31 /* libPods-ResetFireMobile.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ResetFireMobile.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B3E7B5871A9A6C85003C3F31 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		B3E7B5831A9A6C85003C3F31 = {
+			isa = PBXGroup;
+			children = (
+				B3E7B5891A9A6C85003C3F31 /* libPods-ResetFireMobile.a */,
+				B3E7B5841A9A6C85003C3F31 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B3E7B5841A9A6C85003C3F31 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B3E7B5891A9A6C85003C3F31 /* libPods-ResetFireMobile.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B3E7B5881A9A6C85003C3F31 /* Pods-ResetFireMobile */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B3E7B58C1A9A6C85003C3F31 /* Build configuration list for PBXNativeTarget "Pods-ResetFireMobile" */;
+			buildPhases = (
+				B3E7B5871A9A6C85003C3F31 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Pods-ResetFireMobile";
+			productName = "Pods-ResetFireMobile";
+			productReference = B3E7B5891A9A6C85003C3F31 /* libPods-ResetFireMobile.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin XCBuildConfiguration section */
+		B3E7B58D1A9A6C85003C3F31 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "";
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				INFOPLIST_FILE = "Target Support Files/Pods-ResetFireMobile/Info.plist";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 13.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MACH_O_TYPE = staticlib;
+				MODULEMAP_FILE = "Target Support Files/Pods-ResetFireMobile/Pods-ResetFireMobile.modulemap";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-lc++",
+				);
+				PODS_BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				PODS_CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)";
+				PODS_PODFILE_DIR_PATH = "${SRCROOT}/..";
+				PODS_ROOT = "${SRCROOT}/..";
+				PODS_XCFRAMEWORKS_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.cocoapods.${PRODUCT_NAME:rfc1034identifier}";
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SKIP_INSTALL = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				USE_LTO = NO;
+			};
+			name = Debug;
+		};
+		B3E7B58E1A9A6C85003C3F31 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "";
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				INFOPLIST_FILE = "Target Support Files/Pods-ResetFireMobile/Info.plist";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 13.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MACH_O_TYPE = staticlib;
+				MODULEMAP_FILE = "Target Support Files/Pods-ResetFireMobile/Pods-ResetFireMobile.modulemap";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-lc++",
+				);
+				PODS_BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				PODS_CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)";
+				PODS_PODFILE_DIR_PATH = "${SRCROOT}/..";
+				PODS_ROOT = "${SRCROOT}/..";
+				PODS_XCFRAMEWORKS_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.cocoapods.${PRODUCT_NAME:rfc1034identifier}";
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SKIP_INSTALL = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				USE_LTO = NO;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		B3E7B58C1A9A6C85003C3F31 /* Build configuration list for PBXNativeTarget "Pods-ResetFireMobile" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B3E7B58D1A9A6C85003C3F31 /* Debug */,
+				B3E7B58E1A9A6C85003C3F31 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = B3E7B5831A9A6C85003C3F31 /* Project object */;
+} 
