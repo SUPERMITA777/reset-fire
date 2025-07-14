@@ -43,6 +43,9 @@ export function Header() {
               <Link href="/configuracion">
                 <Button variant="outline">CONFIGURACIÓN</Button>
               </Link>
+              <Link href="/reportes">
+                <Button variant="outline">REPORTES</Button>
+              </Link>
             </div>
           </div>
         </div>
