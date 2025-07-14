@@ -80,8 +80,8 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
       try {
         const { data, error } = await supabase
           .from('rf_productos')
-          .select('id, nombre, precio_venta, stock, categoria')
-          .eq('activo', true)
+          .select('id, nombre, precio_venta, stock, marca')
+          .gt('stock', 0)
           .order('nombre');
 
         if (error) {
@@ -89,10 +89,11 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
           return;
         }
 
-        // Mapear los productos para que tengan la propiedad precio
+        // Mapear los productos para que tengan la propiedad precio y categoria
         setProductos((data || []).map(p => ({
           ...p,
-          precio: p.precio_venta
+          precio: p.precio_venta,
+          categoria: p.marca // Usar marca como categoría
         })));
       } catch (error) {
         console.error('Error cargando productos:', error);
