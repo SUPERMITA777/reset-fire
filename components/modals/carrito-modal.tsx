@@ -73,6 +73,7 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
   const [metodoPago, setMetodoPago] = useState('efectivo');
   const [notasCompra, setNotasCompra] = useState('');
   const [procesandoCompra, setProcesandoCompra] = useState(false);
+  const [tratamientoInfo, setTratamientoInfo] = useState<{nombre: string, subtratamiento: string} | null>(null);
 
   // Cargar productos disponibles
   useEffect(() => {
@@ -104,6 +105,50 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
       cargarProductos();
     }
   }, [open]);
+
+  // Cargar información del tratamiento y subtratamiento
+  useEffect(() => {
+    const cargarTratamientoInfo = async () => {
+      if (!datosCita?.tratamiento_id || !datosCita?.subtratamiento_id) return;
+
+      try {
+        // Cargar tratamiento
+        const { data: tratamientoData, error: errorTratamiento } = await supabase
+          .from('rf_tratamientos')
+          .select('nombre_tratamiento')
+          .eq('id', datosCita.tratamiento_id)
+          .single();
+
+        if (errorTratamiento) {
+          console.error('Error cargando tratamiento:', errorTratamiento);
+          return;
+        }
+
+        // Cargar subtratamiento
+        const { data: subtratamientoData, error: errorSubtratamiento } = await supabase
+          .from('rf_subtratamientos')
+          .select('nombre_subtratamiento')
+          .eq('id', datosCita.subtratamiento_id)
+          .single();
+
+        if (errorSubtratamiento) {
+          console.error('Error cargando subtratamiento:', errorSubtratamiento);
+          return;
+        }
+
+        setTratamientoInfo({
+          nombre: tratamientoData.nombre_tratamiento,
+          subtratamiento: subtratamientoData.nombre_subtratamiento
+        });
+      } catch (error) {
+        console.error('Error cargando información del tratamiento:', error);
+      }
+    };
+
+    if (open && datosCita) {
+      cargarTratamientoInfo();
+    }
+  }, [open, datosCita]);
 
   // Agregar producto al carrito
   const agregarProducto = async () => {
@@ -229,7 +274,7 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[90vw] max-w-6xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
@@ -240,18 +285,18 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 max-h-[calc(90vh-120px)] overflow-y-auto pr-2">
           {/* Información del cliente - Arriba */}
           {datosCita && (
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
                   <User className="h-4 w-4" />
                   Datos del Cliente
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs text-muted-foreground">Nombre Completo</Label>
                     <p className="font-medium text-sm">{datosCita.nombre_completo}</p>
@@ -266,19 +311,19 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
           )}
 
           {/* Tratamiento heredado */}
-          {datosCita && (
+          {datosCita && tratamientoInfo && (
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Tratamiento Programado</CardTitle>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Tratamiento Programado</CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-200">
                   <div className="flex-1">
                     <p className="font-medium text-sm text-green-800">
                       {datosCita.fecha} - {datosCita.hora} (Box {datosCita.box})
                     </p>
                     <p className="text-xs text-green-600">
-                      Tratamiento ID: {datosCita.tratamiento_id} | Subtratamiento ID: {datosCita.subtratamiento_id}
+                      Tratamiento: {tratamientoInfo.nombre} | Subtratamiento: {tratamientoInfo.subtratamiento}
                     </p>
                   </div>
                   <div className="text-right">
@@ -296,15 +341,15 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
 
           {/* Agregar productos/subtratamientos */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Agregar Productos o Servicios</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Agregar Productos o Servicios</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <div className="flex-1">
                   <Label htmlFor="producto" className="text-xs">Producto/Servicio</Label>
                   <Select value={productoSeleccionado} onValueChange={setProductoSeleccionado}>
-                    <SelectTrigger className="h-8">
+                    <SelectTrigger className="h-7 text-xs">
                       <SelectValue placeholder="Seleccionar producto o servicio" />
                     </SelectTrigger>
                     <SelectContent>
@@ -316,18 +361,18 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="w-20">
+                <div className="w-16">
                   <Label htmlFor="cantidad" className="text-xs">Cant.</Label>
                   <Input
                     type="number"
                     min="1"
                     value={cantidadProducto}
                     onChange={(e) => setCantidadProducto(parseInt(e.target.value) || 1)}
-                    className="h-8"
+                    className="h-7 text-xs"
                   />
                 </div>
                 <div className="flex items-end">
-                  <Button onClick={agregarProducto} className="h-8 px-3">
+                  <Button onClick={agregarProducto} className="h-7 px-2 text-xs">
                     <Plus className="h-3 w-3 mr-1" />
                     Agregar
                   </Button>
@@ -338,35 +383,35 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
 
           {/* Items del carrito */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Productos y Servicios en Carrito</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Productos y Servicios en Carrito</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
               {items.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground">
-                  <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Tu carrito está vacío</p>
+                <div className="text-center py-4 text-muted-foreground">
+                  <ShoppingCart className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">Tu carrito está vacío</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {items.map((item) => (
-                    <div key={item.id} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                    <div key={item.id} className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <h4 className="font-medium text-sm truncate">
+                          <h4 className="font-medium text-xs truncate">
                             {item.tratamiento_nombre || 'Tratamiento'}
                           </h4>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEliminarItem(item.id!)}
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                            className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive"
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                         
-                        <p className="text-xs text-muted-foreground mb-2">
+                        <p className="text-xs text-muted-foreground mb-1">
                           {item.subtratamiento_nombre || 'Subtratamiento'}
                           {item.duracion && (
                             <span className="ml-1">
@@ -381,25 +426,25 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
                               variant="outline"
                               size="sm"
                               onClick={() => handleActualizarCantidad(item, item.cantidad - 1)}
-                              className="h-6 w-6 p-0"
+                              className="h-5 w-5 p-0"
                               disabled={item.cantidad <= 1}
                             >
-                              <Minus className="h-3 w-3" />
+                              <Minus className="h-2 w-2" />
                             </Button>
-                            <span className="text-sm font-medium w-6 text-center">
+                            <span className="text-xs font-medium w-4 text-center">
                               {item.cantidad}
                             </span>
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleActualizarCantidad(item, item.cantidad + 1)}
-                              className="h-6 w-6 p-0"
+                              className="h-5 w-5 p-0"
                             >
-                              <Plus className="h-3 w-3" />
+                              <Plus className="h-2 w-2" />
                             </Button>
                           </div>
                           <div className="text-right">
-                            <p className="font-medium text-sm">
+                            <p className="font-medium text-xs">
                               {formatCurrency(item.precio_total - item.descuento)}
                             </p>
                             {item.descuento > 0 && (
@@ -418,17 +463,17 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
           </Card>
 
           {/* Resumen final y pago */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {/* Método de pago y notas */}
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Información de Pago</CardTitle>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Información de Pago</CardTitle>
               </CardHeader>
-              <CardContent className="pt-0 space-y-3">
+              <CardContent className="pt-0 space-y-2">
                 <div>
                   <Label htmlFor="metodo-pago" className="text-xs">Método de Pago</Label>
                   <Select value={metodoPago} onValueChange={setMetodoPago}>
-                    <SelectTrigger className="h-8">
+                    <SelectTrigger className="h-7 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -445,7 +490,7 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
                     value={notasCompra}
                     onChange={(e) => setNotasCompra(e.target.value)}
                     placeholder="Notas adicionales..."
-                    className="h-16 text-xs"
+                    className="h-12 text-xs"
                   />
                 </div>
               </CardContent>
@@ -453,31 +498,31 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
 
             {/* Resumen de compra */}
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Resumen de Compra</CardTitle>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Resumen de Compra</CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
                     <span>Subtotal:</span>
                     <span>{formatCurrency(total)}</span>
                   </div>
                   {datosCita && (
-                    <div className="flex justify-between text-sm text-green-600">
+                    <div className="flex justify-between text-xs text-green-600">
                       <span>Seña pagada:</span>
                       <span>-{formatCurrency(datosCita.sena)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs">
                     <span>Descuentos:</span>
                     <span className="text-green-600">
                       -{formatCurrency(items.reduce((sum, item) => sum + item.descuento, 0))}
                     </span>
                   </div>
                   <Separator />
-                  <div className="flex justify-between font-medium text-base">
+                  <div className="flex justify-between font-medium text-sm">
                     <span>Total a abonar:</span>
-                    <span className="text-lg">
+                    <span className="text-base">
                       {formatCurrency(
                         total - 
                         items.reduce((sum, item) => sum + item.descuento, 0) - 
@@ -491,16 +536,16 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
                 <Button
                   onClick={handleCompletarCompra}
                   disabled={items.length === 0 || procesandoCompra}
-                  className="w-full mt-4"
+                  className="w-full mt-3 h-8 text-sm"
                 >
                   {procesandoCompra ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                       Procesando...
                     </>
                   ) : (
                     <>
-                      <CreditCard className="h-4 w-4 mr-2" />
+                      <CreditCard className="h-3 w-3 mr-1" />
                       Completar Compra
                     </>
                   )}
