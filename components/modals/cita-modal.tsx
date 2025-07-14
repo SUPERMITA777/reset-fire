@@ -573,28 +573,56 @@ export function CitaModal({
       // Crear o actualizar cliente si no existe
       let pacienteId = formData.paciente_id
       if (!pacienteId && formData.whatsapp) {
-        const { data: clienteData, error: clienteError } = await supabase
-          .from('rf_clientes')
-          .insert({
-            dni: formData.dni,
-            nombre_completo: formData.nombre_completo,
-            whatsapp: formData.whatsapp
-          })
-          .select()
-          .single()
+        try {
+          // Verificar si el cliente ya existe
+          const { data: clienteExistente, error: errorBusqueda } = await supabase
+            .from('rf_clientes')
+            .select('id')
+            .eq('whatsapp', formData.whatsapp)
+            .single()
 
-        if (clienteError) {
-          console.error('Error creando cliente:', clienteError)
+          if (clienteExistente) {
+            pacienteId = clienteExistente.id
+          } else {
+            // Crear nuevo cliente
+            const datosCliente = {
+              dni: formData.dni || null,
+              nombre_completo: formData.nombre_completo,
+              whatsapp: formData.whatsapp
+            }
+
+            console.log('Intentando crear cliente con datos:', datosCliente)
+
+            const { data: clienteData, error: clienteError } = await supabase
+              .from('rf_clientes')
+              .insert(datosCliente)
+              .select()
+              .single()
+
+            if (clienteError) {
+              console.error('Error creando cliente:', clienteError)
+              console.error('Datos del cliente:', datosCliente)
+              toast({
+                title: "Error",
+                description: `Error al crear el cliente: ${clienteError.message}`,
+                variant: "destructive"
+              })
+              setLoading(false)
+              return
+            }
+
+            pacienteId = clienteData.id
+          }
+        } catch (error) {
+          console.error('Error en proceso de cliente:', error)
           toast({
             title: "Error",
-            description: "Error al crear el cliente",
+            description: "Error al procesar el cliente",
             variant: "destructive"
           })
           setLoading(false)
           return
         }
-
-        pacienteId = clienteData.id
       }
 
       const citaData: CitaData = {
@@ -661,21 +689,44 @@ export function CitaModal({
         formData.clientes.map(async (cliente) => {
           let pacienteId = cliente.paciente_id
           if (!pacienteId && cliente.whatsapp) {
-            const { data: clienteData, error: clienteError } = await supabase
-              .from('rf_clientes')
-              .insert({
-                dni: cliente.dni,
-                nombre_completo: cliente.nombre_completo,
-                whatsapp: cliente.whatsapp
-              })
-              .select()
-              .single()
+            try {
+              // Verificar si el cliente ya existe
+              const { data: clienteExistente, error: errorBusqueda } = await supabase
+                .from('rf_clientes')
+                .select('id')
+                .eq('whatsapp', cliente.whatsapp)
+                .single()
 
-            if (clienteError) {
-              throw new Error(`Error creando cliente: ${clienteError.message}`)
+              if (clienteExistente) {
+                pacienteId = clienteExistente.id
+              } else {
+                // Crear nuevo cliente
+                const datosCliente = {
+                  dni: cliente.dni || null,
+                  nombre_completo: cliente.nombre_completo,
+                  whatsapp: cliente.whatsapp
+                }
+
+                console.log('Intentando crear cliente múltiple con datos:', datosCliente)
+
+                const { data: clienteData, error: clienteError } = await supabase
+                  .from('rf_clientes')
+                  .insert(datosCliente)
+                  .select()
+                  .single()
+
+                if (clienteError) {
+                  console.error('Error creando cliente múltiple:', clienteError)
+                  console.error('Datos del cliente:', datosCliente)
+                  throw new Error(`Error creando cliente: ${clienteError.message}`)
+                }
+
+                pacienteId = clienteData.id
+              }
+            } catch (error) {
+              console.error('Error en proceso de cliente múltiple:', error)
+              throw error
             }
-
-            pacienteId = clienteData.id
           }
 
           return {
