@@ -19,7 +19,7 @@ import { TablaEgresos } from "@/components/reportes/tabla-egresos";
 import { toast } from "@/components/ui/use-toast";
 
 export default function ReportesPage() {
-  const [vista, setVista] = useState<'diario' | 'semanal' | 'mensual'>('diario');
+  const [vista, setVista] = useState<'dia' | 'semana' | 'mes'>('dia');
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
   const [reporte, setReporte] = useState<ReporteDiario | ReporteSemanal | ReporteMensual | null>(null);
   const [egresosCategoria, setEgresosCategoria] = useState<EgresoPorCategoria[]>([]);
@@ -33,14 +33,14 @@ export default function ReportesPage() {
       setLoading(true);
       let url = `/api/reportes?tipo=${vista}`;
 
-      if (vista === 'diario') {
+      if (vista === 'dia') {
         const fecha = format(fechaSeleccionada, 'yyyy-MM-dd');
         url += `&fecha=${fecha}`;
-      } else if (vista === 'semanal') {
+      } else if (vista === 'semana') {
         const inicio = format(new Date(fechaSeleccionada.getTime() - 6 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
         const fin = format(fechaSeleccionada, 'yyyy-MM-dd');
         url += `&fecha_inicio=${inicio}&fecha_fin=${fin}`;
-      } else if (vista === 'mensual') {
+      } else if (vista === 'mes') {
         const anio = fechaSeleccionada.getFullYear();
         const mes = fechaSeleccionada.getMonth() + 1;
         url += `&anio=${anio}&mes=${mes}`;
@@ -88,13 +88,13 @@ export default function ReportesPage() {
 
   const getVistaTitle = () => {
     switch (vista) {
-      case 'diario':
+      case 'dia':
         return `Reporte del ${format(fechaSeleccionada, 'EEEE, d \'de\' MMMM \'de\' yyyy', { locale: es })}`;
-      case 'semanal':
+      case 'semana':
         const inicio = format(new Date(fechaSeleccionada.getTime() - 6 * 24 * 60 * 60 * 1000), 'd \'de\' MMM', { locale: es });
         const fin = format(fechaSeleccionada, 'd \'de\' MMM \'de\' yyyy', { locale: es });
         return `Reporte Semanal del ${inicio} al ${fin}`;
-      case 'mensual':
+      case 'mes':
         return `Reporte de ${format(fechaSeleccionada, 'MMMM \'de\' yyyy', { locale: es })}`;
       default:
         return 'Reporte';
@@ -163,7 +163,9 @@ export default function ReportesPage() {
             <VistaSelector vista={vista} setVista={setVista} />
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
+              <label htmlFor="fecha-reporte" className="sr-only">Seleccionar fecha</label>
               <input
+                id="fecha-reporte"
                 type="date"
                 value={format(fechaSeleccionada, 'yyyy-MM-dd')}
                 onChange={(e) => setFechaSeleccionada(new Date(e.target.value))}

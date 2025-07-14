@@ -13,7 +13,7 @@ import { Ingreso } from "@/types/reportes";
 import { Search, Filter, Download } from "lucide-react";
 
 interface TablaIngresosProps {
-  vista: 'diario' | 'semanal' | 'mensual';
+  vista: 'dia' | 'semana' | 'mes';
   fechaSeleccionada: Date;
 }
 
@@ -55,14 +55,14 @@ export function TablaIngresos({ vista, fechaSeleccionada }: TablaIngresosProps) 
       setLoading(true);
       let url = '/api/ingresos?';
 
-      if (vista === 'diario') {
+      if (vista === 'dia') {
         const fecha = format(fechaSeleccionada, 'yyyy-MM-dd');
         url += `fecha_inicio=${fecha}&fecha_fin=${fecha}`;
-      } else if (vista === 'semanal') {
+      } else if (vista === 'semana') {
         const inicio = format(new Date(fechaSeleccionada.getTime() - 6 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
         const fin = format(fechaSeleccionada, 'yyyy-MM-dd');
         url += `fecha_inicio=${inicio}&fecha_fin=${fin}`;
-      } else if (vista === 'mensual') {
+      } else if (vista === 'mes') {
         const inicio = format(new Date(fechaSeleccionada.getFullYear(), fechaSeleccionada.getMonth(), 1), 'yyyy-MM-dd');
         const fin = format(new Date(fechaSeleccionada.getFullYear(), fechaSeleccionada.getMonth() + 1, 0), 'yyyy-MM-dd');
         url += `fecha_inicio=${inicio}&fecha_fin=${fin}`;
