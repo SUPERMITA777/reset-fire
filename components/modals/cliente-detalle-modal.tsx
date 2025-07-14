@@ -15,6 +15,7 @@ import { toast } from "@/components/ui/use-toast"
 interface Cliente {
   id: string
   nombre_completo: string
+  dni: string
   whatsapp: string | null
   observaciones: string | null
   created_at: string

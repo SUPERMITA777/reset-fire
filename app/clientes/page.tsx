@@ -16,6 +16,7 @@ interface Cliente {
   nombre_completo: string
   dni: string
   whatsapp: string | null
+  observaciones: string | null
   created_at: string
   total_citas: number
   ultima_cita: string | null
