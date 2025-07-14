@@ -240,194 +240,185 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
-          {/* Panel izquierdo - Items del carrito */}
-          <div className="xl:col-span-3">
+        <div className="space-y-4">
+          {/* Información del cliente - Arriba */}
+          {datosCita && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Productos y Servicios</CardTitle>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Datos del Cliente
+                </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                {items.length === 0 ? (
-                  <div className="text-center py-6 text-muted-foreground">
-                    <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Tu carrito está vacío</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Nombre Completo</Label>
+                    <p className="font-medium text-sm">{datosCita.nombre_completo}</p>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {items.map((item) => (
-                      <div key={item.id} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <h4 className="font-medium text-sm truncate">
-                              {item.tratamiento_nombre || 'Tratamiento'}
-                            </h4>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">WhatsApp</Label>
+                    <p className="font-medium text-sm">{datosCita.whatsapp}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Tratamiento heredado */}
+          {datosCita && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Tratamiento Programado</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex-1">
+                    <p className="font-medium text-sm text-green-800">
+                      {datosCita.fecha} - {datosCita.hora} (Box {datosCita.box})
+                    </p>
+                    <p className="text-xs text-green-600">
+                      Tratamiento ID: {datosCita.tratamiento_id} | Subtratamiento ID: {datosCita.subtratamiento_id}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-sm text-green-800">
+                      {formatCurrency(datosCita.precio)}
+                    </p>
+                    <p className="text-xs text-green-600">
+                      Seña: {formatCurrency(datosCita.sena)}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Agregar productos/subtratamientos */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Agregar Productos o Servicios</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <Label htmlFor="producto" className="text-xs">Producto/Servicio</Label>
+                  <Select value={productoSeleccionado} onValueChange={setProductoSeleccionado}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Seleccionar producto o servicio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {productos.map((producto) => (
+                        <SelectItem key={producto.id} value={producto.id}>
+                          {producto.nombre} - {formatCurrency(producto.precio)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-20">
+                  <Label htmlFor="cantidad" className="text-xs">Cant.</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={cantidadProducto}
+                    onChange={(e) => setCantidadProducto(parseInt(e.target.value) || 1)}
+                    className="h-8"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={agregarProducto} className="h-8 px-3">
+                    <Plus className="h-3 w-3 mr-1" />
+                    Agregar
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Items del carrito */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Productos y Servicios en Carrito</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {items.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Tu carrito está vacío</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <h4 className="font-medium text-sm truncate">
+                            {item.tratamiento_nombre || 'Tratamiento'}
+                          </h4>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEliminarItem(item.id!)}
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        
+                        <p className="text-xs text-muted-foreground mb-2">
+                          {item.subtratamiento_nombre || 'Subtratamiento'}
+                          {item.duracion && (
+                            <span className="ml-1">
+                              • {item.duracion} min
+                            </span>
+                          )}
+                        </p>
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              onClick={() => handleEliminarItem(item.id!)}
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => handleActualizarCantidad(item, item.cantidad - 1)}
+                              className="h-6 w-6 p-0"
+                              disabled={item.cantidad <= 1}
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="text-sm font-medium w-6 text-center">
+                              {item.cantidad}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleActualizarCantidad(item, item.cantidad + 1)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Plus className="h-3 w-3" />
                             </Button>
                           </div>
-                          
-                          <p className="text-xs text-muted-foreground mb-2">
-                            {item.subtratamiento_nombre || 'Subtratamiento'}
-                            {item.duracion && (
-                              <span className="ml-1">
-                                • {item.duracion} min
-                              </span>
-                            )}
-                          </p>
-
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleActualizarCantidad(item, item.cantidad - 1)}
-                                className="h-6 w-6 p-0"
-                                disabled={item.cantidad <= 1}
-                              >
-                                <Minus className="h-3 w-3" />
-                              </Button>
-                              <span className="text-sm font-medium w-6 text-center">
-                                {item.cantidad}
-                              </span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleActualizarCantidad(item, item.cantidad + 1)}
-                                className="h-6 w-6 p-0"
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-medium text-sm">
-                                {formatCurrency(item.precio_total - item.descuento)}
+                          <div className="text-right">
+                            <p className="font-medium text-sm">
+                              {formatCurrency(item.precio_total - item.descuento)}
+                            </p>
+                            {item.descuento > 0 && (
+                              <p className="text-xs text-muted-foreground line-through">
+                                {formatCurrency(item.precio_total)}
                               </p>
-                              {item.descuento > 0 && (
-                                <p className="text-xs text-muted-foreground line-through">
-                                  {formatCurrency(item.precio_total)}
-                                </p>
-                              )}
-                            </div>
+                            )}
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Agregar productos - Más compacto */}
-            <Card className="mt-3">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Agregar Productos</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <Label htmlFor="producto" className="text-xs">Producto</Label>
-                    <Select value={productoSeleccionado} onValueChange={setProductoSeleccionado}>
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Seleccionar producto" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {productos.map((producto) => (
-                          <SelectItem key={producto.id} value={producto.id}>
-                            {producto.nombre} - {formatCurrency(producto.precio)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="w-20">
-                    <Label htmlFor="cantidad" className="text-xs">Cant.</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={cantidadProducto}
-                      onChange={(e) => setCantidadProducto(parseInt(e.target.value) || 1)}
-                      className="h-8"
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <Button onClick={agregarProducto} className="h-8 px-3">
-                      <Plus className="h-3 w-3 mr-1" />
-                      Agregar
-                    </Button>
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+            </CardContent>
+          </Card>
 
-          {/* Panel derecho - Resumen y checkout */}
-          <div className="space-y-3">
-            {/* Información del cliente */}
-            {datosCita && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Cliente
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="space-y-2">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Nombre</Label>
-                      <p className="font-medium text-sm">{datosCita.nombre_completo}</p>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">WhatsApp</Label>
-                      <p className="font-medium text-sm">{datosCita.whatsapp}</p>
-                    </div>
-                    {datosCita.dni && (
-                      <div>
-                        <Label className="text-xs text-muted-foreground">DNI</Label>
-                        <p className="font-medium text-sm">{datosCita.dni}</p>
-                      </div>
-                    )}
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Seña</Label>
-                      <p className="font-medium text-sm text-green-600">{formatCurrency(datosCita.sena)}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Resumen de compra */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Resumen de Compra</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal:</span>
-                    <span>{formatCurrency(total)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Descuentos:</span>
-                    <span className="text-green-600">
-                      -{formatCurrency(items.reduce((sum, item) => sum + item.descuento, 0))}
-                    </span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between font-medium">
-                    <span>Total:</span>
-                    <span>{formatCurrency(total - items.reduce((sum, item) => sum + item.descuento, 0))}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
+          {/* Resumen final y pago */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Método de pago y notas */}
             <Card>
               <CardHeader className="pb-3">
@@ -442,7 +433,7 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="efectivo">Efectivo</SelectItem>
-                      <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                      <SelectItem value="tarjeta">Tarjeta de Crédito</SelectItem>
                       <SelectItem value="transferencia">Transferencia</SelectItem>
                     </SelectContent>
                   </Select>
@@ -460,24 +451,62 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
               </CardContent>
             </Card>
 
-            {/* Botón de completar compra */}
-            <Button
-              onClick={handleCompletarCompra}
-              disabled={items.length === 0 || procesandoCompra}
-              className="w-full"
-            >
-              {procesandoCompra ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Procesando...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Completar Compra
-                </>
-              )}
-            </Button>
+            {/* Resumen de compra */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Resumen de Compra</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal:</span>
+                    <span>{formatCurrency(total)}</span>
+                  </div>
+                  {datosCita && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Seña pagada:</span>
+                      <span>-{formatCurrency(datosCita.sena)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span>Descuentos:</span>
+                    <span className="text-green-600">
+                      -{formatCurrency(items.reduce((sum, item) => sum + item.descuento, 0))}
+                    </span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between font-medium text-base">
+                    <span>Total a abonar:</span>
+                    <span className="text-lg">
+                      {formatCurrency(
+                        total - 
+                        items.reduce((sum, item) => sum + item.descuento, 0) - 
+                        (datosCita ? datosCita.sena : 0)
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Botón de completar compra */}
+                <Button
+                  onClick={handleCompletarCompra}
+                  disabled={items.length === 0 || procesandoCompra}
+                  className="w-full mt-4"
+                >
+                  {procesandoCompra ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Completar Compra
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </DialogContent>
