@@ -15,38 +15,34 @@ export function Header() {
               <img src="/logo%20RESET.png" alt="Logo Reset" style={{ height: 60 }} className="cursor-pointer hover:opacity-80 transition-opacity" />
             </Link>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex items-center gap-4">
-              <FechaHora />
-            </div>
-            <div className="flex flex-row gap-2">
-              <Link href="/institucional">
-                <Button variant="default" className="bg-green-600 hover:bg-green-700">
-                  🏥 INSTITUCIONAL
-                </Button>
-              </Link>
-              <Link href="/gestion-tratamientos">
-                <Button variant="outline">GESTIÓN DE TRATAMIENTOS</Button>
-              </Link>
-              <Link href="/calendario">
-                <Button variant="outline">CALENDARIO</Button>
-              </Link>
-              <Link href="/clientes">
-                <Button variant="outline">CLIENTES</Button>
-              </Link>
-              <Link href="/productos">
-                <Button variant="outline">PRODUCTOS</Button>
-              </Link>
-              <Link href="/disponibilidad">
-                <Button variant="outline">DISPONIBILIDAD</Button>
-              </Link>
-              <Link href="/configuracion">
-                <Button variant="outline">CONFIGURACIÓN</Button>
-              </Link>
-              <Link href="/reportes">
-                <Button variant="outline">REPORTES</Button>
-              </Link>
-            </div>
+          <div className="flex flex-row gap-2 items-center">
+            <Link href="/institucional">
+              <Button variant="default" className="bg-green-600 hover:bg-green-700">
+                🏥 INSTITUCIONAL
+              </Button>
+            </Link>
+            <Link href="/gestion-tratamientos">
+              <Button variant="outline">GESTIÓN DE TRATAMIENTOS</Button>
+            </Link>
+            <Link href="/calendario">
+              <Button variant="outline">CALENDARIO</Button>
+            </Link>
+            <Link href="/clientes">
+              <Button variant="outline">CLIENTES</Button>
+            </Link>
+            <Link href="/productos">
+              <Button variant="outline">PRODUCTOS</Button>
+            </Link>
+            <Link href="/disponibilidad">
+              <Button variant="outline">DISPONIBILIDAD</Button>
+            </Link>
+            <Link href="/configuracion">
+              <Button variant="outline">CONFIGURACIÓN</Button>
+            </Link>
+            <Link href="/reportes">
+              <Button variant="outline">REPORTES</Button>
+            </Link>
+            <FechaHora />
           </div>
         </div>
       </div>
