@@ -574,6 +574,22 @@ export function CitaModal({
       let pacienteId = formData.paciente_id
       if (!pacienteId && formData.whatsapp) {
         try {
+          console.log('FormData completo:', formData)
+          console.log('WhatsApp del formulario:', formData.whatsapp)
+          console.log('Nombre completo del formulario:', formData.nombre_completo)
+          
+          // Validar que los datos requeridos estén presentes
+          if (!formData.whatsapp || !formData.nombre_completo) {
+            console.error('Datos faltantes:', { whatsapp: formData.whatsapp, nombre_completo: formData.nombre_completo })
+            toast({
+              title: "Error",
+              description: "Faltan datos requeridos del cliente (WhatsApp y nombre completo)",
+              variant: "destructive"
+            })
+            setLoading(false)
+            return
+          }
+
           // Verificar si el cliente ya existe
           const { data: clienteExistente, error: errorBusqueda } = await supabase
             .from('rf_clientes')
@@ -582,16 +598,29 @@ export function CitaModal({
             .single()
 
           if (clienteExistente) {
+            console.log('Cliente existente encontrado:', clienteExistente)
             pacienteId = clienteExistente.id
           } else {
             // Crear nuevo cliente
             const datosCliente = {
               dni: formData.dni || null,
-              nombre_completo: formData.nombre_completo,
-              whatsapp: formData.whatsapp
+              nombre_completo: formData.nombre_completo.trim(),
+              whatsapp: formData.whatsapp.trim()
             }
 
             console.log('Intentando crear cliente con datos:', datosCliente)
+
+            // Validar que los datos no estén vacíos después del trim
+            if (!datosCliente.nombre_completo || !datosCliente.whatsapp) {
+              console.error('Datos vacíos después del trim:', datosCliente)
+              toast({
+                title: "Error",
+                description: "Los datos del cliente no pueden estar vacíos",
+                variant: "destructive"
+              })
+              setLoading(false)
+              return
+            }
 
             const { data: clienteData, error: clienteError } = await supabase
               .from('rf_clientes')
@@ -611,6 +640,7 @@ export function CitaModal({
               return
             }
 
+            console.log('Cliente creado exitosamente:', clienteData)
             pacienteId = clienteData.id
           }
         } catch (error) {

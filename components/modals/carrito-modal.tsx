@@ -229,7 +229,7 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[90vw] max-w-6xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
@@ -240,27 +240,26 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
           {/* Panel izquierdo - Items del carrito */}
-          <div className="lg:col-span-2">
+          <div className="xl:col-span-3">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Productos y Servicios</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Productos y Servicios</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-0">
                 {items.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <ShoppingCart className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Tu carrito está vacío</p>
-                    <p className="text-sm">Agrega productos o servicios para comenzar</p>
+                  <div className="text-center py-6 text-muted-foreground">
+                    <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Tu carrito está vacío</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {items.map((item) => (
-                      <div key={item.id} className="flex items-start gap-4 p-4 bg-muted/30 rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium">
+                      <div key={item.id} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="font-medium text-sm truncate">
                               {item.tratamiento_nombre || 'Tratamiento'}
                             </h4>
                             <Button
@@ -273,40 +272,40 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
                             </Button>
                           </div>
                           
-                          <p className="text-sm text-muted-foreground mb-3">
+                          <p className="text-xs text-muted-foreground mb-2">
                             {item.subtratamiento_nombre || 'Subtratamiento'}
                             {item.duracion && (
-                              <span className="ml-2">
+                              <span className="ml-1">
                                 • {item.duracion} min
                               </span>
                             )}
                           </p>
 
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleActualizarCantidad(item, item.cantidad - 1)}
-                                className="h-8 w-8 p-0"
+                                className="h-6 w-6 p-0"
                                 disabled={item.cantidad <= 1}
                               >
                                 <Minus className="h-3 w-3" />
                               </Button>
-                              <span className="text-sm font-medium w-8 text-center">
+                              <span className="text-sm font-medium w-6 text-center">
                                 {item.cantidad}
                               </span>
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleActualizarCantidad(item, item.cantidad + 1)}
-                                className="h-8 w-8 p-0"
+                                className="h-6 w-6 p-0"
                               >
                                 <Plus className="h-3 w-3" />
                               </Button>
                             </div>
                             <div className="text-right">
-                              <p className="font-medium">
+                              <p className="font-medium text-sm">
                                 {formatCurrency(item.precio_total - item.descuento)}
                               </p>
                               {item.descuento > 0 && (
@@ -324,17 +323,17 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
               </CardContent>
             </Card>
 
-            {/* Agregar productos */}
-            <Card className="mt-4">
-              <CardHeader>
-                <CardTitle className="text-lg">Agregar Productos</CardTitle>
+            {/* Agregar productos - Más compacto */}
+            <Card className="mt-3">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Agregar Productos</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="producto">Producto</Label>
+              <CardContent className="pt-0">
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <Label htmlFor="producto" className="text-xs">Producto</Label>
                     <Select value={productoSeleccionado} onValueChange={setProductoSeleccionado}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-8">
                         <SelectValue placeholder="Seleccionar producto" />
                       </SelectTrigger>
                       <SelectContent>
@@ -346,18 +345,19 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label htmlFor="cantidad">Cantidad</Label>
+                  <div className="w-20">
+                    <Label htmlFor="cantidad" className="text-xs">Cant.</Label>
                     <Input
                       type="number"
                       min="1"
                       value={cantidadProducto}
                       onChange={(e) => setCantidadProducto(parseInt(e.target.value) || 1)}
+                      className="h-8"
                     />
                   </div>
                   <div className="flex items-end">
-                    <Button onClick={agregarProducto} className="w-full">
-                      <Plus className="h-4 w-4 mr-2" />
+                    <Button onClick={agregarProducto} className="h-8 px-3">
+                      <Plus className="h-3 w-3 mr-1" />
                       Agregar
                     </Button>
                   </div>
@@ -367,35 +367,35 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
           </div>
 
           {/* Panel derecho - Resumen y checkout */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Información del cliente */}
             {datosCita && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
                     <User className="h-4 w-4" />
                     Cliente
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
                   <div className="space-y-2">
                     <div>
                       <Label className="text-xs text-muted-foreground">Nombre</Label>
-                      <p className="font-medium">{datosCita.nombre_completo}</p>
+                      <p className="font-medium text-sm">{datosCita.nombre_completo}</p>
                     </div>
                     <div>
                       <Label className="text-xs text-muted-foreground">WhatsApp</Label>
-                      <p className="font-medium">{datosCita.whatsapp}</p>
+                      <p className="font-medium text-sm">{datosCita.whatsapp}</p>
                     </div>
                     {datosCita.dni && (
                       <div>
                         <Label className="text-xs text-muted-foreground">DNI</Label>
-                        <p className="font-medium">{datosCita.dni}</p>
+                        <p className="font-medium text-sm">{datosCita.dni}</p>
                       </div>
                     )}
                     <div>
                       <Label className="text-xs text-muted-foreground">Seña</Label>
-                      <p className="font-medium text-green-600">{formatCurrency(datosCita.sena)}</p>
+                      <p className="font-medium text-sm text-green-600">{formatCurrency(datosCita.sena)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -404,96 +404,82 @@ export function CarritoModal({ open, onOpenChange, datosCita }: CarritoModalProp
 
             {/* Resumen de compra */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Resumen de Compra</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Resumen de Compra</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
+              <CardContent className="pt-0">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
                     <span>Subtotal:</span>
                     <span>{formatCurrency(total)}</span>
                   </div>
-                  {datosCita && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Seña pagada:</span>
-                      <span>-{formatCurrency(datosCita.sena)}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between text-sm">
+                    <span>Descuentos:</span>
+                    <span className="text-green-600">
+                      -{formatCurrency(items.reduce((sum, item) => sum + item.descuento, 0))}
+                    </span>
+                  </div>
                   <Separator />
-                  <div className="flex justify-between font-bold text-lg">
-                    <span>Total a pagar:</span>
-                    <span>{formatCurrency(datosCita ? Math.max(0, total - datosCita.sena) : total)}</span>
+                  <div className="flex justify-between font-medium">
+                    <span>Total:</span>
+                    <span>{formatCurrency(total - items.reduce((sum, item) => sum + item.descuento, 0))}</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Método de pago */}
+            {/* Método de pago y notas */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Método de Pago
-                </CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Información de Pago</CardTitle>
               </CardHeader>
-              <CardContent>
-                <Select value={metodoPago} onValueChange={setMetodoPago}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="efectivo">Efectivo</SelectItem>
-                    <SelectItem value="tarjeta">Tarjeta</SelectItem>
-                    <SelectItem value="transferencia">Transferencia</SelectItem>
-                    <SelectItem value="mercadopago">Mercado Pago</SelectItem>
-                  </SelectContent>
-                </Select>
+              <CardContent className="pt-0 space-y-3">
+                <div>
+                  <Label htmlFor="metodo-pago" className="text-xs">Método de Pago</Label>
+                  <Select value={metodoPago} onValueChange={setMetodoPago}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="efectivo">Efectivo</SelectItem>
+                      <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                      <SelectItem value="transferencia">Transferencia</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="notas" className="text-xs">Notas</Label>
+                  <Textarea
+                    id="notas"
+                    value={notasCompra}
+                    onChange={(e) => setNotasCompra(e.target.value)}
+                    placeholder="Notas adicionales..."
+                    className="h-16 text-xs"
+                  />
+                </div>
               </CardContent>
             </Card>
 
-            {/* Notas */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Notas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  placeholder="Notas adicionales sobre la compra..."
-                  value={notasCompra}
-                  onChange={(e) => setNotasCompra(e.target.value)}
-                  rows={3}
-                />
-              </CardContent>
-            </Card>
+            {/* Botón de completar compra */}
+            <Button
+              onClick={handleCompletarCompra}
+              disabled={items.length === 0 || procesandoCompra}
+              className="w-full"
+            >
+              {procesandoCompra ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Procesando...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Completar Compra
+                </>
+              )}
+            </Button>
           </div>
         </div>
-
-        <DialogFooter className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={procesandoCompra}
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleCompletarCompra}
-            disabled={procesandoCompra || items.length === 0}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            {procesandoCompra ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Procesando...
-              </>
-            ) : (
-              <>
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Completar Compra
-              </>
-            )}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
