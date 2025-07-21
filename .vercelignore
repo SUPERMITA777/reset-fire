@@ -10,3 +10,4 @@ supabase/migrations/
 .env.development.local
 .env.test.local
 .env.production.local 
+mobile-app/ 
