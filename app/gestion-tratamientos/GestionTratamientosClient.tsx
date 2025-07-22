@@ -45,6 +45,12 @@ const GestionTratamientosClient = () => {
   const [currentTratamientoId, setCurrentTratamientoId] = useState<string | null>(null);
   const { toast } = useToast();
 
+  const [subDialogOpen, setSubDialogOpen] = useState(false);
+  const [subNombre, setSubNombre] = useState("");
+  const [subDuracion, setSubDuracion] = useState(30);
+  const [subPrecio, setSubPrecio] = useState(0);
+  const [subTratamientoTargetId, setSubTratamientoTargetId] = useState<string | null>(null);
+
   useEffect(() => {
     fetchTratamientos();
   }, []);
@@ -167,153 +173,201 @@ const GestionTratamientosClient = () => {
     }
   };
 
+  const openNewSubTratamiento = (tratamientoId: string) => {
+    setSubTratamientoTargetId(tratamientoId);
+    setSubNombre("");
+    setSubDuracion(30);
+    setSubPrecio(0);
+    setSubDialogOpen(true);
+  };
+
+  const handleSubmitSubTratamiento = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subTratamientoTargetId) return;
+    try {
+      const { error } = await supabase.from("rf_subtratamientos").insert({
+        tratamiento_id: subTratamientoTargetId,
+        nombre_subtratamiento: subNombre,
+        duracion: subDuracion,
+        precio: subPrecio,
+      });
+      if (error) throw error;
+      toast({ title: "Éxito", description: "Subtratamiento creado correctamente" });
+      setSubDialogOpen(false);
+      fetchTratamientos();
+    } catch (error) {
+      toast({ title: "Error", description: "No se pudo crear el subtratamiento", variant: "destructive" });
+    }
+  };
+
   // Aquí puedes agregar la lógica de subtratamientos (crear, editar, eliminar) similar a la de tratamientos
 
+  // --- MODAL DE SUBTRATAMIENTO FUERA DEL RETURN PRINCIPAL ---
+  const subTratamientoModal = (
+    <Dialog open={subDialogOpen} onOpenChange={setSubDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Nuevo Subtratamiento</DialogTitle>
+          <DialogDescription>Agrega un subtratamiento para este tratamiento</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmitSubTratamiento} className="flex flex-col gap-2 p-2">
+          <Label htmlFor="sub-nombre" className="text-xs">Nombre</Label>
+          <Input id="sub-nombre" value={subNombre} onChange={e => setSubNombre(e.target.value)} required className="h-8 text-xs px-2 w-40" />
+          <Label htmlFor="sub-duracion" className="text-xs mt-2">Duración (minutos)</Label>
+          <Input id="sub-duracion" type="number" min={1} value={subDuracion} onChange={e => setSubDuracion(Number(e.target.value))} required className="h-8 text-xs px-2 w-20" />
+          <Label htmlFor="sub-precio" className="text-xs mt-2">Precio ($)</Label>
+          <Input id="sub-precio" type="number" min={0} step={0.01} value={subPrecio} onChange={e => setSubPrecio(Number(e.target.value))} required className="h-8 text-xs px-2 w-20" />
+          <Button type="submit" className="w-full mt-2 text-xs sm:text-sm">Crear Subtratamiento</Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+
   return (
-    <div className="container mx-auto py-4 sm:py-6 px-2 sm:px-4">
-      <div className="flex justify-between items-center mb-4 sm:mb-6">
-        <div className="flex items-center gap-2 sm:gap-4">
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="text-xs sm:text-sm">
-              <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              Volver
-            </Button>
-          </Link>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Gestión de Tratamientos</h1>
-        </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openNewTratamiento} className="text-xs sm:text-sm">
-              <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />Nuevo Tratamiento
-            </Button>
-          </DialogTrigger>
-          <DialogContent style={{ maxWidth: 340, width: '100%', padding: 0 }} className="rounded-lg shadow-lg mx-auto">
-            <DialogHeader>
-              <DialogTitle className="text-base px-4 pt-4 pb-2">
-                {editingTratamiento ? "Editar Tratamiento" : "Nuevo Tratamiento"}
-              </DialogTitle>
-              <DialogDescription className="px-4 pb-4">
-                {editingTratamiento 
-                  ? "Modifica los datos del tratamiento existente"
-                  : "Ingresa los datos para crear un nuevo tratamiento"}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmitTratamiento} className="flex flex-col gap-2 p-4">
-              <Label htmlFor="nombre" className="text-xs">Nombre</Label>
-              <Input id="nombre" maxLength={20} value={nombreTratamiento} onChange={e => setNombreTratamiento(e.target.value)} required className="h-8 text-xs px-2 w-40" />
-              <Label htmlFor="descripcion" className="text-xs mt-2">Descripción</Label>
-              <textarea
-                id="descripcion"
-                value={descripcionTratamiento || ""}
-                onChange={e => setDescripcionTratamiento(e.target.value)}
-                placeholder="Describe el tratamiento..."
-                className="w-full min-h-[80px] p-2 border border-gray-300 rounded-md text-xs"
-              />
-              <Label className="text-xs mt-2">Foto del Tratamiento</Label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageUploadTratamiento}
-                className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                aria-label="Subir imagen del tratamiento"
-              />
-              {imageError && <div className="text-red-600 text-xs mt-1">{imageError}</div>}
-              {imagePreviewTratamiento && (
-                <div className="mt-1">
-                  <img 
-                    src={imagePreviewTratamiento} 
-                    alt="Preview" 
-                    className="w-12 h-12 object-cover rounded border"
-                  />
-                </div>
-              )}
-              <Label htmlFor="box" className="text-xs mt-2">Box</Label>
-              <Input id="box" type="number" min="1" max={999999} value={box} onChange={e => setBox(Number(e.target.value))} required className="h-8 text-xs px-2 w-20" />
-              <hr className="my-2" />
-              {/* Aquí puedes agregar la UI para subtratamientos */}
-              <Button type="submit" className="w-full mt-2 text-xs sm:text-sm">{editingTratamiento ? "Actualizar" : "Crear"}</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-      {isLoading ? (
-        <p className="text-sm">Cargando tratamientos...</p>
-      ) : (
-        <div className="gestion-tratamientos-grid">
-          {tratamientos.map((trat) => (
-            <Card key={trat.id} className="gestion-tratamiento-card hover:shadow-lg transition-all duration-200 relative flex flex-col">
-              <CardHeader className="p-3 md:p-4 lg:p-5 xl:p-6">
-                <div>
-                  <CardTitle className="gestion-tratamiento-title font-semibold leading-tight mb-1">
-                    {trat.nombre_tratamiento}
-                  </CardTitle>
-                  <CardDescription className="gestion-tratamiento-description text-muted-foreground">
-                    Box: {trat.box}
-                  </CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="p-3 md:p-4 lg:p-5 xl:p-6 pt-0 flex-1 pb-16">
-                {trat.rf_subtratamientos && trat.rf_subtratamientos.length > 0 ? (
-                  <div>
-                    <h4 className="font-semibold gestion-subtratamiento-item mb-1 md:mb-2">Subtratamientos:</h4>
-                    <ul className="space-y-1">
-                      {trat.rf_subtratamientos.map((sub) => (
-                        <li key={sub.id} className="gestion-subtratamiento-item flex justify-between items-center p-1 md:p-2 bg-muted/30 rounded-md">
-                          <span className="font-medium truncate mr-2">{sub.nombre_subtratamiento}</span>
-                          <span className="text-muted-foreground whitespace-nowrap">{sub.duracion}min - €{sub.precio}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="gestion-tratamiento-description text-muted-foreground">
-                      No hay subtratamientos
-                    </p>
+    <>
+      {subTratamientoModal}
+      <div className="container mx-auto py-4 sm:py-6 px-2 sm:px-4">
+        <div className="flex justify-between items-center mb-4 sm:mb-6">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="text-xs sm:text-sm">
+                <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                Volver
+              </Button>
+            </Link>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Gestión de Tratamientos</h1>
+          </div>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openNewTratamiento} className="text-xs sm:text-sm">
+                <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />Nuevo Tratamiento
+              </Button>
+            </DialogTrigger>
+            <DialogContent style={{ maxWidth: 340, width: '100%', padding: 0 }} className="rounded-lg shadow-lg mx-auto">
+              <DialogHeader>
+                <DialogTitle className="text-base px-4 pt-4 pb-2">
+                  {editingTratamiento ? "Editar Tratamiento" : "Nuevo Tratamiento"}
+                </DialogTitle>
+                <DialogDescription className="px-4 pb-4">
+                  {editingTratamiento 
+                    ? "Modifica los datos del tratamiento existente"
+                    : "Ingresa los datos para crear un nuevo tratamiento"}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmitTratamiento} className="flex flex-col gap-2 p-4">
+                <Label htmlFor="nombre" className="text-xs">Nombre</Label>
+                <Input id="nombre" maxLength={20} value={nombreTratamiento} onChange={e => setNombreTratamiento(e.target.value)} required className="h-8 text-xs px-2 w-40" />
+                <Label htmlFor="descripcion" className="text-xs mt-2">Descripción</Label>
+                <textarea
+                  id="descripcion"
+                  value={descripcionTratamiento || ""}
+                  onChange={e => setDescripcionTratamiento(e.target.value)}
+                  placeholder="Describe el tratamiento..."
+                  className="w-full min-h-[80px] p-2 border border-gray-300 rounded-md text-xs"
+                />
+                <Label className="text-xs mt-2">Foto del Tratamiento</Label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUploadTratamiento}
+                  className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  aria-label="Subir imagen del tratamiento"
+                />
+                {imageError && <div className="text-red-600 text-xs mt-1">{imageError}</div>}
+                {imagePreviewTratamiento && (
+                  <div className="mt-1">
+                    <img 
+                      src={imagePreviewTratamiento} 
+                      alt="Preview" 
+                      className="w-12 h-12 object-cover rounded border"
+                    />
                   </div>
                 )}
-              </CardContent>
-              <div className="gestion-actions-section absolute bottom-0 left-0 right-0 p-2 md:p-3 lg:p-4 xl:p-5">
-                <div className="flex justify-between items-center">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gestion-add-sub-button"
-                    onClick={() => {
-                      setCurrentTratamientoId(trat.id);
-                      // openNewSubTratamiento(); // Aquí deberías implementar la lógica para subtratamientos
-                    }}
-                  >
-                    <Plus className="w-3 h-3 md:w-4 md:h-4 lg:w-5 lg:h-5 mr-1" />
-                    Sub
-                  </Button>
-                  <div className="flex gap-1">
+                <Label htmlFor="box" className="text-xs mt-2">Box</Label>
+                <Input id="box" type="number" min="1" max={999999} value={box} onChange={e => setBox(Number(e.target.value))} required className="h-8 text-xs px-2 w-20" />
+                <hr className="my-2" />
+                {/* Aquí puedes agregar la UI para subtratamientos */}
+                <Button type="submit" className="w-full mt-2 text-xs sm:text-sm">{editingTratamiento ? "Actualizar" : "Crear"}</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+        {isLoading ? (
+          <p className="text-sm">Cargando tratamientos...</p>
+        ) : (
+          <div className="gestion-tratamientos-grid">
+            {tratamientos.map((trat) => (
+              <Card key={trat.id} className="gestion-tratamiento-card hover:shadow-lg transition-all duration-200 relative flex flex-col">
+                <CardHeader className="p-3 md:p-4 lg:p-5 xl:p-6">
+                  <div>
+                    <CardTitle className="gestion-tratamiento-title font-semibold leading-tight mb-1">
+                      {trat.nombre_tratamiento}
+                    </CardTitle>
+                    <CardDescription className="gestion-tratamiento-description text-muted-foreground">
+                      Box: {trat.box}
+                    </CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 lg:p-5 xl:p-6 pt-0 flex-1 pb-16">
+                  {trat.rf_subtratamientos && trat.rf_subtratamientos.length > 0 ? (
+                    <div>
+                      <h4 className="font-semibold gestion-subtratamiento-item mb-1 md:mb-2">Subtratamientos:</h4>
+                      <ul className="space-y-1">
+                        {trat.rf_subtratamientos.map((sub) => (
+                          <li key={sub.id} className="gestion-subtratamiento-item flex justify-between items-center p-1 md:p-2 bg-muted/30 rounded-md">
+                            <span className="font-medium truncate mr-2">{sub.nombre_subtratamiento}</span>
+                            <span className="text-muted-foreground whitespace-nowrap">{sub.duracion}min - ${sub.precio}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="gestion-tratamiento-description text-muted-foreground">
+                        No hay subtratamientos
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+                <div className="gestion-actions-section absolute bottom-0 left-0 right-0 p-2 md:p-3 lg:p-4 xl:p-5">
+                  <div className="flex justify-between items-center">
                     <Button
                       size="sm"
                       variant="outline"
-                      className="gestion-button p-0"
-                      onClick={() => openEditTratamiento(trat)}
-                      title="Editar tratamiento"
+                      className="gestion-add-sub-button"
+                      onClick={() => openNewSubTratamiento(trat.id)}
                     >
-                      <Edit className="w-3 h-3 md:w-4 md:h-4 lg:w-5 lg:h-5" />
+                      <Plus className="w-3 h-3 md:w-4 md:h-4 lg:w-5 lg:h-5 mr-1" />
+                      Sub
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="gestion-button p-0"
-                      onClick={() => deleteTratamiento(trat.id)}
-                      title="Eliminar tratamiento"
-                    >
-                      <Trash2 className="w-3 h-3 md:w-4 md:h-4 lg:w-5 lg:h-5" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gestion-button p-0"
+                        onClick={() => openEditTratamiento(trat)}
+                        title="Editar tratamiento"
+                      >
+                        <Edit className="w-3 h-3 md:w-4 md:h-4 lg:w-5 lg:h-5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="gestion-button p-0"
+                        onClick={() => deleteTratamiento(trat.id)}
+                        title="Eliminar tratamiento"
+                      >
+                        <Trash2 className="w-3 h-3 md:w-4 md:h-4 lg:w-5 lg:h-5" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 
