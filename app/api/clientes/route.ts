@@ -99,8 +99,18 @@ export async function GET(request: Request) {
 
     // Procesar los datos - versión simplificada sin citas
     console.log('Procesando', clientes?.length || 0, 'clientes...')
-    
-    const clientesProcesados = (clientes || []).map((cliente: any) => {
+    interface ClienteProcesado {
+      id: string;
+      nombre_completo: string;
+      dni: string;
+      whatsapp: string | null;
+      created_at: Date;
+      updated_at: Date;
+      total_citas: number;
+      ultima_cita: Date | null;
+      rf_citas?: unknown;
+    }
+    const clientesProcesados: ClienteProcesado[] = (clientes || []).map((cliente: any) => {
       try {
         return {
           ...cliente,

@@ -105,7 +105,25 @@ export async function GET(request: Request) {
     }
 
     // Transformar las citas al formato esperado por el frontend
-    const citasFormateadas = citas.map((cita: any) => ({
+    interface CitaFormateada {
+      id: string;
+      fecha: string;
+      horaInicio: string;
+      horaFin: string;
+      box: string;
+      box_id: string;
+      nombreTratamiento: string;
+      nombreSubTratamiento: string;
+      nombreCompleto: string;
+      tratamiento: string;
+      subTratamiento: string;
+      notas?: string;
+      estado: 'reservado';
+      color: string;
+      created_at: string;
+      updated_at: string;
+    }
+    const citasFormateadas: CitaFormateada[] = citas.map((cita: any) => ({
       id: cita.id,
       fecha: cita.fecha,
       horaInicio: cita.hora,
@@ -118,7 +136,7 @@ export async function GET(request: Request) {
       tratamiento: cita.tratamiento_id,
       subTratamiento: cita.subtratamiento_id,
       notas: cita.notas || undefined,
-      estado: 'reservado' as const,
+      estado: 'reservado',
       color: '#808080',
       created_at: cita.created_at,
       updated_at: cita.updated_at

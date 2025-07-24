@@ -43,7 +43,14 @@ export async function GET(
     }
 
     // Procesar las citas para incluir información adicional
-    const citasProcesadas = (cliente.rf_citas || []).map((cita: any) => ({
+    interface CitaProcesada {
+      [key: string]: unknown;
+      tratamiento_nombre: string;
+      subtratamiento_nombre: string;
+      duracion: number;
+      fecha_formateada: string;
+    }
+    const citasProcesadas: CitaProcesada[] = (cliente.rf_citas || []).map((cita: any) => ({
       ...cita,
       tratamiento_nombre: cita.rf_subtratamientos?.rf_tratamientos?.nombre_tratamiento || 'Sin tratamiento',
       subtratamiento_nombre: cita.rf_subtratamientos?.nombre_subtratamiento || 'Sin subtratamiento',

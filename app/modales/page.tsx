@@ -44,7 +44,7 @@ const DEFAULTS = {
   },
 };
 
-function getStorageKey(modal, version) {
+function getStorageKey(modal: string, version: string) {
   return `modal_editor_${modal}_${version}`;
 }
 
@@ -66,8 +66,8 @@ export default function ModalesEditorPage() {
   }, [modal, version]);
 
   // Handlers de edición
-  const handleChange = (field, value) => setState(s => ({ ...s, [field]: value }));
-  const handleToggle = (field) => setState(s => ({ ...s, [field]: !s[field] }));
+  const handleChange = (field: string, value: string) => setState(s => ({ ...s, [field]: value }));
+  const handleToggle = (field: string) => setState(s => ({ ...s, [field]: !s[field] }));
   const handleSave = () => {
     const key = getStorageKey(modal, version);
     localStorage.setItem(key, JSON.stringify(state));

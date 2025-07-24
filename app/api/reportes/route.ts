@@ -11,8 +11,8 @@ export async function GET(request: NextRequest) {
     const anio = searchParams.get('anio');
     const mes = searchParams.get('mes');
 
-    let data: any = null;
-    let error: any = null;
+    let data: unknown = null;
+    let error: unknown = null;
 
     switch (tipo) {
       case 'diario':
