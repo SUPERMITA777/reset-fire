@@ -13,6 +13,9 @@ export interface CarritoItem {
   tratamiento_nombre?: string;
   subtratamiento_nombre?: string;
   duracion?: number;
+  // NUEVO: para productos
+  producto_id?: string;
+  producto_nombre?: string;
 }
 
 export interface CarritoCompras {
@@ -62,4 +65,7 @@ export interface CarritoItemInput {
   precio_unitario: number;
   descuento?: number;
   notas?: string;
+  // NUEVO: para productos
+  producto_id?: string;
+  producto_nombre?: string;
 } 

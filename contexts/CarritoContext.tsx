@@ -113,10 +113,11 @@ export function CarritoProvider({ children }: CarritoProviderProps) {
         `)
         .eq('session_id', sessionId)
         .eq('estado', 'activo')
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        throw error;
+      if (error) {
+        console.error('Error al obtener carrito:', error);
+        return null;
       }
 
       if (carrito) {
@@ -172,18 +173,22 @@ export function CarritoProvider({ children }: CarritoProviderProps) {
       const precio_total = itemInput.precio_unitario * itemInput.cantidad;
 
       // Agregar item al carrito
+      const insertObj: any = {
+        carrito_id: carrito.id,
+        tratamiento_id: itemInput.tratamiento_id,
+        subtratamiento_id: itemInput.subtratamiento_id,
+        cantidad: itemInput.cantidad,
+        precio_unitario: itemInput.precio_unitario,
+        precio_total,
+        descuento: itemInput.descuento || 0,
+        notas: itemInput.notas,
+      };
+      if (itemInput.producto_id) insertObj.producto_id = itemInput.producto_id;
+      if (itemInput.producto_nombre) insertObj.producto_nombre = itemInput.producto_nombre;
+
       const { data: item, error } = await supabase
         .from('rf_carrito_items')
-        .insert({
-          carrito_id: carrito.id,
-          tratamiento_id: itemInput.tratamiento_id,
-          subtratamiento_id: itemInput.subtratamiento_id,
-          cantidad: itemInput.cantidad,
-          precio_unitario: itemInput.precio_unitario,
-          precio_total,
-          descuento: itemInput.descuento || 0,
-          notas: itemInput.notas,
-        })
+        .insert(insertObj)
         .select(`
           *,
           tratamiento:rf_tratamientos(nombre_tratamiento),
@@ -195,12 +200,10 @@ export function CarritoProvider({ children }: CarritoProviderProps) {
 
       // Actualizar estado local
       dispatch({ type: 'ADD_ITEM', payload: item });
-      
       toast({
         title: "Producto agregado",
         description: "El producto se agregó correctamente al carrito",
       });
-
     } catch (error) {
       console.error('Error al agregar item:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Error al agregar producto al carrito' });

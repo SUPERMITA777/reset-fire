@@ -50,6 +50,7 @@ const GestionTratamientosClient = () => {
   const [subDuracion, setSubDuracion] = useState(30);
   const [subPrecio, setSubPrecio] = useState(0);
   const [subTratamientoTargetId, setSubTratamientoTargetId] = useState<string | null>(null);
+  const [editingSubTratamiento, setEditingSubTratamiento] = useState<SubTratamiento | null>(null);
 
   useEffect(() => {
     fetchTratamientos();
@@ -181,22 +182,56 @@ const GestionTratamientosClient = () => {
     setSubDialogOpen(true);
   };
 
+  const openEditSubTratamiento = (sub: SubTratamiento) => {
+    setEditingSubTratamiento(sub);
+    setSubTratamientoTargetId(sub.tratamiento_id || null);
+    setSubNombre(sub.nombre_subtratamiento);
+    setSubDuracion(sub.duracion);
+    setSubPrecio(sub.precio);
+    setSubDialogOpen(true);
+  };
+
+  const handleDeleteSubTratamiento = async (sub: SubTratamiento) => {
+    if (!sub.id) return;
+    if (!confirm('¿Eliminar este subtratamiento?')) return;
+    try {
+      await supabase.from('rf_subtratamientos').delete().eq('id', sub.id);
+      toast({ title: 'Subtratamiento eliminado' });
+      fetchTratamientos();
+    } catch (error) {
+      toast({ title: 'Error', description: 'No se pudo eliminar el subtratamiento', variant: 'destructive' });
+    }
+  };
+
   const handleSubmitSubTratamiento = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subTratamientoTargetId) return;
     try {
-      const { error } = await supabase.from("rf_subtratamientos").insert({
-        tratamiento_id: subTratamientoTargetId,
-        nombre_subtratamiento: subNombre,
-        duracion: subDuracion,
-        precio: subPrecio,
-      });
-      if (error) throw error;
-      toast({ title: "Éxito", description: "Subtratamiento creado correctamente" });
+      if (editingSubTratamiento && editingSubTratamiento.id) {
+        // Editar
+        const { error } = await supabase.from('rf_subtratamientos').update({
+          nombre_subtratamiento: subNombre,
+          duracion: subDuracion,
+          precio: subPrecio,
+        }).eq('id', editingSubTratamiento.id);
+        if (error) throw error;
+        toast({ title: 'Subtratamiento actualizado' });
+      } else {
+        // Crear
+        const { error } = await supabase.from('rf_subtratamientos').insert({
+          tratamiento_id: subTratamientoTargetId,
+          nombre_subtratamiento: subNombre,
+          duracion: subDuracion,
+          precio: subPrecio,
+        });
+        if (error) throw error;
+        toast({ title: 'Éxito', description: 'Subtratamiento creado correctamente' });
+      }
       setSubDialogOpen(false);
+      setEditingSubTratamiento(null);
       fetchTratamientos();
     } catch (error) {
-      toast({ title: "Error", description: "No se pudo crear el subtratamiento", variant: "destructive" });
+      toast({ title: 'Error', description: 'No se pudo guardar el subtratamiento', variant: 'destructive' });
     }
   };
 
@@ -204,11 +239,11 @@ const GestionTratamientosClient = () => {
 
   // --- MODAL DE SUBTRATAMIENTO FUERA DEL RETURN PRINCIPAL ---
   const subTratamientoModal = (
-    <Dialog open={subDialogOpen} onOpenChange={setSubDialogOpen}>
+    <Dialog open={subDialogOpen} onOpenChange={(open) => { setSubDialogOpen(open); if (!open) setEditingSubTratamiento(null); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nuevo Subtratamiento</DialogTitle>
-          <DialogDescription>Agrega un subtratamiento para este tratamiento</DialogDescription>
+          <DialogTitle>{editingSubTratamiento ? 'Editar Subtratamiento' : 'Nuevo Subtratamiento'}</DialogTitle>
+          <DialogDescription>{editingSubTratamiento ? 'Edita los datos del subtratamiento' : 'Agrega un subtratamiento para este tratamiento'}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmitSubTratamiento} className="flex flex-col gap-2 p-2">
           <Label htmlFor="sub-nombre" className="text-xs">Nombre</Label>
@@ -217,7 +252,61 @@ const GestionTratamientosClient = () => {
           <Input id="sub-duracion" type="number" min={1} value={subDuracion} onChange={e => setSubDuracion(Number(e.target.value))} required className="h-8 text-xs px-2 w-20" />
           <Label htmlFor="sub-precio" className="text-xs mt-2">Precio ($)</Label>
           <Input id="sub-precio" type="number" min={0} step={0.01} value={subPrecio} onChange={e => setSubPrecio(Number(e.target.value))} required className="h-8 text-xs px-2 w-20" />
-          <Button type="submit" className="w-full mt-2 text-xs sm:text-sm">Crear Subtratamiento</Button>
+          <div className="flex gap-2 mt-2">
+            <Button type="submit" className="w-full text-xs sm:text-sm">{editingSubTratamiento ? 'Actualizar' : 'Crear'} Subtratamiento</Button>
+            {editingSubTratamiento && (
+              <Button type="button" variant="destructive" onClick={async () => {
+                if (!editingSubTratamiento.id) return;
+                if (!confirm('¿Eliminar este subtratamiento? Esta acción no se puede deshacer.')) return;
+                try {
+                  // Verificar si hay citas que usen este subtratamiento
+                  const { data: citas, error: citasError } = await supabase
+                    .from('rf_citas')
+                    .select('id')
+                    .eq('subtratamiento_id', editingSubTratamiento.id);
+                  
+                  if (citasError) throw citasError;
+                  
+                  if (citas && citas.length > 0) {
+                    toast({ 
+                      title: 'No se puede eliminar', 
+                      description: `Este subtratamiento está siendo usado en ${citas.length} cita(s). Elimine las citas primero.`, 
+                      variant: 'destructive' 
+                    });
+                    return;
+                  }
+                  
+                  // Verificar si está en el carrito
+                  const { data: carritoItems, error: carritoError } = await supabase
+                    .from('rf_carrito_items')
+                    .select('id')
+                    .eq('subtratamiento_id', editingSubTratamiento.id);
+                  
+                  if (carritoError) throw carritoError;
+                  
+                  if (carritoItems && carritoItems.length > 0) {
+                    toast({ 
+                      title: 'No se puede eliminar', 
+                      description: `Este subtratamiento está en el carrito. Elimine los items del carrito primero.`, 
+                      variant: 'destructive' 
+                    });
+                    return;
+                  }
+                  
+                  await supabase.from('rf_subtratamientos').delete().eq('id', editingSubTratamiento.id);
+                  toast({ title: 'Subtratamiento eliminado' });
+                  setSubDialogOpen(false);
+                  setEditingSubTratamiento(null);
+                  fetchTratamientos();
+                } catch (error) {
+                  console.error('Error al eliminar subtratamiento:', error);
+                  toast({ title: 'Error', description: 'No se pudo eliminar el subtratamiento', variant: 'destructive' });
+                }
+              }}>
+                Eliminar
+              </Button>
+            )}
+          </div>
         </form>
       </DialogContent>
     </Dialog>
@@ -315,7 +404,7 @@ const GestionTratamientosClient = () => {
                       <ul className="space-y-1">
                         {trat.rf_subtratamientos.map((sub) => (
                           <li key={sub.id} className="gestion-subtratamiento-item flex justify-between items-center p-1 md:p-2 bg-muted/30 rounded-md">
-                            <span className="font-medium truncate mr-2">{sub.nombre_subtratamiento}</span>
+                            <button type="button" className="font-medium truncate mr-2 text-left hover:underline focus:outline-none" onClick={() => openEditSubTratamiento(sub)} title="Editar subtratamiento">{sub.nombre_subtratamiento}</button>
                             <span className="text-muted-foreground whitespace-nowrap">{sub.duracion}min - ${sub.precio}</span>
                           </li>
                         ))}
