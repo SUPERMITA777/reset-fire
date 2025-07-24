@@ -405,6 +405,31 @@ const SeleccionTratamientos = () => {
 
       console.log('Consultando disponibilidad para tratamiento:', tratamientoSeleccionado.id);
 
+      // Obtener la configuración de disponibilidad para esta fecha específica
+      const { data: disponibilidadFecha, error: errorDisponibilidad } = await supabase
+        .from('rf_disponibilidad')
+        .select('*')
+        .eq('tratamiento_id', tratamientoSeleccionado.id)
+        .lte('fecha_inicio', fecha)
+        .gte('fecha_fin', fecha)
+        .single();
+
+      if (errorDisponibilidad) {
+        console.error('Error al obtener disponibilidad para la fecha:', errorDisponibilidad);
+        throw errorDisponibilidad;
+      }
+
+      if (!disponibilidadFecha) {
+        toast({
+          title: "No hay disponibilidad",
+          description: "No hay configuración de disponibilidad para esta fecha",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log('Configuración de disponibilidad para la fecha:', disponibilidadFecha);
+
       // Convertir la fecha a la zona horaria de Argentina
       const fechaArgentina = toZonedTime(new Date(fecha), 'America/Argentina/Buenos_Aires');
       console.log('Fecha en zona horaria Argentina:', fechaArgentina);
@@ -457,21 +482,30 @@ const SeleccionTratamientos = () => {
       const horariosDisponibles: HorarioDisponibleLocal[] = [];
       const duracion = subTratamientoSeleccionado.duracion || 30; // duración en minutos
 
-      // Horario de trabajo en zona horaria de Argentina
+      // Usar los horarios configurados en la disponibilidad
       const horaInicio = toZonedTime(
-        new Date(`${fecha}T09:00:00`),
+        new Date(`${fecha}T${disponibilidadFecha.hora_inicio}`),
         'America/Argentina/Buenos_Aires'
       );
       const horaFin = toZonedTime(
-        new Date(`${fecha}T18:00:00`),
+        new Date(`${fecha}T${disponibilidadFecha.hora_fin}`),
         'America/Argentina/Buenos_Aires'
       );
+
+      console.log('Horario configurado:', {
+        horaInicio: formatInTimeZone(horaInicio, 'America/Argentina/Buenos_Aires', 'HH:mm'),
+        horaFin: formatInTimeZone(horaFin, 'America/Argentina/Buenos_Aires', 'HH:mm'),
+        boxesDisponibles: disponibilidadFecha.boxes_disponibles
+      });
 
       // Intervalo de 30 minutos
       const intervalo = 30;
 
-      // Para cada box
-      for (let box = 1; box <= 3; box++) {
+      // Crear un mapa para consolidar horarios por hora
+      const horariosPorHora = new Map<string, number[]>();
+
+      // Solo verificar los boxes configurados en la disponibilidad
+      for (const box of disponibilidadFecha.boxes_disponibles) {
         const citasBox = citasPorBox[box] || [];
         console.log(`Verificando disponibilidad para box ${box}:`, citasBox);
 
@@ -501,14 +535,23 @@ const SeleccionTratamientos = () => {
           });
 
           if (!haySolapamiento) {
-            horariosDisponibles.push({
-              hora_inicio: horaSlot,
-              hora_fin: horaFinSlot.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-              boxes_disponibles: [box]
-            });
+            // Agregar box disponible a este horario
+            if (!horariosPorHora.has(horaSlot)) {
+              horariosPorHora.set(horaSlot, []);
+            }
+            horariosPorHora.get(horaSlot)!.push(box);
           }
         }
       }
+
+      // Convertir el mapa a array de horarios disponibles
+      horariosPorHora.forEach((boxes, hora) => {
+        horariosDisponibles.push({
+          hora_inicio: hora,
+          hora_fin: new Date(new Date(`${fecha}T${hora}:00`).getTime() + duracion * 60000).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+          boxes_disponibles: boxes
+        });
+      });
 
       console.log('Horarios disponibles finales:', horariosDisponibles);
       setHorariosDisponibles(horariosDisponibles);
@@ -525,7 +568,7 @@ const SeleccionTratamientos = () => {
   };
 
   // Función para seleccionar un horario
-  const seleccionarHorario = (hora: string, box: number) => {
+  const seleccionarHorario = (hora: string, boxesDisponibles: number[]) => {
     if (!tratamientoSeleccionado || !subTratamientoSeleccionado || !fechaSeleccionada) {
       toast({
         title: "Error",
@@ -535,21 +578,48 @@ const SeleccionTratamientos = () => {
       return
     }
 
-    // Actualizar los datos de la cita con el horario y box seleccionados
-    const datosCitaActualizados: DatosCita = {
-      tratamiento_id: tratamientoSeleccionado.id,
-      subtratamiento_id: subTratamientoSeleccionado.id,
-      fecha: fechaSeleccionada,
-      hora: hora,
-      box: box,
-      precio: subTratamientoSeleccionado.precio,
-      duracion: subTratamientoSeleccionado.duracion,
-      tratamiento_nombre: tratamientoSeleccionado.nombre,
-      subtratamiento_nombre: subTratamientoSeleccionado.nombre
-    }
+    // Si solo hay un box disponible, seleccionarlo automáticamente
+    if (boxesDisponibles.length === 1) {
+      const datosCitaActualizados: DatosCita = {
+        tratamiento_id: tratamientoSeleccionado.id,
+        subtratamiento_id: subTratamientoSeleccionado.id,
+        fecha: fechaSeleccionada,
+        hora: hora,
+        box: boxesDisponibles[0],
+        precio: subTratamientoSeleccionado.precio,
+        duracion: subTratamientoSeleccionado.duracion,
+        tratamiento_nombre: tratamientoSeleccionado.nombre,
+        subtratamiento_nombre: subTratamientoSeleccionado.nombre
+      }
 
-    setDatosCita(datosCitaActualizados)
-    setShowNuevaCitaModal(true)
+      setDatosCita(datosCitaActualizados)
+      setShowNuevaCitaModal(true)
+    } else {
+      // Si hay múltiples boxes disponibles, mostrar un modal de selección
+      // Por ahora, seleccionar el primer box disponible
+      const datosCitaActualizados: DatosCita = {
+        tratamiento_id: tratamientoSeleccionado.id,
+        subtratamiento_id: subTratamientoSeleccionado.id,
+        fecha: fechaSeleccionada,
+        hora: hora,
+        box: boxesDisponibles[0], // Seleccionar el primer box disponible
+        precio: subTratamientoSeleccionado.precio,
+        duracion: subTratamientoSeleccionado.duracion,
+        tratamiento_nombre: tratamientoSeleccionado.nombre,
+        subtratamiento_nombre: subTratamientoSeleccionado.nombre
+      }
+
+      setDatosCita(datosCitaActualizados)
+      setShowNuevaCitaModal(true)
+      
+      // Mostrar un toast informando que se seleccionó automáticamente el primer box
+      if (boxesDisponibles.length > 1) {
+        toast({
+          title: "Box seleccionado automáticamente",
+          description: `Se seleccionó el Box ${boxesDisponibles[0]}. Boxes disponibles: ${boxesDisponibles.join(', ')}`,
+        })
+      }
+    }
   }
 
   // Función para volver a la vista anterior
@@ -1020,7 +1090,7 @@ const SeleccionTratamientos = () => {
               <Card
                 key={index}
                 className="date-time-card cursor-pointer hover:border-primary hover:shadow-lg transition-all duration-200 justify-between"
-                onClick={() => seleccionarHorario(horario.hora_inicio, horario.boxes_disponibles[0])}
+                onClick={() => seleccionarHorario(horario.hora_inicio, horario.boxes_disponibles)}
                 style={{
                   borderRadius: 12,
                 }}
